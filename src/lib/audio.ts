@@ -1,96 +1,153 @@
 import type { Capture, Channel } from './simulation-types.ts'
+import { renderAudioPcm, resampleAudioLoop } from './audio-loop.ts'
 
+export { analyzeAudioLoop } from './audio-loop.ts'
+export type { AudioLoopAnalysis, AudioLoopRegion } from './audio-loop.ts'
+
+export interface AudioPlaybackOptions {
+  mode?: 'once' | 'loop'
+  volume?: number
+  /** Fired once for natural completion, cancellation, explicit stop, or failure. */
+  onEnded?: () => void
+}
+
+interface Playback {
+  context: AudioContext
+  source: AudioBufferSourceNode | null
+  gain: GainNode | null
+  volume: number
+  stopped: boolean
+  ended: boolean
+  onEnded?: () => void
+  cleanupTimer?: ReturnType<typeof setTimeout>
+}
+
+const FADE_SECONDS = 0.005
+const MAX_VOLUME = 0.35
 let audioContext: AudioContext | null = null
-let activeSource: AudioBufferSourceNode | null = null
+let activePlayback: Playback | null = null
 let playbackGeneration = 0
+
+function boundedVolume(volume = 0.25) {
+  return Math.max(0, Math.min(MAX_VOLUME, Number.isFinite(volume) ? volume : 0.25))
+}
+
+function finishPlayback(playback: Playback) {
+  if (playback.ended) return
+  playback.ended = true
+  if (playback.cleanupTimer !== undefined) clearTimeout(playback.cleanupTimer)
+  playback.source?.disconnect()
+  playback.gain?.disconnect()
+  if (activePlayback === playback) activePlayback = null
+  playback.onEnded?.()
+}
+
+function holdGain(gain: AudioParam, now: number) {
+  if (typeof gain.cancelAndHoldAtTime === 'function') gain.cancelAndHoldAtTime(now)
+  else {
+    const value = gain.value
+    gain.cancelScheduledValues(now)
+    gain.setValueAtTime(value, now)
+  }
+}
+
+function stopPlayback(playback: Playback) {
+  if (playback.stopped || playback.ended) return
+  playback.stopped = true
+  if (activePlayback === playback) activePlayback = null
+  // A pending/suspended context has no audible tail to fade. Finishing now also
+  // prevents a later user-agent resume from resurrecting a cancelled request.
+  if (!playback.source || playback.context.state !== 'running') {
+    try { playback.source?.stop() } catch { /* Already ended. */ }
+    finishPlayback(playback)
+    return
+  }
+  const now = playback.context.currentTime
+  if (playback.gain) {
+    holdGain(playback.gain.gain, now)
+    playback.gain.gain.linearRampToValueAtTime(0, now + FADE_SECONDS)
+  }
+  try { playback.source.stop(now + FADE_SECONDS) } catch { finishPlayback(playback); return }
+  // Disconnect even if the context becomes suspended before its onended event.
+  playback.cleanupTimer = setTimeout(() => finishPlayback(playback), 50)
+}
 
 export function stopAllAudio() {
   playbackGeneration += 1
-  if (activeSource) {
-    try { activeSource.stop() } catch { /* The one-shot may already have ended. */ }
-    activeSource.disconnect()
-    activeSource = null
+  if (activePlayback) stopPlayback(activePlayback)
+}
+
+/** Change the active monitor level without rebuilding or restarting its loop. */
+export function setMonitorVolume(volume: number) {
+  const playback = activePlayback
+  if (!playback || playback.ended || playback.stopped) return
+  playback.volume = boundedVolume(volume)
+  if (playback.gain) {
+    const now = playback.context.currentTime
+    holdGain(playback.gain.gain, now)
+    playback.gain.gain.linearRampToValueAtTime(playback.volume / MAX_VOLUME, now + FADE_SECONDS)
   }
 }
 
-/** Resample adaptive timestamps at 4× rate, FIR low-pass, then decimate to PCM. */
+/** Backwards-compatible one-shot PCM: adaptive resampling and endpoint fades. */
 export function resampleCapture(capture: Capture, channel: Channel, sampleRate: number, volume = 0.25): Float32Array<ArrayBuffer> {
-  const values = capture.channels[channel]
-  const times = capture.time
-  if (values.length !== times.length || times.length < 2) throw new Error(`${channel} is not measuring a simulated node. Attach its probe to the circuit.`)
-  const duration = times.at(-1)! - times[0]
-  if (!Number.isFinite(duration) || duration <= 0 || duration > 1) throw new Error('This capture is not suitable for audio preview.')
-  if (!Number.isFinite(sampleRate) || sampleRate < 8_000 || sampleRate > 192_000) throw new Error('The audio sample rate is unsupported.')
-  const count = Math.max(1, Math.floor(duration * sampleRate))
-  const factor = 4
-  const highRate = sampleRate * factor
-  const interpolated = new Float64Array(count * factor)
-  let cursor = 0
-  let mean = 0
-  for (let index = 0; index < interpolated.length; index++) {
-    const time = times[0] + index / highRate
-    while (cursor < times.length - 2 && times[cursor + 1] < time) cursor++
-    const interval = times[cursor + 1] - times[cursor]
-    const fraction = interval > 0 ? (time - times[cursor]) / interval : 0
-    const value = values[cursor] + Math.max(0, Math.min(1, fraction)) * (values[cursor + 1] - values[cursor])
-    if (!Number.isFinite(value)) throw new Error('The capture contains a non-finite voltage.')
-    interpolated[index] = value
-    mean += value
-  }
-  mean /= interpolated.length
-
-  // Listening bandwidth is deliberately limited to 10 kHz. A 97-tap Hann-windowed
-  // sinc filter reduces aliases when the high-rate interpolation is decimated.
-  const half = 48
-  const cutoff = Math.min(10_000, sampleRate * 0.22) / highRate
-  const kernel = new Float64Array(half * 2 + 1)
-  let kernelSum = 0
-  for (let index = -half; index <= half; index++) {
-    const sinc = index === 0 ? 2 * cutoff : Math.sin(2 * Math.PI * cutoff * index) / (Math.PI * index)
-    const window = 0.5 + 0.5 * Math.cos(Math.PI * index / half)
-    kernel[index + half] = sinc * window
-    kernelSum += sinc * window
-  }
-  const output = new Float32Array(count)
-  let peak = 0
-  for (let index = 0; index < count; index++) {
-    let value = 0
-    for (let tap = -half; tap <= half; tap++) {
-      const source = Math.max(0, Math.min(interpolated.length - 1, index * factor + tap))
-      value += (interpolated[source] - mean) * kernel[tap + half] / kernelSum
-    }
-    output[index] = value
-    peak = Math.max(peak, Math.abs(value))
-  }
-  const gain = Math.max(0, Math.min(0.35, Number.isFinite(volume) ? volume : 0.25)) / Math.max(1, peak)
-  const fadeSamples = Math.min(Math.floor(sampleRate * 0.005), Math.floor(count / 4))
-  for (let index = 0; index < count; index++) {
-    const fade = Math.min(1, index / Math.max(1, fadeSamples), (count - 1 - index) / Math.max(1, fadeSamples))
-    output[index] = Math.max(-0.35, Math.min(0.35, output[index] * gain)) * fade
-  }
-  return output
+  return renderAudioPcm(capture, channel, sampleRate, volume)
 }
 
-/** Deliberate, bounded one-shot playback; never loop an arbitrary capture. */
-export async function playCapture(capture: Capture, channel: Channel, volume = 0.25): Promise<() => void> {
+/** Explicit playback; sustained mode accepts only a verified periodic region. */
+export async function playCapture(capture: Capture, channel: Channel, volumeOrOptions: number | AudioPlaybackOptions = 0.25): Promise<() => void> {
   stopAllAudio()
   const generation = playbackGeneration
-  if (typeof AudioContext === 'undefined') throw new Error('Audio previews are unavailable in this browser.')
-  audioContext ??= new AudioContext()
-  await audioContext.resume()
-  if (generation !== playbackGeneration) return () => {}
-  const pcm = resampleCapture(capture, channel, audioContext.sampleRate, volume)
-  const buffer = audioContext.createBuffer(1, pcm.length, audioContext.sampleRate)
-  buffer.copyToChannel(pcm, 0)
-  const source = audioContext.createBufferSource()
-  source.buffer = buffer
-  source.loop = false
-  source.connect(audioContext.destination)
-  source.onended = () => {
-    source.disconnect()
-    if (activeSource === source) activeSource = null
+  const options = typeof volumeOrOptions === 'number' ? { volume: volumeOrOptions } : volumeOrOptions
+  if (typeof AudioContext === 'undefined') {
+    options.onEnded?.()
+    throw new Error('Audio previews are unavailable in this browser.')
   }
-  activeSource = source
-  source.start()
-  return () => { if (activeSource === source) stopAllAudio() }
+  try {
+    if (!audioContext || audioContext.state === 'closed') audioContext = new AudioContext()
+  } catch (error) {
+    options.onEnded?.()
+    throw error
+  }
+  const context = audioContext
+  const playback: Playback = {
+    context, source: null, gain: null, volume: boundedVolume(options.volume),
+    stopped: false, ended: false, onEnded: options.onEnded,
+  }
+  activePlayback = playback
+  try {
+    await context.resume()
+    if (generation !== playbackGeneration || playback.ended) return () => {}
+    const loop = options.mode === 'loop' ? resampleAudioLoop(capture, channel, context.sampleRate, MAX_VOLUME) : null
+    const pcm = loop?.pcm ?? resampleCapture(capture, channel, context.sampleRate, MAX_VOLUME)
+    const buffer = context.createBuffer(1, pcm.length, context.sampleRate)
+    buffer.copyToChannel(pcm, 0)
+    const source = context.createBufferSource()
+    const gain = context.createGain()
+    playback.source = source
+    playback.gain = gain
+    source.buffer = buffer
+    source.loop = loop !== null
+    if (loop) {
+      source.loopStart = 0
+      source.loopEnd = buffer.duration
+      source.playbackRate.setValueAtTime(loop.playbackRate, context.currentTime)
+    }
+    source.connect(gain)
+    gain.connect(context.destination)
+    gain.gain.setValueAtTime(0, context.currentTime)
+    gain.gain.linearRampToValueAtTime(playback.volume / MAX_VOLUME, context.currentTime + FADE_SECONDS)
+    source.onended = () => finishPlayback(playback)
+    source.start()
+    return () => {
+      if (playback.ended || playback.stopped) return
+      if (activePlayback === playback) playbackGeneration += 1
+      stopPlayback(playback)
+    }
+  } catch (error) {
+    // No half-created source may survive a failed start or rejected resume.
+    try { playback.source?.stop() } catch { /* It may not have started. */ }
+    finishPlayback(playback)
+    throw error
+  }
 }

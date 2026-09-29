@@ -1,13 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { Crosshair, Maximize2, Waves } from 'lucide-react'
 import type { Capture } from '@/lib/simulation'
 import { differentialVoltage, interpolateVoltage, measureTrace } from '@/lib/measurements'
 import { findTriggerCrossing, frameCapture, type TriggerEdge } from '@/lib/trigger'
+import { ScopeResizer } from './ScopeResizer'
 import './Scope.css'
 
 type Channel = 'CH1' | 'CH2'
 const COLORS = { CH1: '#aee3d5', CH2: '#f2c46d' }
-export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale }: {
+export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale, audioControls }: {
   capture: Capture | null
   status: string
   probes: Record<Channel, string | null>
@@ -16,6 +18,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   stimulus?: 'periodic' | 'step'
   defaultScale?: number
   defaultTimeScale?: number
+  audioControls?: ReactNode
 }) {
   // Measurements and physical probe labels must refer to the same circuit.
   const capture = status === 'ready' ? suppliedCapture : null
@@ -33,6 +36,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   const [triggerLevel, setTriggerLevel] = useState(0)
   const [triggerLevelDraft, setTriggerLevelDraft] = useState('0')
   const [size, setSize] = useState({ width: 600, height: 170 })
+  const [scopeHeight, setScopeHeight] = useState<number | undefined>()
   const requestedWindow = timeScale * 10 / 1000
   const captureStart = capture?.time[0] ?? 0
   const captureEnd = capture?.time.at(-1) ?? 0.1
@@ -223,9 +227,10 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       </div>
     </details>
     <div className="scope-screen">
-      <canvas ref={canvas} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => { if (!measurementsOpen || !capture) return; const rect = e.currentTarget.getBoundingClientRect(); moveCursor(activeCursor, windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds) }} />
+      <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => { if (!measurementsOpen || !capture) return; const rect = e.currentTarget.getBoundingClientRect(); moveCursor(activeCursor, windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds) }} />
       {!capture && <div className="scope-empty"><Waves size={25} /><span>{status === 'loading' || status === 'calculating' ? 'Preparing your first capture…' : 'Connect a circuit and capture a waveform.'}</span></div>}
     </div>
+    <ScopeResizer height={size.height} value={scopeHeight} onChange={setScopeHeight} />
     <div className="scope-channels">{(['CH1', 'CH2'] as const).map(channel => <div className="scope-channel" key={channel} style={{ '--channel-color': COLORS[channel] } as React.CSSProperties}>
       <button className="channel-toggle" aria-pressed={visible[channel]} onClick={() => setVisible({ ...visible, [channel]: !visible[channel] })}>{channel}</button>
       <button className="probe-location" onClick={() => probes[channel] && onHighlight ? onHighlight(channel) : onProbe(channel)} title={probes[channel] ? `Highlight ${channel} connection` : `Attach ${channel} probe`}>{probes[channel]?.toUpperCase() ?? 'Attach'}</button>
@@ -233,6 +238,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       <select aria-label={`${channel} volts per division`} value={scales[channel]} onChange={e => setScales({ ...scales, [channel]: Number(e.target.value) })}>{[0.1, 0.2, 0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} V/div</option>)}</select>
       <span className="measurement">{measurement(channel)}</span>
     </div>)}</div>
+    {audioControls}
     <details className="scope-measurements" open={measurementsOpen} onToggle={event => setMeasurementsOpen(event.currentTarget.open)}>
       <summary>Measurements <span>Voltages, frequency & cursors</span></summary>
       <div className="scope-measurements-content">

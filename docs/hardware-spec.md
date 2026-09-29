@@ -90,3 +90,9 @@ Import boundaries: schema 1, board `virtual-1`, at most 30 components, 120 wires
 - **Envelope shaping:** EG OUT drives 10 kΩ and 100 nF; CH1 follows the input envelope and CH2 shows the rounded attack. The 20 ms default decay is independent of the RC filter’s 1.01 ms time constant including source resistance. Increasing the capacitor to 470 nF lowers and delays the output peak.
 
 All six examples are ordinary editable documents. Scope channels attach to physical terminals. The JSON document stores no traces or audio data.
+
+## Editing and view geometry
+
+Resistors, capacitors, electrolytics, diodes, LEDs, and switches can move one lead independently. The other lead, pin order, component value, and polarity are preserved. A new edited spacing must be between 24 and 192 SVG units (1–8 hole pitches), use distinct breadboard holes, and respect occupied holes. Imported legacy two-lead spacing remains valid; these bounds apply to new individual-lead edits. Each completed move is one undo action. Wires and probes remain attached to their physical holes. Potentiometer and DIP-8 geometry stays rigid.
+
+Pan, zoom, fit actions, and scope height are presentation state only. They do not change saved documents, connectivity, captures, or undo history. At 100% the responsive viewport fits the 920 × 550 workbench extent, including source terminals. Fit breadboard frames the board body at (46, 79), with extent 828 × 450; source terminals may be outside this closer view. Zoom buttons preserve the visible center subject to the scroll bounds.

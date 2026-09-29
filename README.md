@@ -17,28 +17,30 @@ npm run dev
 Open the URL printed by Vite. No API keys, environment variables, accounts, or backend services are required. The app bundles its engine and assets, and circuit simulation stays on your device.
 
 1. Select **C1**, then try the **220 nF** preset. CH2 shows the changed filter output.
-2. Choose a part and click a hole, or drag it from the tray. Press **R** to rotate the placement. Drag an existing component to move it.
+2. Choose a part and click a hole, or drag it from the tray. Press **R** to rotate the placement. Drag an existing component to move it. Select a two-lead part and use **Move** beside either pin to change its spacing, with a preview before committing.
 3. Choose **Jumper wire** and click two free terminals. Select a wire to change its color, remove it, or move an endpoint.
 4. Select a scope probe and click a terminal. Use **Capture** or leave **Auto update** enabled. Open **Measurements** below the scope for minimum/maximum voltage, frequency, A/B cursors, and the CH1 − CH2 differential meter.
-5. Click **Listen** for a short audio preview of the selected channel. Audio starts muted; **Mute** remains available.
+5. Use **Monitor** below the scope: choose a channel, then click **Listen** for a one-shot preview or select **Steady loop** for a verified repeating signal. Adjust **Level** while listening. Audio starts muted; **Mute** and circuit edits stop playback.
 6. Try **Capacitor charge / decay**, **Op-amp gain stage**, or **Envelope shaping** from Examples. Each experiment has a **What to try** guide in the inspector. The gain stage requires both visible supply connections; removing either blocks capture.
 7. Open **DC operating point** below the scope for initial node voltages. Select a component to read its DC current and power in the inspector. **Trigger** frames rising or falling crossings without changing the circuit.
 8. **Export circuit** saves JSON. **Import** restores it, while browser recovery remembers the latest circuit when storage is available.
 
 Drag the frequency knob in a straight line; hold Shift for fine adjustment. Its numeric input and arrow keys edit the same parameter. Potentiometer wiper drags commit as a single undoable action.
 
+Use **Pan**, Space-drag, or the middle mouse button to move a zoomed board. **Fit breadboard** frames the holes; **All / Fit workbench** includes the source terminals. Ordinary trackpad scrolling works inside the zoomed view. Drag the grip below the scope trace to resize it, or focus the grip and use Up/Down; Enter restores its default height. These view changes do not alter the circuit or undo history.
+
 Keyboard: **W** wire, **V** select, **R** rotate placement, **Escape** cancel, **Delete/Backspace** remove selection, **Ctrl/Cmd+Z** undo, **Ctrl/Cmd+Shift+Z** or **Ctrl+Y** redo. Breadboard holes also support arrow navigation and Enter/Space activation.
 
 ## Included in this build
 
-- A 30-column breadboard with separate five-hole strips, a center trench, and explicitly split, unpowered rails. Connected-net highlighting and **Show connections** expose its topology.
-- Eight component types: resistor, non-polarized capacitor, polarized electrolytic capacitor, potentiometer, generic silicon diode, generic red LED, switch, and generic dual op-amp. Placement checks every lead; DIP-8 parts straddle the trench in either orientation. Probes attach without occupying holes.
+- A 30-column breadboard with separate five-hole strips, a center trench, and explicitly split, unpowered rails. Connected-net highlighting and **Show connections** expose its topology. Pan, center-preserving zoom, and separate breadboard/workbench fit actions keep parts reachable.
+- Eight component types: resistor, non-polarized capacitor, polarized electrolytic capacitor, potentiometer, generic silicon diode, generic red LED, switch, and generic dual op-amp. Placement checks every lead; DIP-8 parts straddle the trench in either orientation. Two-lead parts support individual pin movement with 1–8 hole spacings, polarity preservation, previews, keyboard controls, and occupancy checks. Probes attach without occupying holes.
 - Six ordinary editable examples: RC low-pass filter, voltage divider, diode clipper, capacitor charge/decay, op-amp gain stage, and envelope shaping.
 - Oscillator waveform/frequency/amplitude controls, a DC CV source, GND, and ±12 V source terminals. A separate capture stimulus selects periodic input or a 0 → amplitude → 0 charging/decay step. The EG terminal supplies a held gate, 1 ms trigger, or exponential decay envelope (1–40 ms time constant), with a virtual 5 V level and 100 Ω output resistance. **Fire** starts a fresh event capture.
 - A separate DC operating-point solve followed by real 100 ms transient captures through `eecircuit-engine` 1.8.0, isolated in a dedicated worker. Edits coalesce, outdated results are discarded, and a timed-out worker can be recreated.
-- A two-channel scope with independent voltage scales, shared time scale, autoscale, min/max/peak-to-peak/time-weighted mean, conservative frequency detection, persistent A/B time cursors, Δt/ΔV, and a differential voltage meter. Basic rising/falling triggering frames the first confirmed crossing; no crossing is explicitly reported. Cursors retain absolute capture times. DC and irregular signals display frequency unavailable.
+- A resizable two-channel scope with independent voltage scales, shared time scale, autoscale, min/max/peak-to-peak/time-weighted mean, conservative frequency detection, persistent A/B time cursors, Δt/ΔV, and a differential voltage meter. Basic rising/falling triggering frames the first confirmed crossing; no crossing is explicitly reported. Cursors retain absolute capture times. DC and irregular signals display frequency unavailable.
 - An initial DC meter using the separate operating-point solve, including CH1 − CH2 voltage. The inspector shows signed DC currents and absorbed power for resistors, switches, potentiometers, diodes, LEDs, and ideal capacitors. Channel labels highlight their breadboard connections.
-- A short, deliberate audio preview using timestamp resampling, filtering, DC removal, gain limiting, and fades. It does not loop arbitrary captures.
+- Deliberate one-shot audio and optional sustained playback of a verified steady region. Loops require at least three matching cycles and phase-aligned boundaries; irregular or one-shot signals cannot loop. Timestamp resampling, periodic filtering, DC removal, gain limiting, and start/stop fades keep monitor processing separate from measurements. Live level changes do not restart playback.
 - Measured reverse-bias warnings for polarized capacitors and explicit missing-supply/input diagnostics for op-amps. Warnings identify the affected part; no destruction animation or hidden repair connection is added.
 - Undo/redo, example restore, clear board, validated JSON import/export, and optional browser recovery. No waveform or audio arrays are saved with the circuit.
 
@@ -48,7 +50,7 @@ This is a desktop-first prototype. Captures restart at the DC operating point; t
 
 The initial envelope is 30 components, 120 wires, and 60 active external electrical nodes. Floating component nodes and direct ideal-supply shorts block capture instead of receiving hidden repair connections. The oscillator and EG source each include a documented virtual 100 Ω output resistor. Other source and component models are deliberately simplified.
 
-Physical interface boards, advanced triggering, transient component-current displays, and continuous audio are deferred. The dual op-amp is an educational static model with visible rails and bounded output; bandwidth, slew rate, and physical supply-current behavior are not modeled. Polarized capacitors use an ideal electrical model with polarity diagnostics, not a damage model. Component placement uses fixed lead spacing; the board offers zoom and scrolling but no general schematic editor or autorouter. Cross-browser, accessibility, and performance acceptance work remains part of the roadmap.
+Physical interface boards, advanced triggering, transient component-current displays, and continuous simulation/audio streaming are deferred. Steady-loop listening replays a completed capture and stops when the circuit changes. The dual op-amp is an educational static model with visible rails and bounded output; bandwidth, slew rate, and physical supply-current behavior are not modeled. Polarized capacitors use an ideal electrical model with polarity diagnostics, not a damage model. New two-lead adjustments are limited to 1–8 hole spacings, while older imported placements remain valid. Potentiometer and IC footprints stay rigid. The board has no general schematic editor or autorouter. Cross-browser, accessibility, and performance acceptance work remains part of the roadmap.
 
 Read [the hardware specification](./docs/hardware-spec.md) for verified manual references and the virtual board's exact connections. Read [the engine notes](./docs/engine-notes.md) for worker behavior, numerical assumptions, bounds, audio processing, and licensing provenance.
 
@@ -63,11 +65,11 @@ npm run test:e2e  # Playwright browser integration tests
 npm run preview   # Serve the production build locally
 ```
 
-The unit/numerical suite covers topology and import validation, real ngspice divider/filter/diode behavior, potentiometer endpoints, capacitor charging/decay, op-amp gain and supply-dependent clipping, envelope timing and loading, separate operating-point currents and power, polarity checks, trigger framing, measurement interpolation, audio, and worker recovery. Browser tests cover placement, eight-pin movement, component controls and undo, live measurements, DC readings, envelope controls, trigger framing, stale results, import/export, and recovery. Run the application workflows against the production bundle with:
+The unit/numerical suite covers topology and import validation, real ngspice divider/filter/diode behavior, potentiometer endpoints, capacitor charging/decay, op-amp gain and supply-dependent clipping, envelope timing and loading, separate operating-point currents and power, polarity checks, trigger framing, measurement interpolation, audio, and worker recovery. Browser tests cover placement, eight-pin movement, component controls and undo, individual lead editing, board navigation, scope resizing, live audio and mute behavior, live measurements, DC readings, envelope controls, trigger framing, stale results, import/export, and recovery. Run the application workflows against the production bundle with:
 
 ```sh
 npm run build
-LABOR_PRODUCTION=1 npm run test:e2e -- workbench.spec.ts components.spec.ts measurements.spec.ts instruments.spec.ts trigger.spec.ts
+LABOR_PRODUCTION=1 npm run test:e2e -- workbench.spec.ts components.spec.ts measurements.spec.ts instruments.spec.ts trigger.spec.ts lead-editing.spec.ts viewport.spec.ts monitor.spec.ts
 ```
 
 Browser tests require Chromium (`npx playwright install chromium` if needed). See `playwright.config.ts` for the configured browser and isolated local server on port 5177.
@@ -84,7 +86,8 @@ Browser tests require Chromium (`npx playwright install chromium` if needed). Se
 | `src/lib/simulation*.ts` | Simulation hook, worker client, worker, capture extraction, limits |
 | `src/lib/measurements.ts` | Time-weighted statistics, frequency detection, cursor interpolation, differential voltage |
 | `src/lib/trigger.ts` | Threshold-crossing detection and bounded capture framing |
-| `src/lib/audio.ts` | Capture resampling and explicit Web Audio playback |
+| `src/lib/audio.ts`, `src/lib/audio-loop.ts` | Explicit Web Audio playback, settled-cycle selection, periodic resampling, monitor level |
+| `src/lib/part-editing.ts`, `src/lib/board-viewport.ts` | Lead-edit validation and view geometry |
 | `tests/` | Compiler, numerical, audio, worker, and browser checks |
 | `docs/` | Hardware/model specification and simulation integration notes |
 

@@ -258,6 +258,11 @@ select { color-scheme: dark; }
 .component-dc .section-overline { margin-bottom: 11px; }
 .dc-part-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; font-size: 9px; color: #a4b298; }
 .dc-part-row output { font: 10px monospace; color: #d5e0c9; white-space: nowrap; }
+.pin-actions { display: flex; align-items: center; gap: 8px; }
+.move-lead-button { padding: 3px 5px; font-size: 8px; color: #c1d2af; background: #303c29; border: 1px solid #4d6140; border-radius: 3px; }
+.move-lead-button[aria-pressed=true] { background: #c9dba6; color: #293721; }
+.cancel-lead-edit { gap: 8px; font-size: 9px; color: #d4e6b9; }
+.fit-workbench { font: 8px monospace; padding: 5px 6px; color: #afbea1; border: 1px solid #45513b; border-radius: 3px; background: #283123; margin-left: 3px; }
 @media(max-width:1250px) and (min-width:1051px) {
   .instrument-panel { gap: 12px 10px; }
   .envelope-controls { width: 100%; display: grid; grid-template-columns: auto 110px 130px; align-items: center; gap: 6px 12px; border-top: 1px solid #3c4937; padding-top: 9px; }

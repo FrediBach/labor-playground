@@ -4,6 +4,7 @@ import {
   HOLES, TERMINALS, PARTS, terminalById, compileCircuit, getPlacement, canPlace, formatValue, isValidFootprint,
 } from '@/lib/circuit'
 import type { CircuitDocument, Part, ComponentKind } from '@/lib/circuit'
+import { hasEditableLeads, leadPlacementError, previewLeadPins, type LeadEdit } from '@/lib/part-editing'
 import { PartGlyph } from './PartGlyph'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
@@ -23,6 +24,9 @@ export interface BreadboardProps {
   zoom: number
   onMessage: (message: string) => void
   highlightTerminal?: string | null
+  editingLead?: LeadEdit | null
+  onStartLeadEdit?: (edit: LeadEdit) => void
+  onFinishLeadEdit?: () => void
 }
 
 const PART_KINDS = Object.keys(PARTS) as ComponentKind[]
@@ -80,7 +84,7 @@ function makeId(prefix: string, document: CircuitDocument) {
 
 const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', diode: 'D', led: 'LED', potentiometer: 'P', switch: 'S', opamp: 'U' }
 
-export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal }: BreadboardProps) {
+export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
   const terminalElements = useRef(new Map<string, SVGCircleElement>())
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -111,26 +115,47 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     ...document.parts.flatMap(part => part.pins),
     ...document.wires.flatMap(wire => [wire.from, wire.to]),
   ]), [document.parts, document.wires])
+  const leadPart = editingLead && tool === 'select' && selectedId === editingLead.partId
+    ? document.parts.find(part => part.id === editingLead.partId && hasEditableLeads(part)) : undefined
 
   const hover = hoverId ? terminalById[hoverId] : undefined
   const highlightSource = wireStart ?? hoverId ?? highlightTerminal ?? inspectedTerminal
   const highlightedNet = highlightSource ? graph.nodeByTerminal[highlightSource] : undefined
   const highlighted = new Set(highlightedNet ? graph.nets[highlightedNet] ?? [] : [])
-  const previewPins = move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation) : null
-  const previewKind = move?.dragging ? move.part.kind : isPart(tool) ? tool : null
-  const placementValid = !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins) && canPlace(document, previewPins, move?.part.id)
+  const previewPins = leadPart && editingLead && hover ? previewLeadPins(leadPart, editingLead.pinIndex, hover.id)
+    : move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation) : null
+  const previewKind = leadPart?.kind ?? (move?.dragging ? move.part.kind : isPart(tool) ? tool : null)
+  const placementValid = leadPart && editingLead && hover
+    ? leadPlacementError(document, leadPart, editingLead.pinIndex, hover.id) === null
+    : !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins) && canPlace(document, previewPins, move?.part.id)
+
+  useEffect(() => {
+    if (!leadPart || !editingLead) return
+    // A new explicit lead edit supersedes any unfinished wire or whole-part drag.
+    // oxlint-disable-next-line react/set-state-in-effect
+    setWireStart(null)
+    setEditingWire(null)
+    setMove(null)
+    moveRef.current = null
+    terminalElements.current.get(leadPart.pins[editingLead.pinIndex])?.focus()
+  }, [leadPart, editingLead])
 
   useEffect(() => {
     const cancel = (event: globalThis.KeyboardEvent) => {
       if (event.key !== 'Escape') return
+      if (leadPart) {
+        event.preventDefault()
+        onFinishLeadEdit?.()
+        onMessage('Lead move cancelled.')
+      }
       setWireStart(null)
       setEditingWire(null)
       setMove(null)
       moveRef.current = null
     }
-    window.addEventListener('keydown', cancel)
-    return () => window.removeEventListener('keydown', cancel)
-  }, [])
+    window.addEventListener('keydown', cancel, true)
+    return () => window.removeEventListener('keydown', cancel, true)
+  }, [leadPart, onFinishLeadEdit, onMessage])
 
   useEffect(() => {
     moveRef.current = null
@@ -163,6 +188,17 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
 
   function clickTerminal(terminal: Terminal) {
     setFocusId(terminal.id)
+    if (leadPart && editingLead) {
+      const error = leadPlacementError(document, leadPart, editingLead.pinIndex, terminal.id)
+      if (error) { onMessage(error); return }
+      const pins = previewLeadPins(leadPart, editingLead.pinIndex, terminal.id)!
+      if (pins[editingLead.pinIndex] !== leadPart.pins[editingLead.pinIndex]) {
+        onChange({ ...document, parts: document.parts.map(part => part.id === leadPart.id ? { ...part, pins } : part) })
+        onMessage(`${leadPart.id} lead moved. Jumper wires and probes stay attached to their holes.`)
+      } else onMessage('Lead kept in its current hole.')
+      onFinishLeadEdit?.()
+      return
+    }
     if (isPart(tool) && !wireStart) { place(tool, terminal); return }
     if (tool === 'probe1' || tool === 'probe2') {
       const channel = tool === 'probe1' ? 'CH1' : 'CH2'
@@ -290,10 +326,10 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     return <g key={part.id}
       data-part={preview ? undefined : part.id}
       transform={`translate(${center.x} ${center.y})`}
-      opacity={preview ? 0.7 : move?.dragging && move.part.id === part.id ? 0.28 : 1}
-      role={preview ? undefined : 'button'} tabIndex={preview ? undefined : 0}
+      opacity={preview ? 0.7 : leadPart?.id === part.id || move?.dragging && move.part.id === part.id ? 0.28 : 1}
+      role={preview ? undefined : 'button'} tabIndex={preview || leadPart ? undefined : 0}
       aria-label={preview ? undefined : `${label}. Drag to move or select to edit.`}
-      style={{ cursor: preview ? 'none' : tool === 'select' ? 'grab' : 'pointer', outline: 'none', pointerEvents: preview ? 'none' : 'auto' }}
+      style={{ cursor: preview ? 'none' : tool === 'select' ? 'grab' : 'pointer', outline: 'none', pointerEvents: preview || leadPart ? 'none' : 'auto' }}
       onPointerDown={preview ? undefined : event => {
         event.stopPropagation()
         if (tool !== 'select' || event.button !== 0 || wireStart) return
@@ -338,7 +374,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     </g>
   }
 
-  const cursor = tool === 'select' && !wireStart ? 'default' : 'crosshair'
+  const cursor = tool === 'select' && !wireStart && !leadPart ? 'default' : 'crosshair'
   const wireSource = wireStart ? terminalById[wireStart] : null
   return <svg ref={svg} className="breadboard-svg" data-fit={zoom === 1} viewBox="0 0 920 550" width={920 * zoom} height={550 * zoom}
     style={{ display: 'block', width: `${zoom * 100}%`, minWidth: 670 * zoom, height: 'auto', flexShrink: 0, userSelect: 'none', touchAction: 'none', cursor }}
@@ -346,7 +382,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     onPointerMove={pointerMove} onPointerUp={pointerUp}
     onPointerCancel={() => { moveRef.current = null; setMove(null) }}
     onPointerLeave={() => { if (!moveRef.current) { setHoverId(null); setPointer(null) } }}
-    onClick={() => { if (!suppressClick.current) { onSelect(null); setInspectedTerminal(null) } }}
+    onClick={() => { if (!suppressClick.current && !leadPart) { onSelect(null); setInspectedTerminal(null) } }}
     onDragOver={event => {
       if (!event.dataTransfer.types.includes('application/labor-part')) return
       event.preventDefault()
@@ -357,6 +393,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     }}
     onDrop={event => {
       event.preventDefault()
+      if (leadPart) { onFinishLeadEdit?.(); return }
       const kind = event.dataTransfer.getData('application/labor-part')
       const terminal = nearestTerminal(localPoint(event.clientX, event.clientY))
       if (isPart(kind) && terminal) place(kind, terminal)
@@ -424,8 +461,8 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       if (!a || !b) return null
       const path = wirePath(a, b, index)
       const selected = wire.id === selectedId
-      return <g key={wire.id} data-wire={wire.id} role="button" tabIndex={0} aria-label={`${wire.id}, jumper from ${wire.from} to ${wire.to}`}
-        style={{ cursor: 'pointer', outline: 'none' }}
+      return <g key={wire.id} data-wire={wire.id} role="button" tabIndex={leadPart ? undefined : 0} aria-label={`${wire.id}, jumper from ${wire.from} to ${wire.to}`}
+        style={{ cursor: 'pointer', outline: 'none', pointerEvents: leadPart ? 'none' : 'auto' }}
         onFocus={() => onSelect(wire.id)}
         onClick={event => {
           event.stopPropagation()
@@ -455,6 +492,17 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
 
     {document.parts.map(part => renderPart(part))}
 
+    {!leadPart && tool === 'select' && onStartLeadEdit && document.parts.filter(part => part.id === selectedId && hasEditableLeads(part)).flatMap(part => part.pins.map((pin, pinIndex) => {
+      const terminal = terminalById[pin]
+      const name = `Move ${part.id} lead ${PARTS[part.kind].pinNames[pinIndex]}`
+      const start = () => onStartLeadEdit({ partId: part.id, pinIndex })
+      return <circle key={`${part.id}-${pinIndex}`} data-lead-handle={`${part.id}-${pinIndex}`} cx={terminal.x} cy={terminal.y} r={7}
+        fill="transparent" stroke="#d3e7a6" strokeWidth={1.8} strokeDasharray="2 2" role="button" tabIndex={0} aria-label={name}
+        style={{ cursor: 'crosshair' }} onPointerDown={event => event.stopPropagation()}
+        onClick={event => { event.stopPropagation(); start() }}
+        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); event.stopPropagation(); start() } }}><title>{name}</title></circle>
+    }))}
+
     {(['CH1', 'CH2'] as const).map((channel, index) => {
       const attachment = document.probes[channel]
       const terminal = attachment ? terminalById[attachment] : null
@@ -474,15 +522,15 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       <circle cx={wireSource.x} cy={wireSource.y} r={8} fill="none" stroke={wireColor} strokeWidth={2} />
       <path d={wirePath(wireSource, hover ?? pointer!)} fill="none" stroke={wireColor} strokeWidth={4} strokeDasharray="7 5" opacity={0.8} />
     </g>}
-    {previewPins && previewKind && <g pointerEvents="none">
-      {previewPins.map(id => { const terminal = terminalById[id]; return terminal && <circle key={id} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
-      {renderPart({ ...(move?.dragging ? move.part : { kind: previewKind, value: PARTS[previewKind].defaultValue }), id: 'preview', pins: previewPins }, true)}
+    {previewPins && previewKind && <g pointerEvents="none" data-lead-preview={leadPart ? placementValid ? 'valid' : 'invalid' : undefined}>
+      {previewPins.map((id, index) => { const terminal = terminalById[id]; return terminal && <circle key={`${id}-${index}`} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
+      {renderPart({ ...(leadPart ?? (move?.dragging ? move.part : { kind: previewKind, value: PARTS[previewKind].defaultValue })), id: 'preview', pins: previewPins }, true)}
     </g>}
     {isPart(tool) && hover && !previewPins && <circle cx={hover.x} cy={hover.y} r={10} fill="#df7662" fillOpacity={0.24} stroke="#c04e3e" strokeWidth={1.8} pointerEvents="none" />}
 
     <g pointerEvents="none" aria-hidden="true">
       <text x={55} y={546} fill="#7b897c" fontSize={8.5} fontFamily="monospace" letterSpacing={0.4}>{hover ? `${hover.id.toUpperCase()}  /  ${highlighted.size} connected terminals` : 'RAILS ARE SPLIT AT 15 / 16 · CONNECT POWER WITH JUMPERS'}</text>
-      <text x={866} y={546} fill="#7b897c" textAnchor="end" fontSize={8.5} fontFamily="monospace">{wireStart ? 'CHOOSE DESTINATION · ESC TO CANCEL' : isPart(tool) ? 'CLICK TO PLACE · R TO ROTATE' : 'CLICK TO INSPECT · DRAG TO MOVE'}</text>
+      <text x={866} y={546} fill="#7b897c" textAnchor="end" fontSize={8.5} fontFamily="monospace">{leadPart ? 'MOVE LEAD · 1–8 HOLE SPACINGS · ESC TO CANCEL' : wireStart ? 'CHOOSE DESTINATION · ESC TO CANCEL' : isPart(tool) ? 'CLICK TO PLACE · R TO ROTATE' : 'CLICK TO INSPECT · DRAG TO MOVE'}</text>
     </g>
   </svg>
 }

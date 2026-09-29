@@ -12,6 +12,10 @@
 .scope-probe-move { display: inline-flex; align-items: center; justify-content: center; width: 20px; height: 22px; flex-shrink: 0; color: #b1c1a3; border: 1px solid transparent; border-radius: 3px; padding: 0; }
 .scope-probe-move:hover { color: #e0ecd5; border-color: #46553c; }
 .scope-probe-move:focus-visible { outline: 2px solid #cdddb6; outline-offset: 2px; }
+.scope-resizer { display: flex; align-items: center; justify-content: center; height: 11px; background: #232c23; border-bottom: 1px solid #3b4536; cursor: ns-resize; touch-action: none; user-select: none; }
+.scope-resizer span { width: 38px; height: 3px; border-radius: 2px; background: #53664a; }
+.scope-resizer:hover span, .scope-resizer:focus-visible span { background: #bdd29e; }
+.scope-resizer:focus-visible { outline: 2px solid #cdddb6; outline-offset: -2px; }
 .scope-measurements { border-top: 1px solid #3b4535; color: #bdcbb1; }
 .scope-measurements > summary { padding: 8px 12px; font: 9px monospace; color: #c9d6bc; }
 .scope-measurements > summary span { margin-left: 10px; color: #8d9c7d; font-size: 8px; }

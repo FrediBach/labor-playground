@@ -4,6 +4,7 @@ import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
 import { formatElectrical } from '@/lib/format-electrical'
+import { hasEditableLeads, type LeadEdit } from '@/lib/part-editing'
 
 interface InspectorProps {
   document: CircuitDocument
@@ -19,9 +20,12 @@ interface InspectorProps {
   diagnostics: Diagnostic[]
   netlist: string
   operatingPoint?: OperatingPoint
+  editingLead?: LeadEdit | null
+  onStartLeadEdit: (edit: LeadEdit) => void
+  onFinishLeadEdit: () => void
 }
 
-export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint }: InspectorProps) {
+export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
@@ -72,11 +76,14 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
           <div className={part.kind === 'opamp' ? 'ic-pin-list' : undefined}>
             {part.pins.map((pin, index) => (
               <div className="pin-row" key={index}>
-                <span><i />{part.kind === 'opamp' && <b>{index + 1}</b>}{definition.pinNames[index]}</span><code>{pin.toUpperCase()}</code>
+                <span><i />{part.kind === 'opamp' && <b>{index + 1}</b>}{definition.pinNames[index]}</span>
+                <div className="pin-actions"><code>{pin.toUpperCase()}</code>{hasEditableLeads(part) && <button className="move-lead-button" aria-label={`Move ${part.id} lead ${definition.pinNames[index]}`} aria-pressed={editingLead?.partId === part.id && editingLead.pinIndex === index} onClick={() => onStartLeadEdit({ partId: part.id, pinIndex: index })}>Move</button>}</div>
               </div>
             ))}
           </div>
           <p className="micro-copy">{part.kind === 'opamp' ? 'The notch marks the pin 1 end. The package must straddle the center trench.' : 'Drag the component to move it. Jumper wires stay attached to their holes.'}</p>
+          {hasEditableLeads(part) && <p className="micro-copy">Move one lead to change its spacing. Choose holes 1–8 spacings apart; polarity stays with the lead.</p>}
+          {editingLead?.partId === part.id && <button className="subtle-button cancel-lead-edit" onClick={onFinishLeadEdit}>Cancel lead move <kbd>esc</kbd></button>}
           {(part.kind === 'electrolytic' || part.kind === 'diode' || part.kind === 'led') && (
             <button className="subtle-button reverse-polarity" onClick={() => updatePart({ pins: [...part.pins].reverse() })}><RotateCcw size={12} />Reverse polarity</button>
           )}

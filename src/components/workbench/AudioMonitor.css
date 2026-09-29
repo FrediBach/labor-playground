@@ -1,0 +1,16 @@
+.audio-monitor { border-top: 1px solid #3b4535; padding: 8px 12px 7px; background: #232c23; }
+.audio-monitor-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.audio-monitor-label { display: inline-flex; align-items: center; gap: 6px; font: 8px monospace; letter-spacing: .8px; color: #a6b998; }
+.monitor-listen { border: 1px solid #586c48; border-radius: 3px; background: #394a2f; color: #d5e7bd; padding: 5px 11px; font-size: 10px; min-width: 62px; }
+.monitor-listen.listening { background: #cfdfa9; color: #2b3b22; }
+.monitor-volume { margin-left: auto; display: flex; align-items: center; gap: 8px; color: #a8b899; font: 8px monospace; }
+.monitor-volume input { width: 78px; min-width: 50px; accent-color: #c5d7a9; }
+.monitor-volume>span:last-child { width: 27px; text-align: right; }
+.monitor-note { margin: 6px 0 0; font-size: 8px; color: #90a180; line-height: 1.5; }
+@media(max-width:740px) {
+  .audio-monitor-label { display: none; }
+  .audio-monitor-controls { gap: 8px; }
+  .audio-monitor-controls>.icon-button { margin-left: auto; }
+  .monitor-volume { margin-left: 0; order: 2; flex-basis: 100%; }
+  .monitor-volume input { flex: 1; width: auto; }
+}
