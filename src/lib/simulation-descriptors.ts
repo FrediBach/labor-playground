@@ -1,0 +1,26 @@
+import { spiceDeviceId, type CircuitDocument } from './circuit.ts'
+import type { OperatingPointBranch, OperatingPointPartDescriptor } from './simulation-types.ts'
+
+/** These match the compiler's fixed device models; this is measurement, not a solver. */
+export function operatingPointDescriptors(document: CircuitDocument, nodeByTerminal: Record<string, string>): OperatingPointPartDescriptor[] {
+  return document.parts.map((part) => {
+    const nodes = part.pins.map((pin) => nodeByTerminal[pin])
+    const [a, b, c] = nodes
+    const branches: OperatingPointBranch[] = []
+    if (part.kind === 'resistor' || part.kind === 'switch') {
+      branches.push({ kind: 'resistance', label: '1 → 2', fromNode: a, toNode: b, resistance: part.kind === 'resistor' ? part.value : part.value === 1 ? 1 : 1e9 })
+    } else if (part.kind === 'potentiometer') {
+      const position = part.position ?? 0.5
+      branches.push({ kind: 'resistance', label: 'CCW → Wiper', fromNode: a, toNode: b, resistance: Math.max(1, position * part.value) })
+      branches.push({ kind: 'resistance', label: 'Wiper → CW', fromNode: b, toNode: c, resistance: Math.max(1, (1 - position) * part.value) })
+    } else if (part.kind === 'capacitor' || part.kind === 'electrolytic') {
+      branches.push({ kind: 'ideal-capacitor', label: part.kind === 'electrolytic' ? '+ → − (ideal DC)' : '1 → 2 (ideal DC)', fromNode: a, toNode: b })
+    } else if (part.kind === 'diode' || part.kind === 'led') {
+      const safeId = spiceDeviceId(part)
+      branches.push({ kind: 'saved-current', label: 'Anode → Cathode', fromNode: a, toNode: b, vector: `i(@d_${safeId.toLowerCase()}[id])` })
+    }
+    // Generic op-amp supply/output currents are intentionally unavailable: its
+    // behavioral voltage model does not model real supply-current consumption.
+    return { partId: part.id, nodes, branches }
+  })
+}

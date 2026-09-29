@@ -3,8 +3,9 @@ import { compileCircuit, type CircuitDocument } from './circuit'
 import { stopAllAudio } from './audio'
 import { SimulationClient, SupersededSimulation } from './simulation-client'
 import { SIMULATION_LIMITS, type Capture, type SimulationStatus } from './simulation-types'
+import { operatingPointDescriptors } from './simulation-descriptors'
 
-export type { Capture, Channel, SimulationStatus } from './simulation-types'
+export type { Capture, Channel, OperatingPoint, SimulationStatus } from './simulation-types'
 
 interface SimulationState {
   status: SimulationStatus
@@ -21,6 +22,7 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
   // must not cancel an in-flight manual capture while Auto update is disabled.
   const snapshot = useMemo(() => JSON.parse(key) as CircuitDocument, [key])
   const compiled = useMemo(() => compileCircuit(snapshot), [snapshot])
+  const dcCompiled = useMemo(() => compileCircuit(snapshot, 'operating-point'), [snapshot])
   const [state, setState] = useState<SimulationState>({ status: 'loading', capture: null, error: null, key: '', captureKey: '', requestKey: '' })
   const [trigger, setTrigger] = useState(0)
   const requestKey = `${key}:${autoUpdate}:${trigger}`
@@ -58,7 +60,7 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
       }))
       void instance.run(compiled.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
         if (!cancelled) setState((previous) => ({ ...previous, key, requestKey, status, error: null }))
-      }, voltageChecks).then((capture) => {
+      }, voltageChecks, { netlist: dcCompiled.netlist, parts: operatingPointDescriptors(snapshot, dcCompiled.nodeByTerminal) }).then((capture) => {
         if (!cancelled && capture.revision === revision.current) setState({ key, captureKey: key, requestKey, status: 'ready', capture, error: null })
       }).catch((error: unknown) => {
         if (cancelled || error instanceof SupersededSimulation) return
@@ -67,7 +69,7 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
       })
     }, manuallyRequested ? 0 : SIMULATION_LIMITS.debounceMs)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [key, requestKey, compiled, snapshot, autoUpdate, trigger])
+  }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger])
 
   const captureNow = useCallback(() => {
     stopAllAudio()
@@ -92,5 +94,5 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
       : state.capture && state.captureKey === key ? 'ready' : 'stale'
   }
 
-  return { status, capture: state.capture, error: status === 'error' ? state.error : null, diagnostics: status === 'ready' ? [...compiled.diagnostics, ...(state.capture?.diagnostics ?? [])] : compiled.diagnostics, netlist: compiled.netlist, captureNow, reset }
+  return { status, capture: state.capture, error: status === 'error' ? state.error : null, diagnostics: status === 'ready' ? [...compiled.diagnostics, ...(state.capture?.diagnostics ?? [])] : compiled.diagnostics, netlist: compiled.netlist, nodeByTerminal: compiled.nodeByTerminal, captureNow, reset }
 }

@@ -138,7 +138,7 @@ test('malformed import preserves the circuit; export imports and recovery surviv
   await captured(page)
   const original = await peakToPeak(page, 'CH2')
   await page.locator('input[type="file"]').setInputFiles({ name: 'broken.json', mimeType: 'application/json', buffer: Buffer.from('{ "schemaVersion": 99 }') })
-  await expect(page.getByRole('status')).toContainText('Import failed: Unsupported circuit or board version.')
+  await expect(page.getByRole('status', { name: 'Workbench notification', exact: true })).toContainText('Import failed: Unsupported circuit or board version.')
   await expect(page.getByRole('spinbutton', { name: 'Capacitance' })).toHaveValue('100')
   expect(await peakToPeak(page, 'CH2')).toBe(original)
 
@@ -150,7 +150,7 @@ test('malformed import preserves the circuit; export imports and recovery surviv
   expect(path).not.toBeNull()
   await page.getByRole('button', { name: 'Clear board', exact: true }).click()
   await page.locator('input[type="file"]').setInputFiles(path!)
-  await expect(page.getByRole('status')).toContainText('Imported RC low-pass filter.')
+  await expect(page.getByRole('status', { name: 'Workbench notification', exact: true })).toContainText('Imported RC low-pass filter.')
   await expect(page.getByText('2 / 30 parts placed', { exact: true })).toBeVisible()
   await page.reload()
   await captured(page)

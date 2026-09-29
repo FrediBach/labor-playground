@@ -230,3 +230,43 @@ select { color-scheme: dark; }
 @media(min-width:1051px) { .parts-list { gap: 1px; }.part-item { min-height: 50px; padding-top: 5px; padding-bottom: 5px; }.tools-label { margin-top: 17px; }.tray-note { padding-top: 16px; padding-bottom: 16px; } }
 @media(max-width:1250px) { .capture-toolbar { flex-wrap: wrap; }.capture-actions { flex-wrap: wrap; } }
 @media(max-width:740px) { .capture-toolbar { gap: 12px; }.capture-actions { gap: 8px; }.stimulus-select { max-width: 126px; }.frequency-knob .knob-number input { width: 38px; } }
+
+.instrument-panel { flex-wrap: wrap; }
+.envelope-controls { width: 133px; flex-shrink: 0; }
+.envelope-controls .instrument-label { margin-bottom: 6px; }
+.envelope-controls>select { width: 100%; padding: 3px 6px; border: 1px solid #4b5842; border-radius: 3px; background: #2e3828; color: #d1ddc3; font: 9px monospace; }
+.envelope-action { display: flex; gap: 5px; margin-top: 5px; min-height: 24px; }
+.envelope-action .number-field { min-width: 0; flex: 1; }
+.envelope-action .number-field>span { display: none; }
+.envelope-action .number-field>div { height: 24px; padding: 0 5px; }
+.envelope-action .number-field input { font: 10px monospace; width: 32px; }
+.envelope-action .number-field>div>span { font-size: 8px; }
+.fire-button, .gate-button { display: flex; align-items: center; justify-content: center; gap: 4px; padding: 3px 7px; border: 1px solid #586b47; border-radius: 3px; background: #3b4b30; color: #d3e3bd; font: 9px monospace; }
+.gate-button { width: 100%; }
+.gate-button[aria-pressed=true] { background: #c2d29e; color: #273020; }
+.envelope-controls .source-caption { margin-top: 6px; }
+.operating-point-panel { margin-top: 10px; border: 1px solid #3c4937; border-radius: 5px; background: #252c26; padding: 10px 13px; }
+.operating-point-panel summary { color: #bccbad; font-size: 10px; }
+.operating-point-panel summary>span { float: right; color: #829675; font: 7px monospace; padding-top: 3px; }
+.dc-meter-readings { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); gap: 12px; margin-top: 15px; }
+.dc-meter-readings>div { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; }
+.dc-meter-readings button, .dc-meter-readings>div>span { border: 0; padding: 0; background: none; font: 9px monospace; }
+.dc-meter-readings button { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: #66785b; }
+.dc-meter-readings output { font: 17px monospace; color: #e0e7d4; }
+.dc-meter-readings small, .operating-point-panel p { color: #8c9f7d; font-size: 9px; }
+.operating-point-panel p { margin: 13px 0 1px; line-height: 1.6; }
+.component-dc .section-overline { margin-bottom: 11px; }
+.dc-part-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 9px; font-size: 9px; color: #a4b298; }
+.dc-part-row output { font: 10px monospace; color: #d5e0c9; white-space: nowrap; }
+@media(max-width:1250px) and (min-width:1051px) {
+  .instrument-panel { gap: 12px 10px; }
+  .envelope-controls { width: 100%; display: grid; grid-template-columns: auto 110px 130px; align-items: center; gap: 6px 12px; border-top: 1px solid #3c4937; padding-top: 9px; }
+  .envelope-controls .instrument-label, .envelope-action { margin: 0; }
+  .envelope-controls .source-caption { grid-column: 2 / -1; margin-top: 0; }
+}
+@media(max-width:740px) {
+  .envelope-controls { width: 100%; display: grid; grid-template-columns: auto 95px 123px; align-items: center; gap: 6px 8px; border-top: 1px solid #3c4937; padding-top: 9px; }
+  .envelope-controls .instrument-label, .envelope-action { margin: 0; }
+  .envelope-controls .source-caption { grid-column: 2 / -1; margin-top: 0; }
+  .dc-meter-readings { gap: 8px; }.dc-meter-readings output { font-size: 13px; }
+}

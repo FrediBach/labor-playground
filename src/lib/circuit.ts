@@ -17,6 +17,15 @@ export interface Wire {
   color: string
 }
 
+export interface EnvelopeSettings {
+  mode: 'gate' | 'trigger' | 'envelope'
+  gateHigh: boolean
+  /** Exponential decay time constant in milliseconds. */
+  decayMs: number
+}
+
+export const DEFAULT_ENVELOPE: Readonly<EnvelopeSettings> = Object.freeze({ mode: 'envelope', gateHigh: false, decayMs: 20 })
+
 export interface CircuitDocument {
   schemaVersion: 1
   boardVersion: 'virtual-1'
@@ -31,7 +40,14 @@ export interface CircuitDocument {
     amplitude: number
     waveform: 'sine' | 'triangle' | 'square'
     cv: number
+    /** Omitted in earlier schema-1 documents; see DEFAULT_ENVELOPE. */
+    envelope?: EnvelopeSettings
   }
+}
+
+/** Read defaults without changing or expanding legacy saved documents. */
+export function envelopeSettings(document: Pick<CircuitDocument, 'instruments'>): Readonly<EnvelopeSettings> {
+  return document.instruments.envelope ?? DEFAULT_ENVELOPE
 }
 
 export interface Terminal {
@@ -122,6 +138,7 @@ export const HOLES: Terminal[] = [
 export const TERMINALS: Terminal[] = [
   ...HOLES,
   ...['osc', 'cv', 'gnd', 'vplus', 'vminus'].map((id, index) => ({ id, x: 135 + index * 160, y: 52, group: id })),
+  { id: 'eg', x: 855, y: 52, group: 'eg' },
 ]
 
 export const terminalById: Record<string, Terminal> = Object.fromEntries(TERMINALS.map((terminal) => [terminal.id, terminal]))
@@ -248,13 +265,22 @@ export function validateDocument(input: unknown): CircuitDocument {
   const amplitude = finiteNumber(instruments.amplitude, 'Oscillator amplitude', 0, 5)
   const cv = finiteNumber(instruments.cv, 'CV voltage', -5, 5)
   if (!['sine', 'triangle', 'square'].includes(instruments.waveform as string)) throw new Error('Unsupported oscillator waveform.')
+  let envelope: EnvelopeSettings | undefined
+  if (instruments.envelope !== undefined) {
+    const settings = object(instruments.envelope, 'Envelope settings')
+    if (Object.keys(settings).some((key) => !['mode', 'gateHigh', 'decayMs'].includes(key))) throw new Error('Unsupported envelope setting.')
+    if (!['gate', 'trigger', 'envelope'].includes(settings.mode as string)) throw new Error('Unsupported envelope mode.')
+    if (typeof settings.gateHigh !== 'boolean') throw new Error('Envelope gateHigh must be true or false.')
+    const decayMs = finiteNumber(settings.decayMs, 'Envelope decay', 1, 40)
+    envelope = { mode: settings.mode as EnvelopeSettings['mode'], gateHigh: settings.gateHigh, decayMs }
+  }
   const probes = object(raw.probes, 'Probes')
   if (raw.stimulus !== undefined && raw.stimulus !== 'periodic' && raw.stimulus !== 'step') throw new Error('Unsupported capture stimulus.')
   return {
     schemaVersion: 1, boardVersion: 'virtual-1', title: raw.title,
     parts, wires,
     ...(raw.stimulus === undefined ? {} : { stimulus: raw.stimulus as CircuitDocument['stimulus'] }),
-    instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'] },
+    instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'], ...(envelope === undefined ? {} : { envelope }) },
     probes: { CH1: probes.CH1 === null ? null : readTerminal(probes.CH1), CH2: probes.CH2 === null ? null : readTerminal(probes.CH2) },
   }
 }
@@ -276,7 +302,12 @@ function spiceNumber(value: number): string {
   return value.toExponential(9)
 }
 
-export function compileCircuit(document: CircuitDocument): CompiledCircuit {
+/** Injective SPICE-safe suffix shared by emitted devices and measurement vectors. */
+export function spiceDeviceId(part: Pick<Part, 'id'>): string {
+  return part.id.replace(/[^a-zA-Z0-9]/g, (character) => `_${character.charCodeAt(0).toString(16)}`)
+}
+
+export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient'): CompiledCircuit {
   const diagnostics: Diagnostic[] = []
   const parent = new Map(TERMINALS.map(({ id }) => [id, id]))
   const find = (id: string): string => {
@@ -317,7 +348,9 @@ export function compileCircuit(document: CircuitDocument): CompiledCircuit {
       if (nodeByTerminal[idealSources[a]] === nodeByTerminal[idealSources[b]]) diagnostics.push({ severity: 'error', message: `Supply short: ${idealSources[a].toUpperCase()} is directly connected to ${idealSources[b].toUpperCase()}. Remove the jumper before capturing.` })
     }
   }
-  if (nodeByTerminal.osc === '0') diagnostics.push({ severity: 'warning', message: 'OSC is shorted to ground. Its virtual 100 Ω output resistor limits the current.' })
+  for (const source of ['osc', 'eg']) {
+    if (nodeByTerminal[source] === '0') diagnostics.push({ severity: 'warning', message: `${source.toUpperCase()} is shorted to ground. Its virtual 100 Ω output resistor limits the current.` })
+  }
   const dcEdges = new Map<string, Set<string>>()
   const addEdge = (a: string, b: string) => {
     if (!dcEdges.has(a)) dcEdges.set(a, new Set())
@@ -347,7 +380,7 @@ export function compileCircuit(document: CircuitDocument): CompiledCircuit {
   }
   // Instrument sources have explicit reference-ground connections. IC input
   // resistances never excuse a missing external return on an input pin.
-  const referenced = new Set(['gnd', 'osc', 'cv', 'vplus', 'vminus'].map((pin) => nodeByTerminal[pin]))
+  const referenced = new Set(['gnd', 'osc', 'cv', 'vplus', 'vminus', 'eg'].map((pin) => nodeByTerminal[pin]))
   const traceReferences = () => {
     const queue = [...referenced]
     while (queue.length) {
@@ -425,12 +458,24 @@ export function compileCircuit(document: CircuitDocument): CompiledCircuit {
     '.model D_SIGNAL D(Is=2.52e-9 N=1.752 Rs=0.568 Cjo=4e-12)',
     '.model D_RED D(Is=1e-20 N=2 Rs=5 Cjo=10e-12)',
   ]
+  const envelope = envelopeSettings(doc)
+  if (envelope.mode === 'gate') {
+    lines.push(`VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
+  } else if (envelope.mode === 'trigger') {
+    // A finite PWL pulse keeps exact edge breakpoints without a second periodic
+    // clock competing with the oscillator's square/triangle source.
+    lines.push('VEG eg_internal 0 PWL(0 0 0.001 0 0.001001 5 0.002 5 0.002001 0 0.1 0)')
+  } else {
+    // Native EXP avoids interacting timing-source breakpoints when OSC is square.
+    // A 0.1 µs rise constant reaches 99.995% of 5 V by the 1 µs decay onset.
+    lines.push(`VEG eg_internal 0 EXP(0 5 0.001 1e-7 0.001001 ${spiceNumber(envelope.decayMs / 1000)})`)
+  }
+  lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
   // Fixed model templates emit at most six devices and two internal nodes per
   // part: the 30-part document limit bounds expansion to 180 devices / 60 nodes.
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
-    // Encode punctuation injectively so e.g. R-1 and R_1 stay distinct devices.
-    const safeId = part.id.replace(/[^a-zA-Z0-9]/g, (character) => `_${character.charCodeAt(0).toString(16)}`)
+    const safeId = spiceDeviceId(part)
     if (part.kind === 'resistor') lines.push(`R_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
     if (part.kind === 'capacitor' || part.kind === 'electrolytic') lines.push(`C_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
     if (part.kind === 'diode' || part.kind === 'led') lines.push(`D_${safeId} ${a} ${b} ${part.kind === 'led' ? 'D_RED' : 'D_SIGNAL'}`)
@@ -449,15 +494,20 @@ export function compileCircuit(document: CircuitDocument): CompiledCircuit {
         const internal = `op_${safeId}_${half}`
         const span = `v(${positive},${negative})`
         // The behavioral source returns to the visible V− pin, never to an
-        // invented power rail. A failed supply collapses its internal output to V−.
-        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = ${span} > 2 ? max(1,min(${span}-1,${span}/2+1e5*v(${noninverting},${inverting}))) : 0`)
+        // invented power rail. The available swing collapses continuously as
+        // supplies ramp down, keeping .op source stepping well-conditioned.
+        const swing = `max(0,${span}/2-1)`
+        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = max(0,${span})/2+max(-${swing},min(${swing},1e5*v(${noninverting},${inverting})))`)
         lines.push(`RO_${safeId}_${half} ${internal} ${output} 50`)
         lines.push(`RI_${safeId}_${half} ${noninverting} ${inverting} 1e8`)
       }
     }
   }
   const step = spiceNumber(Math.min(1e-5, period / 80))
-  lines.push('.options reltol=0.001 abstol=1e-12 vntol=1e-6', '.save all', `.tran ${step} 0.1 0 ${step}`, '.end')
+  const savedCurrents = analysis === 'operating-point'
+    ? [...doc.parts].filter((part) => part.kind === 'diode' || part.kind === 'led').sort((a, b) => a.id.localeCompare(b.id)).map((part) => `@D_${spiceDeviceId(part)}[id]`)
+    : []
+  lines.push('.options reltol=0.001 abstol=1e-12 vntol=1e-6', ['.save all', ...savedCurrents].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} 0.1 0 ${step}`, '.end')
   return { netlist: lines.join('\n') + '\n', diagnostics, nodeByTerminal, nets }
 }
 
@@ -553,6 +603,19 @@ export const examples: CircuitExample[] = [
         { id: 'W7', from: 'j14', to: 'j15', color: '#c8a55b' },
       ],
       probes: { CH1: 'b15', CH2: 'b13' },
+    },
+  },
+  {
+    id: 'envelope-shaping', name: 'Envelope shaping', description: 'Soften the attack of a decaying envelope with a resistor and capacitor.',
+    whatToChange: 'Change the envelope decay from 20 ms to 5 ms, then try C1 at 470 nF.',
+    whatToObserve: 'CH1 shows the rapid attack and exponential decay. CH2 rounds off the attack; a larger capacitor makes the peak smaller and later.',
+    why: 'EG OUT rises to 5 V at 1 ms, then decays with the chosen time constant. R1 and C1 store and release charge, filtering that envelope. The source’s 100 Ω resistance is included in the calculation. Each capture and Fire action starts again from 0 V.',
+    document: {
+      ...createEmptyDocument(), title: 'Envelope shaping',
+      instruments: { ...createEmptyDocument().instruments, envelope: { ...DEFAULT_ENVELOPE } },
+      parts: [{ id: 'R1', kind: 'resistor', value: 10_000, pins: ['a6', 'a17'] }, { id: 'C1', kind: 'capacitor', value: 100e-9, pins: ['e17', 'f17'] }],
+      wires: [{ id: 'W1', from: 'eg', to: 'b6', color: '#b899ce' }, { id: 'W2', from: 'j17', to: 'bn17', color: '#6a839b' }, { id: 'W3', from: 'gnd', to: 'bn20', color: '#6a839b' }],
+      probes: { CH1: 'd6', CH2: 'd17' },
     },
   },
 ]

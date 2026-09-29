@@ -2,6 +2,8 @@ import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2, Zap } from 'lucid
 import { PARTS, type CircuitDocument, type CircuitExample, type Diagnostic } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
+import type { OperatingPoint } from '@/lib/simulation-types'
+import { formatElectrical } from '@/lib/format-electrical'
 
 interface InspectorProps {
   document: CircuitDocument
@@ -16,14 +18,16 @@ interface InspectorProps {
   error: string | null
   diagnostics: Diagnostic[]
   netlist: string
+  operatingPoint?: OperatingPoint
 }
 
-export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist }: InspectorProps) {
+export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint }: InspectorProps) {
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
   const resistive = part?.kind === 'resistor' || part?.kind === 'potentiometer'
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
+  const dc = part ? operatingPoint?.parts[part.id] : undefined
   const unit = resistive ? 'kΩ' : part?.kind === 'electrolytic' ? 'µF' : 'nF'
   const factor = resistive ? 1e3 : part?.kind === 'electrolytic' ? 1e-6 : 1e-9
   const presets = resistive ? [1, 4.7, 10, 22, 100] : part?.kind === 'electrolytic' ? [0.47, 1, 2.2, 4.7, 10] : [10, 47, 100, 220, 470]
@@ -76,6 +80,14 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
           {(part.kind === 'electrolytic' || part.kind === 'diode' || part.kind === 'led') && (
             <button className="subtle-button reverse-polarity" onClick={() => updatePart({ pins: [...part.pins].reverse() })}><RotateCcw size={12} />Reverse polarity</button>
           )}
+        </div>
+        <div className="inspector-section component-dc" aria-label="Component DC measurements">
+          <div className="section-overline">DC OPERATING POINT</div>
+          {part.kind === 'opamp' ? <p className="micro-copy">Current and power are unavailable for this behavioral op-amp model.</p> : dc ? <>
+            {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
+            <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
+            <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>
+          </> : <p className="micro-copy">Capture the current circuit to read DC current and power.</p>}
         </div>
         <div className="inspector-section">
           <details className="model-details"><summary>Model details <Info size={13} /></summary><p>{definition.model}</p></details>

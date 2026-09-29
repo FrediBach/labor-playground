@@ -18,7 +18,7 @@ test('breadboard strips, trench, and split rails have explicit connectivity', ()
 })
 
 test('all bundled examples validate and compile without structural errors', () => {
-  assert.equal(examples.length, 5)
+  assert.equal(examples.length, 6)
   for (const example of examples) {
     const doc = validateDocument(example.document)
     const compilation = compileCircuit(doc)

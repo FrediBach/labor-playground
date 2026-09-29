@@ -9,6 +9,34 @@ export interface VoltageCheck {
   negativeNode: string
 }
 
+export type OperatingPointBranch = {
+  label: string
+  fromNode: string
+  toNode: string
+} & (
+  | { kind: 'resistance'; resistance: number }
+  | { kind: 'saved-current'; vector: string }
+  | { kind: 'ideal-capacitor' }
+)
+
+export interface OperatingPointPartDescriptor {
+  partId: string
+  /** Every component pin must exist in the solved DC plot. */
+  nodes: string[]
+  branches: OperatingPointBranch[]
+}
+
+export interface OperatingPoint {
+  nodeVoltages: Record<string, number>
+  parts: Record<string, { currents: Array<{ label: string; value: number }>; power: number | null }>
+  elapsedMs: number
+}
+
+export interface OperatingPointRequest {
+  netlist: string
+  parts: OperatingPointPartDescriptor[]
+}
+
 export interface Capture {
   revision: number
   time: number[]
@@ -16,6 +44,8 @@ export interface Capture {
   duration: number
   elapsedMs: number
   diagnostics?: Diagnostic[]
+  /** Absent only for legacy test fixtures; production captures include a real .op analysis. */
+  operatingPoint?: OperatingPoint
 }
 
 export type SimulationStatus = 'loading' | 'calculating' | 'ready' | 'stale' | 'invalid' | 'error'
@@ -26,6 +56,7 @@ export interface SimulationRequest {
   netlist: string
   nodes: ProbeNodes
   voltageChecks?: VoltageCheck[]
+  operatingPoint?: OperatingPointRequest
 }
 
 export type SimulationResponse =

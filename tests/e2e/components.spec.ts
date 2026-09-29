@@ -128,7 +128,7 @@ test('DIP-8 placement and movement preserve every pin and probes can reach the s
   await expect.poll(async () => (await recovered(page))?.parts[1]?.pins).toEqual(moved)
   for (const id of moved) await expect(terminal(page, id)).toHaveAttribute('aria-label', `${id.toUpperCase()}, occupied`)
   await rotated.press('ArrowUp')
-  await expect(page.getByRole('status')).toContainText('No free placement in that direction.')
+  await expect(page.getByRole('status', { name: 'Workbench notification', exact: true })).toContainText('No free placement in that direction.')
   expect((await recovered(page)).parts[1].pins).toEqual(moved)
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await expect.poll(async () => (await recovered(page))?.parts[1]?.pins[0]).toBe('f21')

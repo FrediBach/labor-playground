@@ -22,6 +22,7 @@ export interface BreadboardProps {
   showConnections: boolean
   zoom: number
   onMessage: (message: string) => void
+  highlightTerminal?: string | null
 }
 
 const PART_KINDS = Object.keys(PARTS) as ComponentKind[]
@@ -32,6 +33,7 @@ const PORTS = [
   { id: 'gnd', label: 'GROUND', color: '#a3b5c0' },
   { id: 'vplus', label: '+12 V', color: '#d78575' },
   { id: 'vminus', label: '−12 V', color: '#89aabf' },
+  { id: 'eg', label: 'EG OUT', color: '#c3aad1' },
 ]
 
 function nearestTerminal(point: Point, distance = 16): Terminal | null {
@@ -78,7 +80,7 @@ function makeId(prefix: string, document: CircuitDocument) {
 
 const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', diode: 'D', led: 'LED', potentiometer: 'P', switch: 'S', opamp: 'U' }
 
-export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage }: BreadboardProps) {
+export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
   const terminalElements = useRef(new Map<string, SVGCircleElement>())
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -111,7 +113,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
   ]), [document.parts, document.wires])
 
   const hover = hoverId ? terminalById[hoverId] : undefined
-  const highlightSource = wireStart ?? hoverId ?? inspectedTerminal
+  const highlightSource = wireStart ?? hoverId ?? highlightTerminal ?? inspectedTerminal
   const highlightedNet = highlightSource ? graph.nodeByTerminal[highlightSource] : undefined
   const highlighted = new Set(highlightedNet ? graph.nets[highlightedNet] ?? [] : [])
   const previewPins = move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation) : null
