@@ -8,7 +8,7 @@ The documented API is `new Simulation()`, `await start()`, `setNetList(netlist)`
 
 The npm package embeds the WASM binary and its model library in its ESM distribution, about 19 MB before bundling/compression. There is no runtime CDN, external model fetch, simulation service, or server API. Vite emits the worker as a static application asset. The package declares no runtime npm dependencies of its own. The application otherwise uses its existing React/Vite frontend stack; `@playwright/test` is a development dependency only.
 
-The engine executes `source`, `destroy all`, `run`, and `write out.raw`. We use an ordinary `.tran` directive plus `.save all`, and extract the real `time` and `v(node)` vectors. Reference ground is exactly zero; unused or disconnected probe nodes produce an empty channel, never an invented waveform. Only the channels and adaptive timestamps cross the worker boundary. `.op` is not requested as an additional exported analysis because the wrapper returns only the current plot. The transient begins from ngspice's operating point, so steady DC examples still give DC voltages, but a separate operating-point panel and branch-current measurements remain future work.
+The engine executes `source`, `destroy all`, `run`, and `write out.raw`. We use an ordinary `.tran` directive plus `.save all`, and extract the real `time` and `v(node)` vectors. Reference ground is exactly zero; unused or disconnected probe nodes produce an empty channel, never an invented waveform. Only the channels, adaptive timestamps, and compact part diagnostics cross the worker boundary. `.op` is not requested as an additional exported analysis because the wrapper returns only the current plot. The transient begins from ngspice's operating point, so steady DC examples still give DC voltages, but a separate operating-point panel and branch-current measurements remain future work.
 
 ## Capture behavior and limits
 
@@ -16,11 +16,21 @@ The engine executes `source`, `destroy all`, `run`, and `write out.raw`. We use 
 - Every request carries a revision. An edited document immediately makes older results stale, including while Auto update is off. Late results never replace the current document's capture.
 - Edits are coalesced for 160 ms. There is one running request and at most one replaceable pending request.
 - Initialization gets 30 seconds; solving gets 8 seconds. On failure or timeout, the worker is terminated and the next Capture creates a new one. The circuit document is preserved.
-- Results above 50,000 samples or with invalid timestamps/voltages are rejected. The compiler additionally enforces the documented part/net envelope.
+- Results above 50,000 samples, invalid timestamps/voltages, and captures that do not complete the requested 0–100 ms interval are rejected. The compiler additionally enforces the documented part/net envelope.
 - Each capture restarts from its defined operating point. Capacitor charge is not carried between captures or edits. There is no continuous physical timeline.
-- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The current library does not yet include a dual op-amp, potentiometer, polarized capacitor, or an envelope instrument.
+- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The library includes the eight planned starter parts; the envelope instrument remains future work. The generic dual op-amp uses explicit supplies, finite gain, output resistance, and output limiting; the potentiometer uses a 1 Ω endpoint floor.
 
 The displayed scope data remains unprocessed electrical voltage. Whenever a capture is not current, the scope hides its previous traces and measurements. Listen is unavailable until a current capture succeeds, so new probe labels never describe older electrical results.
+
+The worker distinguishes failed runs from a documented ngspice recovery sequence. Exact dynamic/true gmin-stepping failure warnings are accepted only when a later source-stepping-completed message exists and the validated result spans the full 0–100 ms capture. Other failures, singular matrices, aborted runs, and incomplete recovery remain errors. This allows the generic op-amp model's valid operating point to proceed without concealing a failed solve.
+
+Polarized capacitors are checked against the simultaneous voltages on both physical leads throughout the capture. A negative differential beyond −50 mV produces a part-specific reverse-bias warning with the maximum measured magnitude. Missing or malformed vectors for an explicitly requested capacitor check fail the capture rather than silently skipping the diagnostic. These checks do not alter the ideal capacitance or model damage, and they are displayed only for the current revision.
+
+## Scope measurements
+
+The expanded Measurements panel reports min/max, peak-to-peak, and the trapezoidal time integral divided by duration; adaptive rows are never treated as equally spaced. Cursor readings linearly interpolate actual timestamps and do not extrapolate. A/B positions remain in milliseconds across captures, with Δt and per-channel ΔV. The differential meter subtracts CH2 from CH1 at either cursor or uses the time-weighted capture mean. These are measurements of the transient data, not a separate `.op` run.
+
+Frequency requires at least three complete periods with stable rising crossings and a repeating cycle shape, checking the settled end of the capture. DC, step stimuli, insufficient cycles, and irregular traces report unavailable. Input-step examples open at 10 ms/div to show the 1 ms rising edge and 51 ms falling edge together. Current channel data disappears when a capture becomes stale or invalid.
 
 ## Audio monitor
 
@@ -37,9 +47,11 @@ Adaptive timestamps are linearly interpolated onto a grid at four times the devi
 - RC sinusoidal attenuation against the analytical transfer function.
 - Nonlinear limiting with opposing generic signal diodes.
 - Bounded LED forward voltage and the documented open/closed switch resistance.
-- All three editable example documents, including the effect of changing C1.
+- All five editable example documents, including the effect of changing C1.
 - Probe extraction, adaptive resampling, DC removal, fade endpoints, and above-band attenuation.
 - Latest-request coalescing and termination/recreation of a stuck worker using a controlled worker fixture.
+
+`tests/components.test.ts` adds real potentiometer endpoints, capacitor charge/decay, dual op-amp follower/gain/clipping, rotated package equivalence, and supply-dependent clipping. `tests/measurements.test.ts` and `tests/polarity.test.ts` check adaptive statistics, stable frequency, cursor interpolation, differential voltage, measured reverse bias, and strict solver-recovery classification.
 
 `tests/e2e/simulation.spec.ts` additionally checks the React hook with a controlled browser worker: equivalent-document replacements during a manual capture, rejection of late results after edits, error visibility across Auto update toggles, and reset after a cancelled capture. These fixtures live outside `src` and are excluded from the production bundle.
 

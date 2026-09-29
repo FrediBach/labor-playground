@@ -5,10 +5,14 @@ interface PartGlyphProps {
   span?: number
   selected?: boolean
   value?: number
+  position?: number
+  /** Lead coordinates relative to the center, before the parent rotates the part. */
+  pins?: { x: number; y: number }[]
+  pinNames?: string[]
 }
 
-/** Original SVG component artwork, centered between two horizontal leads. */
-export function PartGlyph({ kind, span = 72, selected = false, value = 0 }: PartGlyphProps) {
+/** Original SVG component artwork, oriented from the first lead toward the last lead in its row. */
+export function PartGlyph({ kind, span = 72, selected = false, value = 0, position = 0.5, pins, pinNames }: PartGlyphProps) {
   const half = span / 2
   const resistance = value > 0 ? value : 10000
   let multiplier = Math.floor(Math.log10(resistance)) - 1
@@ -16,6 +20,53 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0 }: Part
   if (digits >= 100) { digits = 10; multiplier++ }
   const bandColors = ['#302d28', '#795037', '#b54934', '#d58236', '#d2b341', '#638553', '#456e99', '#86618e', '#929189', '#ebe5cf']
   const bands = [bandColors[Math.floor(digits / 10)], bandColors[digits % 10], multiplier < 0 ? '#c6aa53' : bandColors[multiplier]]
+  if (kind === 'opamp') {
+    const leads = pins ?? [
+      { x: -36, y: -30 }, { x: -12, y: -30 }, { x: 12, y: -30 }, { x: 36, y: -30 },
+      { x: 36, y: 30 }, { x: 12, y: 30 }, { x: -12, y: 30 }, { x: -36, y: 30 },
+    ]
+    const labels = ['A OUT', 'A −', 'A +', 'V−', 'B +', 'B −', 'B OUT', 'V+']
+    return <g>
+      {selected && <rect x={-54} y={-38} width={108} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
+        <title>{index + 1}: {pinNames?.[index] ?? labels[index]}</title>
+        <path d={`M${pin.x} ${pin.y}V${pin.y < 0 ? -17 : 17}`} stroke="#62685d" strokeWidth={6} strokeLinecap="round" />
+        <path d={`M${pin.x - 1} ${pin.y}V${pin.y < 0 ? -17 : 17}`} stroke="#bdc1b5" strokeWidth={2} strokeLinecap="round" />
+        <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
+      </g>)}
+      <rect x={-47} y={-20} width={94} height={44} rx={4} fill="#28312a" opacity={0.2} transform="translate(1 2)" />
+      <rect x={-47} y={-22} width={94} height={44} rx={4} fill="#343b37" stroke="#202a23" strokeWidth={1.4} />
+      <path d="M-43-18H43" stroke="#697068" strokeWidth={1.2} />
+      <path d="M-47-7 A7 7 0 0 1 -47 7" fill="#17231d" stroke="#657164" strokeWidth={0.8} />
+      <circle cx={-43} cy={-17} r={2} fill="#c3c9b7" />
+      <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={0.4}>DUAL OP AMP</text>
+      {leads.map((pin, index) => <g key={index} pointerEvents="none">
+        <text x={pin.x} y={pin.y < 0 ? -25 : 36} textAnchor="middle" fill="#53604f" fontFamily="monospace" fontSize={6.5}>{index + 1}</text>
+        <text x={pin.x} y={pin.y < 0 ? -10 : 15} textAnchor="middle" fill="#bac4af" fontFamily="monospace" fontSize={5.4}>{labels[index]}</text>
+      </g>)}
+    </g>
+  }
+  if (kind === 'potentiometer') {
+    const leads = pins ?? [{ x: -24, y: 0 }, { x: 0, y: 0 }, { x: 24, y: 0 }]
+    return <g>
+      {selected && <rect x={-half - 9} y={-48} width={span + 18} height={61} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
+        <title>{index + 1}: {pinNames?.[index] ?? ['A', 'Wiper', 'B'][index]}</title>
+        <path d={`M${pin.x} ${pin.y}V-14`} stroke="#585f52" strokeWidth={4} strokeLinecap="round" />
+        <path d={`M${pin.x - 0.7} ${pin.y}V-14`} stroke="#c8c9bd" strokeWidth={1.5} strokeLinecap="round" />
+        <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
+      </g>)}
+      <rect x={-29} y={-42} width={58} height={32} rx={5} fill="#466783" stroke="#294a68" strokeWidth={1.3} />
+      <path d="M-24-37H24" stroke="#7392a9" strokeWidth={1.5} />
+      <circle cx={0} cy={-26} r={12} fill="#d6cb9b" stroke="#b1a474" strokeWidth={1.2} />
+      <circle cx={0} cy={-26} r={8.5} fill="#bcae80" />
+      <g transform={`translate(0 -26) rotate(${-135 + position * 270})`}>
+        <path d="M0-9V8" stroke="#74694d" strokeWidth={2.8} strokeLinecap="round" />
+        <path d="M0-9V-4" stroke="#eff0d0" strokeWidth={2.2} strokeLinecap="round" />
+      </g>
+      {leads.map((pin, index) => <text key={index} x={pin.x} y={-3} textAnchor="middle" fill="#576752" fontFamily="monospace" fontSize={6}>{['A', 'W', 'B'][index]}</text>)}
+    </g>
+  }
   return (
     <g>
       {selected && <rect x={-half - 9} y={-24} width={span + 18} height={48} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
@@ -34,6 +85,15 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0 }: Part
         <path d="M-8-14H8" stroke="#f1a580" strokeWidth={2} strokeLinecap="round" />
         <text x={0} y={-2} fill="#442f28" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700}>C</text>
         <text x={0} y={8} fill="#653d2b" textAnchor="middle" fontFamily="monospace" fontSize={6.5}>FILM</text>
+      </g>}
+      {kind === 'electrolytic' && <g>
+        <ellipse cx={0} cy={17} rx={14} ry={5} fill="#2b4139" opacity={0.16} />
+        <rect x={-14} y={-18} width={28} height={33} rx={6} fill="#496d70" stroke="#294e52" strokeWidth={1.3} />
+        <path d="M6-17Q14-17 14-11V9Q14 15 6 15Z" fill="#cfddd1" />
+        <ellipse cx={0} cy={-17} rx={13.3} ry={5} fill="#b7c3b8" stroke="#6c8780" strokeWidth={1} />
+        <path d="M-6-18L5-15M-4-14L4-19" stroke="#768d83" strokeWidth={0.8} />
+        <path d="M7-4H12M7 5H12" stroke="#476762" strokeWidth={1.5} />
+        <text x={-6} y={6} fill="#d7e5db" textAnchor="middle" fontFamily="monospace" fontSize={10} fontWeight={700}>+</text>
       </g>}
       {kind === 'diode' && <g>
         <rect x={-17} y={-8} width={34} height={16} rx={4} fill="#393e3b" stroke="#242a26" />

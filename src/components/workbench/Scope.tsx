@@ -1,22 +1,53 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Crosshair, Maximize2, Waves } from 'lucide-react'
 import type { Capture } from '@/lib/simulation'
+import { differentialVoltage, interpolateVoltage, measureTrace } from '@/lib/measurements'
+import './Scope.css'
 
 type Channel = 'CH1' | 'CH2'
 const COLORS = { CH1: '#aee3d5', CH2: '#f2c46d' }
-export function Scope({ capture, status, probes, onProbe }: {
+export function Scope({ capture: suppliedCapture, status, probes, onProbe, stimulus = 'periodic', defaultScale = 1 }: {
   capture: Capture | null
   status: string
   probes: Record<Channel, string | null>
   onProbe: (channel: Channel) => void
+  stimulus?: 'periodic' | 'step'
+  defaultScale?: number
 }) {
+  // Measurements and physical probe labels must refer to the same circuit.
+  const capture = status === 'ready' ? suppliedCapture : null
   const canvas = useRef<HTMLCanvasElement>(null)
-  const [timeScale, setTimeScale] = useState(2)
-  const [scales, setScales] = useState({ CH1: 1, CH2: 1 })
+  const [timeScale, setTimeScale] = useState(stimulus === 'step' ? 10 : 2)
+  const [scales, setScales] = useState({ CH1: defaultScale, CH2: defaultScale })
   const [cursor, setCursor] = useState<number | null>(null)
+  const [measurementsOpen, setMeasurementsOpen] = useState(false)
+  const [cursorSeconds, setCursorSeconds] = useState({ A: 0.002, B: 0.007 })
+  const [activeCursor, setActiveCursor] = useState<'A' | 'B'>('A')
+  const [meterPosition, setMeterPosition] = useState<'mean' | 'A' | 'B'>('mean')
   const [visible, setVisible] = useState({ CH1: true, CH2: true })
   const [size, setSize] = useState({ width: 600, height: 170 })
   const windowSeconds = timeScale * 10 / 1000
+  const captureStart = capture?.time[0] ?? 0
+  const captureEnd = capture?.time.at(-1) ?? 0.1
+  const cursorA = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.A))
+  const cursorB = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.B))
+  const measurements = useMemo(() => ({
+    CH1: capture && probes.CH1 ? measureTrace(capture.time, capture.channels.CH1, stimulus) : null,
+    CH2: capture && probes.CH2 ? measureTrace(capture.time, capture.channels.CH2, stimulus) : null,
+  }), [capture, probes.CH1, probes.CH2, stimulus])
+  const cursorVoltages = useMemo(() => ({
+    CH1: {
+      A: capture && probes.CH1 ? interpolateVoltage(capture.time, capture.channels.CH1, cursorA) : null,
+      B: capture && probes.CH1 ? interpolateVoltage(capture.time, capture.channels.CH1, cursorB) : null,
+    },
+    CH2: {
+      A: capture && probes.CH2 ? interpolateVoltage(capture.time, capture.channels.CH2, cursorA) : null,
+      B: capture && probes.CH2 ? interpolateVoltage(capture.time, capture.channels.CH2, cursorB) : null,
+    },
+  }), [capture, probes.CH1, probes.CH2, cursorA, cursorB])
+  const differential = useMemo(() => capture && probes.CH1 && probes.CH2
+    ? differentialVoltage(capture.time, capture.channels.CH1, capture.channels.CH2, meterPosition === 'mean' ? undefined : meterPosition === 'A' ? cursorA : cursorB)
+    : null, [capture, probes.CH1, probes.CH2, meterPosition, cursorA, cursorB])
 
   useEffect(() => {
     if (!canvas.current) return
@@ -89,31 +120,40 @@ export function Scope({ capture, status, probes, onProbe }: {
       context.beginPath(); context.moveTo(left + cursor * w, top); context.lineTo(left + cursor * w, bottom); context.stroke()
       context.setLineDash([])
     }
-  }, [capture, cursor, probes, scales, size, status, timeScale, visible, windowSeconds])
+    if (measurementsOpen && capture) {
+      for (const [label, time] of [['A', cursorA], ['B', cursorB]] as const) {
+        if (time < 0 || time > windowSeconds) continue
+        const x = left + time / windowSeconds * w
+        context.strokeStyle = label === activeCursor ? '#f2f1e4' : '#98a88d'
+        context.setLineDash(label === 'A' ? [5, 3] : [2, 3])
+        context.beginPath(); context.moveTo(x, top); context.lineTo(x, bottom); context.stroke()
+        context.setLineDash([])
+        context.fillStyle = context.strokeStyle
+        context.fillText(label, Math.min(right - 8, x + 4), top + 10)
+      }
+    }
+  }, [capture, cursor, probes, scales, size, status, timeScale, visible, windowSeconds, measurementsOpen, cursorA, cursorB, activeCursor])
 
   function measurement(channel: Channel) {
     const values = capture?.channels[channel]
-    if (!values?.length || !probes[channel]) return 'No probe attached'
-    if (status !== 'ready') return 'Previous capture · awaiting update'
-    let min = Infinity, max = -Infinity, integral = 0
-    for (let index = 0; index < values.length; index++) {
-      min = Math.min(min, values[index]); max = Math.max(max, values[index])
-      if (index > 0 && capture) integral += (values[index - 1] + values[index]) / 2 * (capture.time[index] - capture.time[index - 1])
-    }
-    const duration = capture ? capture.time.at(-1)! - capture.time[0] : 0
-    const mean = duration > 0 ? integral / duration : values[0]
+    if (!probes[channel]) return 'No probe attached'
+    if (status !== 'ready') return 'Awaiting current capture'
+    if (!values?.length || !measurements[channel]) return 'No voltage available'
     if (cursor !== null && capture) {
       const target = cursor * windowSeconds
-      const index = capture.time.findIndex(time => time >= target)
-      if (index < 0) return 'Outside capture'
-      const previous = Math.max(0, index - 1)
-      const dt = capture.time[index] - capture.time[previous]
-      const fraction = dt > 0 ? (target - capture.time[previous]) / dt : 0
-      const voltage = values[previous] + fraction * (values[index] - values[previous])
+      const voltage = interpolateVoltage(capture.time, values, target)
+      if (voltage === null) return 'Outside capture'
       return `${(target * 1000).toFixed(2)} ms  ·  ${voltage.toFixed(3)} V`
     }
-    return `${(max - min).toFixed(2)} Vpp  ·  ${mean.toFixed(2)} V mean`
+    return `${measurements[channel].peakToPeak.toFixed(2)} Vpp  ·  ${measurements[channel].mean.toFixed(2)} V mean`
   }
+
+  function moveCursor(which: 'A' | 'B', seconds: number) {
+    if (!Number.isFinite(seconds)) return
+    setCursorSeconds((previous) => ({ ...previous, [which]: Math.max(captureStart, Math.min(captureEnd, seconds)) }))
+  }
+
+  const voltageText = (value: number | null | undefined) => value === null || value === undefined ? '—' : `${(Math.abs(value) < 0.0005 ? 0 : value).toFixed(3)} V`
 
   function autoscale() {
     if (!capture) return
@@ -135,7 +175,7 @@ export function Scope({ capture, status, probes, onProbe }: {
       </div>
     </div>
     <div className="scope-screen">
-      <canvas ref={canvas} aria-label="Voltage versus time for scope channels 1 and 2" onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} />
+      <canvas ref={canvas} aria-label="Voltage versus time for scope channels 1 and 2" onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => { if (!measurementsOpen || !capture) return; const rect = e.currentTarget.getBoundingClientRect(); moveCursor(activeCursor, Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds) }} />
       {!capture && <div className="scope-empty"><Waves size={25} /><span>{status === 'loading' || status === 'calculating' ? 'Preparing your first capture…' : 'Connect a circuit and capture a waveform.'}</span></div>}
     </div>
     <div className="scope-channels">{(['CH1', 'CH2'] as const).map(channel => <div className="scope-channel" key={channel} style={{ '--channel-color': COLORS[channel] } as React.CSSProperties}>
@@ -144,6 +184,40 @@ export function Scope({ capture, status, probes, onProbe }: {
       <select aria-label={`${channel} volts per division`} value={scales[channel]} onChange={e => setScales({ ...scales, [channel]: Number(e.target.value) })}>{[0.1, 0.2, 0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} V/div</option>)}</select>
       <span className="measurement">{measurement(channel)}</span>
     </div>)}</div>
+    <details className="scope-measurements" open={measurementsOpen} onToggle={event => setMeasurementsOpen(event.currentTarget.open)}>
+      <summary>Measurements <span>Voltages, frequency & cursors</span></summary>
+      <div className="scope-measurements-content">
+        <p className="scope-measurement-note">Voltages are relative to GND. Mean values cover the full capture; frequency uses a stable repeating region.</p>
+        <div className="scope-measurement-table-wrap"><table aria-label="Channel measurements">
+          <thead><tr><th scope="col">Measurement</th>{(['CH1', 'CH2'] as const).map(channel => <th scope="col" key={channel} style={{ color: COLORS[channel] }}>{channel} · {probes[channel]?.toUpperCase() ?? 'no probe'}</th>)}</tr></thead>
+          <tbody>
+            {([{ label: 'Minimum', key: 'min' }, { label: 'Maximum', key: 'max' }, { label: 'Peak to peak', key: 'peakToPeak' }, { label: 'Capture mean', key: 'mean' }] as const).map(row => <tr key={row.key}><th scope="row">{row.label}</th>{(['CH1', 'CH2'] as const).map(channel => <td key={channel}>{voltageText(measurements[channel]?.[row.key])}</td>)}</tr>)}
+            <tr><th scope="row">Frequency</th>{(['CH1', 'CH2'] as const).map(channel => <td key={channel}>{measurements[channel]?.frequency ? `${measurements[channel].frequency.toFixed(1)} Hz` : 'Unavailable'}</td>)}</tr>
+            <tr><th scope="row">At cursor A</th>{(['CH1', 'CH2'] as const).map(channel => <td key={channel}>{voltageText(cursorVoltages[channel].A)}</td>)}</tr>
+            <tr><th scope="row">At cursor B</th>{(['CH1', 'CH2'] as const).map(channel => <td key={channel}>{voltageText(cursorVoltages[channel].B)}</td>)}</tr>
+            <tr><th scope="row">ΔV · B − A</th>{(['CH1', 'CH2'] as const).map(channel => <td key={channel}>{voltageText(cursorVoltages[channel].A !== null && cursorVoltages[channel].B !== null ? cursorVoltages[channel].B - cursorVoltages[channel].A : null)}</td>)}</tr>
+          </tbody>
+        </table></div>
+        <p className="scope-measurement-note">Frequency is unavailable for DC, steps, irregular signals, or fewer than three stable periods.</p>
+        <fieldset className="scope-cursor-controls" disabled={!capture}>
+          <legend>Time cursors <span>Click the trace to move the selected cursor.</span></legend>
+          {(['A', 'B'] as const).map(which => {
+            const seconds = which === 'A' ? cursorA : cursorB
+            return <div className="scope-cursor-row" key={which}>
+              <label className="scope-cursor-select"><input type="radio" name="scope-active-cursor" checked={activeCursor === which} onChange={() => setActiveCursor(which)} aria-label={`Select cursor ${which}`} />{which}</label>
+              <input type="range" min={captureStart * 1000} max={captureEnd * 1000} step={0.01} value={seconds * 1000} aria-label={`Cursor ${which} time`} aria-valuetext={`${(seconds * 1000).toFixed(2)} milliseconds`} onFocus={() => setActiveCursor(which)} onChange={event => moveCursor(which, Number(event.target.value) / 1000)} />
+              <label className="scope-cursor-number"><input type="number" min={captureStart * 1000} max={captureEnd * 1000} step={0.01} value={Number((seconds * 1000).toFixed(3))} aria-label={`Cursor ${which} milliseconds`} onFocus={() => setActiveCursor(which)} onChange={event => moveCursor(which, event.target.valueAsNumber / 1000)} /><span>ms</span></label>
+            </div>
+          })}
+          <div className="scope-cursor-delta">Δt · B − A <output aria-label="Cursor time difference">{capture ? `${((cursorB - cursorA) * 1000).toFixed(3)} ms` : '—'}</output><span>{capture && (cursorA > windowSeconds || cursorB > windowSeconds) ? 'A cursor is outside the displayed time window.' : 'Cursor positions persist across captures.'}</span></div>
+        </fieldset>
+        <div className="scope-differential-meter">
+          <div><strong>DIFFERENTIAL VOLTAGE</strong><span>CH1 − CH2</span></div>
+          <label>Measure at <select aria-label="Differential meter position" value={meterPosition} onChange={event => setMeterPosition(event.target.value as 'mean' | 'A' | 'B')}><option value="mean">Capture mean</option><option value="A">Cursor A</option><option value="B">Cursor B</option></select></label>
+          <output aria-label="Differential voltage">{voltageText(differential)}</output>
+        </div>
+      </div>
+    </details>
     <div className="scope-footnote">{capture ? `${capture.time.length.toLocaleString()} samples · ${Math.round(capture.elapsedMs)} ms solve` : 'ngspice · local simulation'}<span>Each capture restarts from its initial conditions.</span></div>
   </section>
 }

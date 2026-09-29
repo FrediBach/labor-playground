@@ -51,9 +51,14 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
     }
     const timer = setTimeout(() => {
       const resolveProbe = (terminal: string | null) => terminal ? compiled.nodeByTerminal[terminal] ?? null : null
+      const voltageChecks = snapshot.parts.filter(part => part.kind === 'electrolytic').map(part => ({
+        partId: part.id,
+        positiveNode: compiled.nodeByTerminal[part.pins[0]],
+        negativeNode: compiled.nodeByTerminal[part.pins[1]],
+      }))
       void instance.run(compiled.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
         if (!cancelled) setState((previous) => ({ ...previous, key, requestKey, status, error: null }))
-      }).then((capture) => {
+      }, voltageChecks).then((capture) => {
         if (!cancelled && capture.revision === revision.current) setState({ key, captureKey: key, requestKey, status: 'ready', capture, error: null })
       }).catch((error: unknown) => {
         if (cancelled || error instanceof SupersededSimulation) return
@@ -62,7 +67,7 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
       })
     }, manuallyRequested ? 0 : SIMULATION_LIMITS.debounceMs)
     return () => { cancelled = true; clearTimeout(timer) }
-  }, [key, requestKey, compiled, snapshot.probes, autoUpdate, trigger])
+  }, [key, requestKey, compiled, snapshot, autoUpdate, trigger])
 
   const captureNow = useCallback(() => {
     stopAllAudio()
@@ -87,5 +92,5 @@ export function useSimulation(document: CircuitDocument, autoUpdate: boolean) {
       : state.capture && state.captureKey === key ? 'ready' : 'stale'
   }
 
-  return { status, capture: state.capture, error: status === 'error' ? state.error : null, diagnostics: compiled.diagnostics, netlist: compiled.netlist, captureNow, reset }
+  return { status, capture: state.capture, error: status === 'error' ? state.error : null, diagnostics: status === 'ready' ? [...compiled.diagnostics, ...(state.capture?.diagnostics ?? [])] : compiled.diagnostics, netlist: compiled.netlist, captureNow, reset }
 }

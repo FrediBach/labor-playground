@@ -1,5 +1,13 @@
+import type { Diagnostic } from './circuit'
+
 export type Channel = 'CH1' | 'CH2'
 export type ProbeNodes = Record<Channel, string | null>
+
+export interface VoltageCheck {
+  partId: string
+  positiveNode: string
+  negativeNode: string
+}
 
 export interface Capture {
   revision: number
@@ -7,6 +15,7 @@ export interface Capture {
   channels: Record<Channel, number[]>
   duration: number
   elapsedMs: number
+  diagnostics?: Diagnostic[]
 }
 
 export type SimulationStatus = 'loading' | 'calculating' | 'ready' | 'stale' | 'invalid' | 'error'
@@ -16,6 +25,7 @@ export interface SimulationRequest {
   revision: number
   netlist: string
   nodes: ProbeNodes
+  voltageChecks?: VoltageCheck[]
 }
 
 export type SimulationResponse =

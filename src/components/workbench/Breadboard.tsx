@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import {
-  HOLES, TERMINALS, PARTS, terminalById, compileCircuit, getPlacement, canPlace, formatValue,
+  HOLES, TERMINALS, PARTS, terminalById, compileCircuit, getPlacement, canPlace, formatValue, isValidFootprint,
 } from '@/lib/circuit'
 import type { CircuitDocument, Part, ComponentKind } from '@/lib/circuit'
 import { PartGlyph } from './PartGlyph'
@@ -9,7 +9,7 @@ import { PartGlyph } from './PartGlyph'
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 type Point = { x: number; y: number }
 type Terminal = (typeof TERMINALS)[number]
-type Move = { part: Part; start: Point; dragging: boolean; pins: [string, string] | null }
+type Move = { part: Part; start: Point; dragging: boolean; pins: string[] | null }
 
 export interface BreadboardProps {
   document: CircuitDocument
@@ -24,7 +24,7 @@ export interface BreadboardProps {
   onMessage: (message: string) => void
 }
 
-const PART_KINDS: ComponentKind[] = ['resistor', 'capacitor', 'diode', 'led', 'switch']
+const PART_KINDS = Object.keys(PARTS) as ComponentKind[]
 const isPart = (tool: string): tool is ComponentKind => PART_KINDS.includes(tool as ComponentKind)
 const PORTS = [
   { id: 'osc', label: 'OSC OUT', color: '#a6c4b0' },
@@ -55,12 +55,18 @@ function wirePath(a: Point, b: Point, index = 0) {
   return `M${a.x},${a.y} C${a.x + dx * 0.16},${a.y - lift} ${b.x - dx * 0.16},${b.y - lift} ${b.x},${b.y}`
 }
 
-function translatedPins(part: Part, target: Terminal): [string, string] | null {
-  const a = terminalById[part.pins[0]]
-  const b = terminalById[part.pins[1]]
-  if (!a || !b) return null
-  const second = HOLES.find(hole => hole.x === target.x + b.x - a.x && hole.y === target.y + b.y - a.y)
-  return second ? [target.id, second.id] : null
+function translatedPins(part: Part, target: Terminal): string[] | null {
+  const anchor = terminalById[part.pins[0]]
+  if (!anchor) return null
+  const pins: string[] = []
+  for (const id of part.pins) {
+    const source = terminalById[id]
+    if (!source) return null
+    const destination = HOLES.find(hole => hole.x === target.x + source.x - anchor.x && hole.y === target.y + source.y - anchor.y)
+    if (!destination) return null
+    pins.push(destination.id)
+  }
+  return isValidFootprint(part.kind, pins) ? pins : null
 }
 
 function makeId(prefix: string, document: CircuitDocument) {
@@ -70,7 +76,7 @@ function makeId(prefix: string, document: CircuitDocument) {
   return `${prefix}${value}`
 }
 
-const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', diode: 'D', led: 'LED', switch: 'S' }
+const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', diode: 'D', led: 'LED', potentiometer: 'P', switch: 'S', opamp: 'U' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
@@ -110,7 +116,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
   const highlighted = new Set(highlightedNet ? graph.nets[highlightedNet] ?? [] : [])
   const previewPins = move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation) : null
   const previewKind = move?.dragging ? move.part.kind : isPart(tool) ? tool : null
-  const placementValid = !!previewPins && canPlace(document, previewPins, move?.part.id)
+  const placementValid = !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins) && canPlace(document, previewPins, move?.part.id)
 
   useEffect(() => {
     const cancel = (event: globalThis.KeyboardEvent) => {
@@ -142,10 +148,12 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     }
     const pins = getPlacement(kind, terminal.id, rotation)
     if (!pins || !canPlace(document, pins)) {
-      onMessage('Choose two free holes for the component. Press R to rotate.')
+      onMessage(kind === 'opamp'
+        ? 'Place all eight IC pins across the center trench. Start on row E, or rotate to start on row F.'
+        : `Choose ${PARTS[kind].pinNames.length} free holes for the component. Press R to rotate.`)
       return
     }
-    const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: PARTS[kind].defaultValue, pins }
+    const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: PARTS[kind].defaultValue, pins, ...(kind === 'potentiometer' ? { position: 0.5 } : {}) }
     onChange({ ...document, parts: [...document.parts, part] })
     onSelect(part.id)
     onMessage(`${part.id} placed. Select it to change its value.`)
@@ -243,21 +251,43 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
           onChange({ ...document, parts: document.parts.map(part => part.id === current.part.id ? { ...part, pins: current.pins! } : part) })
           onMessage(`${current.part.id} moved. Jumper wires remain attached to their holes.`)
         }
-      } else onMessage('Move cancelled: both leads need free, valid holes.')
+      } else onMessage('Move cancelled: all leads need free holes that fit the component.')
     }
     moveRef.current = null
     setMove(null)
   }
 
   function renderPart(part: Part, preview = false) {
-    const a = terminalById[part.pins[0]]
-    const b = terminalById[part.pins[1]]
+    const terminals = part.pins.map(id => terminalById[id])
+    if (terminals.some(terminal => !terminal)) return null
+    const a = terminals[0]
+    const b = terminals[part.kind === 'opamp' ? 3 : terminals.length - 1]
     if (!a || !b) return null
-    const angle = Math.atan2(b.y - a.y, b.x - a.x) * 180 / Math.PI
+    const radians = Math.atan2(b.y - a.y, b.x - a.x)
+    const angle = radians * 180 / Math.PI
+    const center = {
+      x: (Math.min(...terminals.map(terminal => terminal.x)) + Math.max(...terminals.map(terminal => terminal.x))) / 2,
+      y: (Math.min(...terminals.map(terminal => terminal.y)) + Math.max(...terminals.map(terminal => terminal.y))) / 2,
+    }
+    const pins = terminals.map(terminal => ({
+      x: (terminal.x - center.x) * Math.cos(radians) + (terminal.y - center.y) * Math.sin(radians),
+      y: -(terminal.x - center.x) * Math.sin(radians) + (terminal.y - center.y) * Math.cos(radians),
+    }))
+    const span = Math.hypot(b.x - a.x, b.y - a.y)
+    const bounds = part.kind === 'opamp'
+      ? { x: -51, y: -35, width: 102, height: 74 }
+      : part.kind === 'potentiometer'
+        ? { x: -span / 2 - 8, y: -45, width: span + 16, height: 56 }
+        : { x: -span / 2 - 5, y: -23, width: span + 10, height: 46 }
+    const labelY = part.kind === 'opamp' ? 43
+      : part.kind === 'potentiometer' ? Math.abs(angle) > 135 ? 48 : Math.abs(angle) > 45 ? 34 : 13
+        : Math.abs(angle) > 45 && Math.abs(angle) < 135 ? -11 : 22
     const label = `${part.id} · ${formatValue(part.value, part.kind)}`
+    const labelWidth = part.kind === 'opamp' ? 110 : 68
+    const labelX = terminals.length === 2 && Math.abs(angle) > 45 && Math.abs(angle) < 135 ? 54 : 0
     return <g key={part.id}
       data-part={preview ? undefined : part.id}
-      transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`}
+      transform={`translate(${center.x} ${center.y})`}
       opacity={preview ? 0.7 : move?.dragging && move.part.id === part.id ? 0.28 : 1}
       role={preview ? undefined : 'button'} tabIndex={preview ? undefined : 0}
       aria-label={preview ? undefined : `${label}. Drag to move or select to edit.`}
@@ -277,7 +307,8 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
         if (suppressClick.current) return
         if (tool === 'probe1' || tool === 'probe2') {
           const point = localPoint(event.clientX, event.clientY)
-          clickTerminal(Math.hypot(point.x - a.x, point.y - a.y) < Math.hypot(point.x - b.x, point.y - b.y) ? a : b)
+          const closest = terminals.reduce((nearest, terminal) => Math.hypot(point.x - terminal.x, point.y - terminal.y) < Math.hypot(point.x - nearest.x, point.y - nearest.y) ? terminal : nearest)
+          clickTerminal(closest)
         } else onSelect(part.id)
       }}
       onKeyDown={preview ? undefined : event => {
@@ -293,14 +324,14 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
           onChange({ ...document, parts: document.parts.map(item => item.id === part.id ? { ...item, pins } : item) })
         } else onMessage('No free placement in that direction.')
       }}>
-      <title>{label} · pins {part.pins.join(' and ')}</title>
+      <title>{label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
       <g transform={`rotate(${angle})`}>
-        <rect x={-Math.hypot(b.x - a.x, b.y - a.y) / 2 - 5} y={-23} width={Math.hypot(b.x - a.x, b.y - a.y) + 10} height={46} fill="transparent" />
-        <PartGlyph kind={part.kind} value={part.value} span={Math.hypot(b.x - a.x, b.y - a.y)} selected={preview || selectedId === part.id} />
+        <rect {...bounds} fill="transparent" />
+        <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />
       </g>
       {!preview && <g pointerEvents="none">
-        <rect x={-34} y={Math.abs(angle) > 45 ? -11 : 22} width={68} height={17} rx={4} fill="#eeeee3" fillOpacity={0.95} />
-        <text x={0} y={Math.abs(angle) > 45 ? 1 : 34} textAnchor="middle" fill="#586054" fontSize={9.5} fontWeight={600} fontFamily="'Geist Mono', monospace">{label}</text>
+        <rect x={labelX - labelWidth / 2} y={labelY} width={labelWidth} height={17} rx={4} fill="#eeeee3" fillOpacity={0.95} />
+        <text x={labelX} y={labelY + 12} textAnchor="middle" fill="#586054" fontSize={9.5} fontWeight={600} fontFamily="'Geist Mono', monospace">{label}</text>
       </g>}
     </g>
   }
@@ -443,7 +474,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     </g>}
     {previewPins && previewKind && <g pointerEvents="none">
       {previewPins.map(id => { const terminal = terminalById[id]; return terminal && <circle key={id} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
-      {renderPart({ id: 'preview', kind: previewKind, value: PARTS[previewKind].defaultValue, pins: previewPins }, true)}
+      {renderPart({ ...(move?.dragging ? move.part : { kind: previewKind, value: PARTS[previewKind].defaultValue }), id: 'preview', pins: previewPins }, true)}
     </g>}
     {isPart(tool) && hover && !previewPins && <circle cx={hover.x} cy={hover.y} r={10} fill="#df7662" fillOpacity={0.24} stroke="#c04e3e" strokeWidth={1.8} pointerEvents="none" />}
 

@@ -1,6 +1,6 @@
 import { Simulation } from 'eecircuit-engine'
 import type { SimulationRequest, SimulationResponse } from './simulation-types'
-import { extractCapture } from './simulation-results'
+import { extractCapture, fatalSimulationMessages, requireCompleteCapture } from './simulation-results'
 
 // EEcircuit's asynchronous API runs ngspice in its caller's execution context.
 // Import and initialize it here, so both WASM setup and solving stay off the UI thread.
@@ -17,9 +17,10 @@ self.onmessage = async (event: MessageEvent<SimulationRequest>) => {
     const started = performance.now()
     engine.setNetList(request.netlist)
     const result = await engine.runSim()
-    const errors = engine.getError().filter((line) => /error|failed|singular matrix|timestep too small|aborted/i.test(line))
+    const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started, request.voltageChecks)
+    requireCompleteCapture(capture)
+    const errors = fatalSimulationMessages(engine.getError(), capture)
     if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
-    const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started)
     send({ type: 'result', revision: request.revision, capture })
   } catch (error) {
     send({ type: 'error', revision: request.revision, message: error instanceof Error ? error.message : 'ngspice could not complete this circuit.' })
