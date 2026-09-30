@@ -4,8 +4,10 @@ import type { PicoTrace } from './pico/runtime.ts'
 import { passiveExamples } from './passive-examples.ts'
 import { picoExamples } from './pico/examples.ts'
 import { activeExamples } from './active-examples.ts'
+import { icExamples } from './ic-examples.ts'
+import { timer555Lines } from './timer555.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555'
 
 export interface Part {
   id: string
@@ -66,6 +68,8 @@ export interface Terminal {
 }
 
 export interface PartDefinition {
+  package?: 'DIP-8' | 'DIP-14'
+  supplyHint?: string
   label: string
   unit: string
   defaultValue: number
@@ -150,11 +154,41 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     model: 'Ideal capacitor with visible polarity. Reverse bias is not a damage or breakdown model; warnings identify detected reverse bias but do not change the capacitor’s electrical behavior. Charge restarts from the DC operating point on every capture.',
   },
   opamp: {
+    package: 'DIP-8',
+    supplyHint: 'Connect pin 8 to the positive supply and pin 4 to the negative supply. Both amplifiers share these rails.',
     pinNames: ['OUT A', 'IN− A', 'IN+ A', 'V−', 'IN+ B', 'IN− B', 'OUT B', 'V+'],
     label: 'Dual op-amp', unit: '', defaultValue: 1, min: 1, max: 1,
     description: 'Two feedback amplifiers in a DIP-8 package. Wire both visible supply pins and give every input a DC return.',
     model: 'Generic educational dual op-amp: gain 100,000, 100 MΩ differential input resistance and 50 Ω output resistance. Outputs clip 1 V inside the connected supply rails; more than 2 V rail separation is required. No bandwidth, slew rate, input common-mode limit, supply-current, noise or damage model. Both halves require input connections. Not a calibrated manufacturer device.',
   },
+
+  quadopamp: {
+    package: 'DIP-14',
+    supplyHint: 'Connect pin 4 to the positive supply and pin 11 to the negative supply, usually ±12 V. All four amplifiers share these rails. Wire unused sections as grounded followers.',
+    pinNames: ['OUT A', 'IN− A', 'IN+ A', 'V+', 'IN+ B', 'IN− B', 'OUT B', 'OUT C', 'IN− C', 'IN+ C', 'V−', 'IN+ D', 'IN− D', 'OUT D'],
+    label: 'TL074-style quad op-amp', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Four feedback amplifiers with the TL074 DIP-14 pinout. Build buffers, mixers, and active filters on shared supply rails.',
+    model: 'Educational quad op-amp with the TL074 pinout, not a manufacturer-calibrated TL074 model. Each section has gain 10,000, 100 MΩ differential input resistance and 50 Ω output resistance. Outputs clip 1 V inside the connected rails; more than 2 V rail separation is required. All eight inputs need external DC returns. No bandwidth, slew rate, common-mode limits, bias current, supply-current, noise, or damage model.',
+  },
+  timer555: {
+    package: 'DIP-8',
+    supplyHint: 'Connect pin 1 to GND and pin 8 to a positive 4.5–16 V supply. Tie RESET (pin 4) high unless you drive it. CTRL (pin 5) may be left open or bypassed to GND with 10 nF.',
+    pinNames: ['GND', 'TRIG', 'OUT', 'RESET', 'CTRL', 'THRESH', 'DISCH', 'VCC'],
+    label: '555 timer', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'An eight-pin timer for clocks, gate pulses, and oscillators. External resistors and a capacitor set its timing.',
+    model: 'Educational bipolar 555 approximation with a three-5 kΩ CTRL divider and stateful latch. Nominal thresholds are 1/3 and 2/3 of VCC; CTRL shifts both. RESET below 0.7 V overrides TRIG, which overrides THRESH. Supply 4.5–16 V; output resistance 50 Ω, high target VCC−1.2 V, low target 0.1 V; discharge 10 Ω on / 1 GΩ off. A 1 µs power-on reset initializes every capture, so DC analysis shows reset. No calibrated manufacturer timing, supply spikes, tolerances, thermal, or damage model.',
+  },
+}
+
+interface AmplifierPins {
+  negative: number
+  positive: number
+  /** Zero-based [output, inverting input, noninverting input] for each section. */
+  sections: [number, number, number][]
+}
+const amplifierPinouts: Partial<Record<ComponentKind, AmplifierPins>> = {
+  opamp: { negative: 3, positive: 7, sections: [[0, 1, 2], [6, 5, 4]] },
+  quadopamp: { negative: 10, positive: 3, sections: [[0, 1, 2], [6, 5, 4], [7, 8, 9], [13, 12, 11]] },
 }
 
 const rows = 'abcdefghij'
@@ -190,19 +224,21 @@ export function createEmptyDocument(): CircuitDocument {
   }
 }
 
-/** Default footprints. DIP-8 fits across the trench only, with pin 1 at eN or fN. */
+/** DIP packages straddle the trench only, with pin 1 at eN or fN. */
 export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0): string[] | null {
   const match = /^([a-j])(\d{1,2})$/.exec(holeId)
   if (!match || !Object.hasOwn(terminalById, holeId) || !Object.hasOwn(PARTS, kind)) return null
   const column = Number(match[2])
   const row = rows.indexOf(match[1])
   const direction = ((Math.round(rotation / 90) % 4) + 4) % 4
-  if (kind === 'opamp') {
-    if (direction === 0 && match[1] === 'e' && column <= 27) {
-      return [0, 1, 2, 3].map((offset) => `e${column + offset}`).concat([3, 2, 1, 0].map((offset) => `f${column + offset}`))
+  if (PARTS[kind].package) {
+    const perSide = PARTS[kind].pinNames.length / 2
+    const offsets = Array.from({ length: perSide }, (_, index) => index)
+    if (direction === 0 && match[1] === 'e' && column <= 31 - perSide) {
+      return offsets.map(offset => `e${column + offset}`).concat([...offsets].reverse().map(offset => `f${column + offset}`))
     }
-    if (direction === 2 && match[1] === 'f' && column >= 4) {
-      return [0, 1, 2, 3].map((offset) => `f${column - offset}`).concat([3, 2, 1, 0].map((offset) => `e${column - offset}`))
+    if (direction === 2 && match[1] === 'f' && column >= perSide) {
+      return offsets.map(offset => `f${column - offset}`).concat([...offsets].reverse().map(offset => `e${column - offset}`))
     }
     return null
   }
@@ -222,7 +258,7 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
 export function isValidFootprint(kind: ComponentKind, pins: string[]): boolean {
   if (!Object.hasOwn(PARTS, kind) || pins.length !== PARTS[kind].pinNames.length || new Set(pins).size !== pins.length) return false
   if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
-  if (kind !== 'potentiometer' && kind !== 'opamp' && kind !== 'npn' && kind !== 'pnp') return true
+  if (!PARTS[kind].package && kind !== 'potentiometer' && kind !== 'npn' && kind !== 'pnp') return true
   return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation)?.every((pin, index) => pin === pins[index]))
 }
 
@@ -289,7 +325,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     if (kind === 'switch' && value !== 0 && value !== 1) throw new Error(`${id} must be either open (0) or closed (1).`)
     if (!Array.isArray(part.pins) || part.pins.length !== definition.pinNames.length) throw new Error(`${id} requires exactly ${definition.pinNames.length} pins.`)
     const pins = part.pins.map(readTerminal)
-    if (!isValidFootprint(kind, pins)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${kind === 'opamp' ? 'Place all eight pins across the center trench at 0° or 180°.' : 'Use the supported breadboard pin positions.'}`)
+    if (!isValidFootprint(kind, pins)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
     return { id, kind, value, pins, ...(position === undefined ? {} : { position }) }
@@ -418,7 +454,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   for (const part of doc.parts) {
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
-    if (part.kind === 'opamp') continue
+    if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
       if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
       addEdge(a, b)
@@ -444,12 +480,14 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
   }
   traceReferences()
-  for (const part of doc.parts.filter((part) => part.kind === 'opamp')) {
-    const nodes = part.pins.map((pin) => nodeByTerminal[pin])
-    const negative = nodes[3]
-    const positive = nodes[7]
+  for (const part of doc.parts.filter(part => amplifierPinouts[part.kind])) {
+    const layout = amplifierPinouts[part.kind]!
+    const nodes = part.pins.map(pin => nodeByTerminal[pin])
+    const negative = nodes[layout.negative]
+    const positive = nodes[layout.positive]
     let powered = true
-    for (const [index, label] of [[3, 'V− (pin 4)'], [7, 'V+ (pin 8)']] as const) {
+    for (const index of [layout.negative, layout.positive]) {
+      const label = `${PARTS[part.kind].pinNames[index]} (pin ${index + 1})`
       if (!referenced.has(nodes[index])) {
         diagnostics.push({ severity: 'error', message: `${part.id} ${label} has no connected supply. Wire both visible supply pins to DC supplies with a GND reference.`, partId: part.id })
         powered = false
@@ -470,8 +508,37 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     if (powered) {
       // An output is driven relative to the connected negative supply. This does
       // not merge nets or give either input an implicit connection to ground.
-      addEdge(nodes[0], negative)
-      addEdge(nodes[6], negative)
+      for (const [output] of layout.sections) addEdge(nodes[output], negative)
+    }
+  }
+  traceReferences()
+  for (const part of doc.parts.filter(part => part.kind === 'timer555')) {
+    const nodes = part.pins.map(pin => nodeByTerminal[pin])
+    const ground = nodes[0]
+    const supply = nodes[7]
+    let powered = true
+    for (const index of [0, 7]) {
+      if (!referenced.has(nodes[index])) {
+        diagnostics.push({ severity: 'error', message: `${part.id} ${PARTS.timer555.pinNames[index]} (pin ${index + 1}) has no connected supply. Wire GND and VCC to referenced DC supplies.`, partId: part.id })
+        powered = false
+      }
+    }
+    if (ground === supply) {
+      diagnostics.push({ severity: 'error', message: `${part.id} GND and VCC are on the same net. The 555 model needs 4.5–16 V from VCC to GND.`, partId: part.id })
+      powered = false
+    } else if (fixedVoltages.has(supply) && fixedVoltages.has(ground)) {
+      const voltage = fixedVoltages.get(supply)! - fixedVoltages.get(ground)!
+      if (voltage < 4.5 || voltage > 16) {
+        diagnostics.push({ severity: 'error', message: `${part.id} supply is ${voltage} V. The 555 model needs 4.5–16 V from VCC to GND.`, partId: part.id })
+        powered = false
+      }
+    } else if (powered) {
+      diagnostics.push({ severity: 'warning', message: `${part.id} supply voltage depends on the circuit. Keep VCC 4.5–16 V above GND for the 555 model.`, partId: part.id })
+    }
+    if (powered) {
+      // Real internal paths: driven output, CTRL resistor divider, discharge
+      // switch (including modeled off leakage). Inputs never gain hidden returns.
+      for (const index of [2, 4, 6]) addEdge(nodes[index], ground)
     }
   }
   traceReferences()
@@ -480,10 +547,10 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     for (const [index, pin] of part.pins.entries()) {
       const node = nodeByTerminal[pin]
       if (!referenced.has(node) && !warnedFloating.has(node)) {
-        const input = part.kind === 'opamp' && [1, 2, 4, 5].includes(index)
+        const input = amplifierPinouts[part.kind]?.sections.some(([, minus, plus]) => index === minus || index === plus)
         diagnostics.push({ severity: 'error', message: input
-          ? `${part.id} ${PARTS.opamp.pinNames[index]} (pin ${index + 1}) at ${pin} is floating. Connect an external DC return; wire unused amplifiers as grounded followers.`
-          : `${part.id} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
+          ? `${part.id} ${PARTS[part.kind].pinNames[index]} (pin ${index + 1}) at ${pin} is floating. Connect an external DC return; wire unused amplifiers as grounded followers.`
+          : `${part.id}${part.kind === 'timer555' ? ` ${PARTS.timer555.pinNames[index]} (pin ${index + 1})` : ''} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
         warnedFloating.add(node)
       }
     }
@@ -531,8 +598,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     lines.push(`VEG eg_internal 0 EXP(0 5 0.001 1e-7 0.001001 ${spiceNumber(envelope.decayMs / 1000)})`)
   }
   lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
-  // Fixed model templates emit at most six devices and two internal nodes per
-  // part: the 30-part document limit bounds expansion to 180 devices / 60 nodes.
+  // Fixed templates emit at most 12 devices / 4 internal nodes per part
+  // (quad op-amp); the 30-part limit bounds expansion to 360 devices / 120 nodes.
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
     const safeId = spiceDeviceId(part)
@@ -555,18 +622,25 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       lines.push(`RP_${safeId}_ccw ${a} ${b} ${spiceNumber(Math.max(1, position * part.value))}`)
       lines.push(`RP_${safeId}_cw ${b} ${c} ${spiceNumber(Math.max(1, (1 - position) * part.value))}`)
     }
-    if (part.kind === 'opamp') {
-      const nodes = part.pins.map((pin) => nodeByTerminal[pin])
-      const negative = nodes[3]
-      const positive = nodes[7]
-      for (const [half, output, inverting, noninverting] of [['a', nodes[0], nodes[1], nodes[2]], ['b', nodes[6], nodes[5], nodes[4]]]) {
+    if (part.kind === 'timer555') lines.push(...timer555Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    const layout = amplifierPinouts[part.kind]
+    if (layout) {
+      const nodes = part.pins.map(pin => nodeByTerminal[pin])
+      const negative = nodes[layout.negative]
+      const positive = nodes[layout.positive]
+      // Lower finite gain keeps cascaded quad sections numerically stable when
+      // clipping while retaining <0.1% closed-loop error in the tested utilities.
+      const gain = part.kind === 'quadopamp' ? '1e4' : '1e5'
+      for (const [section, pins] of layout.sections.entries()) {
+        const half = 'abcd'[section]
+        const [output, inverting, noninverting] = pins.map(index => nodes[index])
         const internal = `op_${safeId}_${half}`
         const span = `v(${positive},${negative})`
         // The behavioral source returns to the visible V− pin, never to an
         // invented power rail. The available swing collapses continuously as
         // supplies ramp down, keeping .op source stepping well-conditioned.
         const swing = `max(0,${span}/2-1)`
-        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = max(0,${span})/2+max(-${swing},min(${swing},1e5*v(${noninverting},${inverting})))`)
+        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = max(0,${span})/2+max(-${swing},min(${swing},${gain}*v(${noninverting},${inverting})))`)
         lines.push(`RO_${safeId}_${half} ${internal} ${output} 50`)
         lines.push(`RI_${safeId}_${half} ${noninverting} ${inverting} 1e8`)
       }
@@ -593,6 +667,8 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'pnp') return 'PNP · C–B–E'
   if (kind === 'led') return 'Red'
   if (kind === 'opamp') return 'Dual · DIP-8'
+  if (kind === 'quadopamp') return 'Quad · DIP-14'
+  if (kind === 'timer555') return 'Timer · DIP-8'
   if (kind === 'switch') return value === 1 ? 'Closed' : 'Open'
   const prefixes: [number, string][] = [[1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ'], [1e-9, 'n'], [1e-12, 'p']]
   const [scale, prefix] = prefixes.find(([scale]) => Math.abs(value) >= scale * (1 - 1e-12)) ?? [1, '']
@@ -706,5 +782,6 @@ export const examples: CircuitExample[] = [
   },
   ...passiveExamples,
   ...activeExamples,
+  ...icExamples,
   ...picoExamples,
 ]

@@ -6,7 +6,7 @@ test('synth examples load by difficulty, capture, and expose hardware build note
   await page.goto('/')
   const select = page.getByRole('combobox', { name: 'Load example' })
   await expect(select.locator('optgroup')).toHaveCount(3)
-  await expect(select.locator('option')).toHaveCount(17)
+  await expect(select.locator('option')).toHaveCount(20)
   for (const id of ['cv-attenuator', 'ac-coupling', 'gate-to-trigger', 'envelope-follower', 'cv-mixer', 'attenuverter', 'sallen-key-filter']) {
     await select.selectOption(id)
     await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })

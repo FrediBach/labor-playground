@@ -1,4 +1,4 @@
-import type { ComponentKind } from '@/lib/circuit'
+import { PARTS, type ComponentKind } from '@/lib/circuit'
 
 interface PartGlyphProps {
   kind: ComponentKind
@@ -20,26 +20,30 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
   if (digits >= 100) { digits = 10; multiplier++ }
   const bandColors = ['#302d28', '#795037', '#b54934', '#d58236', '#d2b341', '#638553', '#456e99', '#86618e', '#929189', '#ebe5cf']
   const bands = [bandColors[Math.floor(digits / 10)], bandColors[digits % 10], multiplier < 0 ? '#c6aa53' : bandColors[multiplier]]
-  if (kind === 'opamp') {
-    const leads = pins ?? [
-      { x: -36, y: -30 }, { x: -12, y: -30 }, { x: 12, y: -30 }, { x: 36, y: -30 },
-      { x: 36, y: 30 }, { x: 12, y: 30 }, { x: -12, y: 30 }, { x: -36, y: 30 },
-    ]
-    const labels = ['A OUT', 'A −', 'A +', 'V−', 'B +', 'B −', 'B OUT', 'V+']
+  if (PARTS[kind].package) {
+    const labels = pinNames ?? PARTS[kind].pinNames
+    const rowPins = labels.length / 2
+    const rowHalf = (rowPins - 1) * 12
+    const leads = pins ?? Array.from({ length: labels.length }, (_, index) => ({
+      x: index < rowPins ? -rowHalf + index * 24 : rowHalf - (index - rowPins) * 24,
+      y: index < rowPins ? -30 : 30,
+    }))
+    const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
+    const inscription = kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : 'DUAL OP AMP'
     return <g>
-      {selected && <rect x={-54} y={-38} width={108} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
-        <title>{index + 1}: {pinNames?.[index] ?? labels[index]}</title>
+        <title>{index + 1}: {labels[index]}</title>
         <path d={`M${pin.x} ${pin.y}V${pin.y < 0 ? -17 : 17}`} stroke="#62685d" strokeWidth={6} strokeLinecap="round" />
         <path d={`M${pin.x - 1} ${pin.y}V${pin.y < 0 ? -17 : 17}`} stroke="#bdc1b5" strokeWidth={2} strokeLinecap="round" />
         <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
       </g>)}
-      <rect x={-47} y={-20} width={94} height={44} rx={4} fill="#28312a" opacity={0.2} transform="translate(1 2)" />
-      <rect x={-47} y={-22} width={94} height={44} rx={4} fill="#343b37" stroke="#202a23" strokeWidth={1.4} />
-      <path d="M-43-18H43" stroke="#697068" strokeWidth={1.2} />
-      <path d="M-47-7 A7 7 0 0 1 -47 7" fill="#17231d" stroke="#657164" strokeWidth={0.8} />
-      <circle cx={-43} cy={-17} r={2} fill="#c3c9b7" />
-      <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={0.4}>DUAL OP AMP</text>
+      <rect x={-bodyHalf} y={-20} width={bodyHalf * 2} height={44} rx={4} fill="#28312a" opacity={0.2} transform="translate(1 2)" />
+      <rect x={-bodyHalf} y={-22} width={bodyHalf * 2} height={44} rx={4} fill="#343b37" stroke="#202a23" strokeWidth={1.4} />
+      <path d={`M${-bodyHalf + 4}-18H${bodyHalf - 4}`} stroke="#697068" strokeWidth={1.2} />
+      <path d={`M${-bodyHalf}-7 A7 7 0 0 1 ${-bodyHalf} 7`} fill="#17231d" stroke="#657164" strokeWidth={0.8} />
+      <circle cx={-bodyHalf + 4} cy={-17} r={2} fill="#c3c9b7" />
+      <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={0.4}>{inscription}</text>
       {leads.map((pin, index) => <g key={index} pointerEvents="none">
         <text x={pin.x} y={pin.y < 0 ? -25 : 36} textAnchor="middle" fill="#53604f" fontFamily="monospace" fontSize={6.5}>{index + 1}</text>
         <text x={pin.x} y={pin.y < 0 ? -10 : 15} textAnchor="middle" fill="#bac4af" fontFamily="monospace" fontSize={5.4}>{labels[index]}</text>

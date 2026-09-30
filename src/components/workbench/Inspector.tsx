@@ -29,6 +29,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
+  const integratedCircuit = !!definition?.package
   const resistive = part?.kind === 'resistor' || part?.kind === 'potentiometer'
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
   const inductive = part?.kind === 'inductor'
@@ -49,11 +50,11 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
       {part && definition ? <>
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
-          <span className="eyebrow">{part.id} · {part.kind === 'opamp' ? 'GENERIC DUAL · DIP-8' : transistor ? `GENERIC ${part.kind.toUpperCase()} · C / B / E` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
+          <span className="eyebrow">{part.id} · {integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · C / B / E` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
           <h2>{definition.label}</h2><p>{definition.description}</p>
         </div>
         <div className="inspector-section">
-          <div className="section-overline">{part.kind === 'opamp' ? 'POWER & MODEL' : 'COMPONENT VALUE'}</div>
+          <div className="section-overline">{integratedCircuit ? 'POWER & MODEL' : 'COMPONENT VALUE'}</div>
           {part.kind === 'switch' ? (
             <label className="switch-value"><input type="checkbox" checked={!!part.value} onChange={event => updatePart({ value: event.target.checked ? 1 : 0 })} />{part.value ? 'Closed (on)' : 'Open (off)'}</label>
           ) : resistive || capacitive || inductive || zener ? <>
@@ -71,21 +72,21 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
               <NumberField label="Wiper percentage" value={(part.position ?? 0.5) * 100} min={0} max={100} unit="%" onCommit={position => updatePart({ position: position / 100 })} />
               <p className="micro-copy">0% is at CCW; 100% is at CW. Each end has a minimum 1 Ω resistance.</p>
             </div>}
-          </> : part.kind === 'opamp' ? (
-            <p className="muted-copy">Connect pin 8 to the positive supply and pin 4 to the negative supply. Both amplifiers share these rails.</p>
+          </> : integratedCircuit ? (
+            <p className="muted-copy">{definition.supplyHint}</p>
           ) : <p className="muted-copy">Fixed generic {transistor ? `${part.kind.toUpperCase()} transistor` : definition.label.toLowerCase()} model.</p>}
         </div>
         <div className="inspector-section">
-          <div className="section-overline">{part.kind === 'opamp' || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
-          <div className={part.kind === 'opamp' || transistor ? 'ic-pin-list' : undefined}>
+          <div className="section-overline">{integratedCircuit || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
+          <div className={integratedCircuit || transistor ? 'ic-pin-list' : undefined}>
             {part.pins.map((pin, index) => (
               <div className="pin-row" key={index}>
-                <span><i />{(part.kind === 'opamp' || transistor) && <b>{index + 1}</b>}{definition.pinNames[index]}</span>
+                <span><i />{(integratedCircuit || transistor) && <b>{index + 1}</b>}{definition.pinNames[index]}</span>
                 <div className="pin-actions"><code>{pin.toUpperCase()}</code>{hasEditableLeads(part) && <button className="move-lead-button" aria-label={`Move ${part.id} lead ${definition.pinNames[index]}`} aria-pressed={editingLead?.partId === part.id && editingLead.pinIndex === index} onClick={() => onStartLeadEdit({ partId: part.id, pinIndex: index })}>Move</button>}</div>
               </div>
             ))}
           </div>
-          <p className="micro-copy">{part.kind === 'opamp' ? 'The notch marks the pin 1 end. The package must straddle the center trench.' : 'Drag the component to move it. Jumper wires stay attached to their holes.'}</p>
+          <p className="micro-copy">{integratedCircuit ? 'The notch marks the pin 1 end. The package must straddle the center trench.' : 'Drag the component to move it. Jumper wires stay attached to their holes.'}</p>
           {transistor && <p className="micro-copy">C = Collector, B = Base, E = Emitter. The three leads move together. This virtual pin order is C–B–E; physical transistor pinouts vary.</p>}
           {hasEditableLeads(part) && <p className="micro-copy">Move one lead to change its spacing. Choose holes 1–8 spacings apart; polarity stays with the lead.</p>}
           {editingLead?.partId === part.id && <button className="subtle-button cancel-lead-edit" onClick={onFinishLeadEdit}>Cancel lead move <kbd>esc</kbd></button>}
@@ -95,7 +96,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
         </div>
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
-          {part.kind === 'opamp' ? <p className="micro-copy">Current and power are unavailable for this behavioral op-amp model.</p> : dc ? <>
+          {integratedCircuit ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{part.kind === 'timer555' && ' DC voltages show the initial 1 µs reset state; use the scope to inspect timing.'}</p> : dc ? <>
             {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
             <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
             <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>

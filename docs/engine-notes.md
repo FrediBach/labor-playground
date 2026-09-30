@@ -28,7 +28,7 @@ Ideal capacitors have zero steady DC current and zero DC dissipated power; this 
 - Initialization gets 30 seconds; the combined operating-point and transient job gets 8 seconds. On failure or timeout, the worker is terminated and the next Capture creates a new one. The circuit document is preserved.
 - Results above 50,000 samples, invalid timestamps/voltages, and captures that do not complete the requested 0–100 ms interval are rejected. The compiler additionally enforces the documented part/net envelope.
 - Each capture restarts from its defined operating point. Capacitor charge is not carried between captures or edits. There is no continuous physical timeline.
-- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The library includes thirteen component kinds. The generic dual op-amp uses explicit supplies, finite gain, output resistance, and output limiting; the potentiometer uses a 1 Ω endpoint floor.
+- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The library includes fifteen component kinds. The generic dual op-amp uses explicit supplies, finite gain, output resistance, and output limiting; the potentiometer uses a 1 Ω endpoint floor.
 
 The displayed scope data remains unprocessed electrical voltage. Whenever a capture is not current, the scope hides its previous traces and measurements. Listen is unavailable until a current capture succeeds, so new probe labels never describe older electrical results.
 
@@ -43,6 +43,18 @@ Inductance is editable from 1 µH to 10 H, initially 10 mH. A native SPICE induc
 The generic Schottky diode uses `Is=200 nA`, `N=1.05`, `Rs=0.2 Ω`, `Cjo=10 pF`, and `Eg=0.69 eV`. The generic zener uses `Is=1 pA`, `N=1`, `Rs=2 Ω`, `Cjo=50 pF`, and `IBV=1 mA`. Its editable `Part.value` is the nominal `BV` in volts (2.4–24 V, initially 5.1 V); each instance gets its own model. Actual terminal voltage varies with current and series resistance. Both diode variants preserve anode/cathode order and the visible cathode stripe.
 
 NPN and PNP use complementary Gummel–Poon models with `Is=10 fA`, `Bf=100`, `Br=1`, `Vaf=100 V`, `Cje=10 pF`, `Cjc=4 pF`, `Tf=0.5 ns`, and `Tr=10 ns`. Their rigid adjacent three-pin package always orders collector, base, emitter, including when rotated. This is an educational footprint, not a manufacturer pinout. Bias changes reproduce cutoff, active gain, and saturation; breakdown, thermal effects, and damage are not modeled. The [ngspice manual](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf) documents diode breakdown parameters, transistor terminal order, and saved device-current parameters used by these models.
+
+## Timer and quad op-amp ICs
+
+The **555 timer** uses the eight-pin sequence GND, TRIG, OUT, RESET, CTRL, THRESH, DISCH, VCC from the [TI NE555 datasheet](https://www.ti.com/lit/ds/symlink/ne555.pdf). Its original analog behavioral model has three 5 kΩ divider resistors, so an undriven CTRL is nominally 2/3 VCC and the trigger reference is half CTRL. A capacitor-backed latch retains state between trigger and threshold events; RESET below 0.7 V wins over TRIG, which wins over THRESH. The latch has a 100 ns time constant for numerical conditioning.
+
+A deterministic **1 µs startup reset** makes the initial operating-point solve well-defined, including astable configurations. Therefore the 555's DC panel describes the reset state, not a settled oscillator or previous latch state. Every capture restarts this sequence. The model supports 4.5–16 V between its explicit VCC and GND pins, targets VCC−1.2 V high and 0.1 V low through 50 Ω, and uses a 10 Ω discharge path when low (1 GΩ off). It adds an approximate 3 mA supply load plus the real divider and sourced output-load current. Invalid supply voltage forces its output target to GND and disables discharge; known invalid or missing supplies block capture before simulation. These values describe the educational approximation, not guaranteed NE555 specifications. Temperature, component tolerance, supply spikes, damage, and exact output-current limits are omitted. IC current/power readouts are not exposed.
+
+The **TL074-style quad op-amp** follows [TI's DIP-14 pin table and drawing, Table 4-6 / Figure 4-8](https://www.ti.com/lit/ds/symlink/tl074.pdf): positive supply pin 4, negative supply pin 11, and outputs A/B/C/D on 1/7/8/14. Four static sections use open-loop gain 10,000, 100 MΩ differential input resistance, 50 Ω output resistance, and clipping 1 V inside the connected rails. The lower finite gain, compared with the existing dual model’s 100,000, keeps cascaded sections convergent during heavy clipping; the tested gain-one/two utility differs by less than 3 mV from the ideal. Supply separation must exceed 2 V. All eight inputs need external DC returns; unused sections should be grounded followers. Bandwidth, slew rate, input common-mode limits, bias currents, noise, and supply consumption are omitted. It is not a manufacturer-calibrated TL074 model.
+
+Both packages straddle the virtual trench, preserve numbered pin order through a 180° rotation, and validate every occupied hole on placement/import. The DIP-14 spans seven columns. Fixed IC expansion is bounded at 12 devices / 4 internal nodes per part (quad); the 555 uses 9 / 3. The existing 30-part limit therefore caps component-model expansion at 360 devices / 120 internal nodes, alongside the existing external-net, sample, and worker-time limits.
+
+Three editable lessons exercise these models: **555 clock oscillator** (~480 Hz with two 10 kΩ resistors and 100 nF), **555 trigger-to-pulse** (falling edge at 51 ms produces ~11 ms with 100 kΩ and 100 nF), and **TL074 buffered signal splitter** (all four sections produce positive/inverted buffered outputs). The timer tests use real ngspice to verify period/duty cycle, RC edits, CTRL loading, latch/RESET priority, monostable duration, supply-relative behavior, and finite output drive. IC integration tests check the complete compiler/capture pipeline, packages, supply diagnostics, and all four amplifier sections.
 
 ## Scope measurements
 
@@ -71,7 +83,7 @@ The monitor is a bounded preview, not a calibrated audio interface. It accepts o
 - RC sinusoidal attenuation against the analytical transfer function.
 - Nonlinear limiting with opposing generic signal diodes.
 - Bounded LED forward voltage and the documented open/closed switch resistance.
-- All thirteen editable example documents, including attenuation, AC coupling, edge shaping, envelope following, mixing, attenuversion, and two-pole filtering with meaningful parameter changes.
+- All sixteen editable analog example documents, including attenuation, AC coupling, edge shaping, envelope following, mixing, attenuversion, and two-pole filtering with meaningful parameter changes.
 - Probe extraction, adaptive resampling, DC removal, fade endpoints, and above-band attenuation.
 - Latest-request coalescing and termination/recreation of a stuck worker using a controlled worker fixture.
 

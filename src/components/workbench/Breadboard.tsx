@@ -83,7 +83,7 @@ function makeId(prefix: string, document: CircuitDocument) {
   return `${prefix}${value}`
 }
 
-const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', potentiometer: 'P', switch: 'S', opamp: 'U' }
+const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
@@ -176,15 +176,15 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     }
     const pins = getPlacement(kind, terminal.id, rotation)
     if (!pins || !canPlace(document, pins)) {
-      onMessage(kind === 'opamp'
-        ? 'Place all eight IC pins across the center trench. Start on row E, or rotate to start on row F.'
+      onMessage(PARTS[kind].package
+        ? `Place all ${PARTS[kind].pinNames.length} IC pins across the center trench. Start on row E, or rotate to start on row F.`
         : `Choose ${PARTS[kind].pinNames.length} free holes for the component. Press R to rotate.`)
       return
     }
     const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: PARTS[kind].defaultValue, pins, ...(kind === 'potentiometer' ? { position: 0.5 } : {}) }
     onChange({ ...document, parts: [...document.parts, part] })
     onSelect(part.id)
-    onMessage(`${part.id} placed. Select it to change its value.`)
+    onMessage(`${part.id} placed. Select it to ${PARTS[kind].package ? 'inspect its pins and model' : 'change its value'}.`)
   }
 
   function clickTerminal(terminal: Terminal) {
@@ -301,8 +301,9 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
   function renderPart(part: Part, preview = false) {
     const terminals = part.pins.map(id => terminalById[id])
     if (terminals.some(terminal => !terminal)) return null
+    const dipPackage = !!PARTS[part.kind].package
     const a = terminals[0]
-    const b = terminals[part.kind === 'opamp' ? 3 : terminals.length - 1]
+    const b = terminals[dipPackage ? terminals.length / 2 - 1 : terminals.length - 1]
     if (!a || !b) return null
     const radians = Math.atan2(b.y - a.y, b.x - a.x)
     const angle = radians * 180 / Math.PI
@@ -316,19 +317,20 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     }))
     const span = Math.hypot(b.x - a.x, b.y - a.y)
     const threeLeadPackage = part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp'
-    const bounds = part.kind === 'opamp'
-      ? { x: -51, y: -35, width: 102, height: 74 }
+    const bounds = dipPackage
+      ? { x: -span / 2 - 15, y: -35, width: span + 30, height: 74 }
       : threeLeadPackage
         ? { x: -span / 2 - 8, y: -45, width: span + 16, height: 56 }
         : { x: -span / 2 - 5, y: -23, width: span + 10, height: 46 }
-    const labelY = part.kind === 'opamp' ? 43
+    const labelY = dipPackage ? 43
       : threeLeadPackage ? Math.abs(angle) > 135 ? 48 : Math.abs(angle) > 45 ? 34 : 13
         : Math.abs(angle) > 45 && Math.abs(angle) < 135 ? -11 : 22
     const label = `${part.id} · ${formatValue(part.value, part.kind)}`
-    const labelWidth = part.kind === 'opamp' || part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
+    const labelWidth = dipPackage ? Math.max(110, label.length * 6 + 12) : part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
     const labelX = terminals.length === 2 && Math.abs(angle) > 45 && Math.abs(angle) < 135 ? 54 : 0
     return <g key={part.id}
       data-part={preview ? undefined : part.id}
+      data-part-preview={preview ? part.kind : undefined}
       transform={`translate(${center.x} ${center.y})`}
       opacity={preview ? 0.7 : leadPart?.id === part.id || move?.dragging && move.part.id === part.id ? 0.28 : 1}
       role={preview ? undefined : 'button'} tabIndex={preview || leadPart ? undefined : 0}

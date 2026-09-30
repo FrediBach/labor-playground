@@ -27,8 +27,8 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
       branches.push({ kind: 'saved-current', label: 'Collector → Emitter', fromNode: a, toNode: c, vector: `i(@q_${safeId}[ic])` })
       branches.push({ kind: 'saved-current', label: 'Base → Emitter', fromNode: b, toNode: c, vector: `i(@q_${safeId}[ib])` })
     }
-    // Generic op-amp supply/output currents are intentionally unavailable: its
-    // behavioral voltage model does not model real supply-current consumption.
+    // Behavioral IC terminal currents are not exposed as measured chip power.
+    // Op-amps omit supply consumption; 555 supply loading is only approximate.
     return { partId: part.id, nodes, branches }
   })
 }

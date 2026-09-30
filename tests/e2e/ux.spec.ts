@@ -164,7 +164,7 @@ test('an empty component search explains the result and can be cleared', async (
   await expect(library.locator('.part-item')).toHaveCount(0)
   await library.getByRole('button', { name: 'Clear search', exact: true }).click()
   await expect(search).toHaveValue('')
-  await expect(library.locator('.part-item')).toHaveCount(13)
+  await expect(library.locator('.part-item')).toHaveCount(15)
   await library.getByRole('button', { name: /Resistor/ }).click()
   await expect(library.getByRole('button', { name: /Resistor/ })).toHaveAttribute('aria-pressed', 'true')
 })

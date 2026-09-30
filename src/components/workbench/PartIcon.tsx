@@ -8,8 +8,9 @@ export function PartIcon({ kind, value, position, large = false }: {
   position?: number
   large?: boolean
 }) {
+  const widePackage = PARTS[kind].package === 'DIP-14'
   return (
-    <svg viewBox="-60 -45 120 90" width={large ? 106 : 54} height={large ? 68 : 36} aria-hidden="true">
+    <svg viewBox={widePackage ? '-96 -45 192 90' : '-60 -45 120 90'} width={large ? widePackage ? 180 : 106 : 54} height={large ? 68 : 36} aria-hidden="true">
       <PartGlyph kind={kind} value={value ?? PARTS[kind].defaultValue} position={position} />
     </svg>
   )

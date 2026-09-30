@@ -10,14 +10,15 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'passive', label: 'Passive', kinds: ['resistor', 'capacitor', 'electrolytic', 'inductor'] },
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
   resistor: 'resistance ohm', capacitor: 'ceramic non-polarized capacitance farad',
   electrolytic: 'polarized capacitance farad', inductor: 'coil inductance henry',
   diode: 'silicon rectifier', schottky: 'rectifier low forward voltage', zener: 'voltage breakdown clamp',
   led: 'light emitting red', npn: 'bjt bipolar collector base emitter', pnp: 'bjt bipolar collector base emitter',
-  potentiometer: 'pot variable resistance wiper', switch: 'spst on off', opamp: 'op amp operational amplifier dual dip8',
+  potentiometer: 'pot variable resistance wiper', switch: 'spst on off', opamp: 'op amp operational amplifier dual dip8 tl072',
+  quadopamp: 'op amp operational amplifier quad dip14 tl074 buffer mixer filter', timer555: '555 ne555 timer clock oscillator pulse astable monostable dip8',
 }
 
 export function PartsLibrary({ tool, onToolChange, onPlace, hasPico, onAddPico, wireColor, wireColors, onWireColorChange, partCount, onClear, onCollapse }: {
