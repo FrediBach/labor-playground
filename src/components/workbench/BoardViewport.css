@@ -19,7 +19,7 @@
 }
 .board-viewport[data-pan=true], .board-viewport[data-pan=true] * { cursor: grab !important; }
 .board-viewport[data-dragging=true], .board-viewport[data-dragging=true] * { cursor: grabbing !important; }
-.board-viewport:focus-visible { outline: 2px solid #bfd59e; outline-offset: 3px; }
+.board-viewport:focus-visible { outline: 2px solid #babbbb; outline-offset: 3px; }
 @media(max-width:740px) {
   .breadboard-viewport.board-viewport { height: 300px; }
 }

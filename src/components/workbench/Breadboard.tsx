@@ -32,12 +32,12 @@ export interface BreadboardProps {
 const PART_KINDS = Object.keys(PARTS) as ComponentKind[]
 const isPart = (tool: string): tool is ComponentKind => PART_KINDS.includes(tool as ComponentKind)
 const PORTS = [
-  { id: 'osc', label: 'OSC OUT', color: '#a6c4b0' },
-  { id: 'cv', label: 'CV OUT', color: '#abbca8' },
-  { id: 'gnd', label: 'GROUND', color: '#a3b5c0' },
-  { id: 'vplus', label: '+12 V', color: '#d78575' },
-  { id: 'vminus', label: '−12 V', color: '#89aabf' },
-  { id: 'eg', label: 'EG OUT', color: '#c3aad1' },
+  { id: 'osc', label: 'SIGNAL OUT' },
+  { id: 'cv', label: 'CV OUT' },
+  { id: 'gnd', label: 'GROUND' },
+  { id: 'vplus', label: '+12 V' },
+  { id: 'vminus', label: '−12 V' },
+  { id: 'eg', label: 'EG OUT' },
 ]
 
 function nearestTerminal(point: Point, distance = 16): Terminal | null {
@@ -399,27 +399,49 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       if (isPart(kind) && terminal) place(kind, terminal)
     }}>
     <defs>
-      <filter id="wire-shadow" x="-30%" y="-60%" width="160%" height="240%"><feDropShadow dx="0" dy="2" stdDeviation="1" floodColor="#1d261e" floodOpacity="0.2" /></filter>
-      <linearGradient id="socket-metal" x1="0" x2="0.8" y2="1"><stop stopColor="#a9aca2" /><stop offset="0.5" stopColor="#70786e" /><stop offset="1" stopColor="#c0c1b6" /></linearGradient>
+      <filter id="wire-shadow" x="-30%" y="-60%" width="160%" height="240%"><feDropShadow dx="0" dy="2" stdDeviation="1" floodColor="#171713" floodOpacity="0.3" /></filter>
+      <linearGradient id="breadboard-pcb" x1="0" y1="0" x2="0.7" y2="1"><stop stopColor="#303435" /><stop offset="0.45" stopColor="#222626" /><stop offset="1" stopColor="#191d1d" /></linearGradient>
+      <linearGradient id="breadboard-plastic" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#f3f0df" /><stop offset="0.5" stopColor="#e8e7d7" /><stop offset="1" stopColor="#d6d8c9" /></linearGradient>
+      <linearGradient id="breadboard-edge" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#fffbea" /><stop offset="0.75" stopColor="#dadcce" /><stop offset="1" stopColor="#999e90" /></linearGradient>
+      <linearGradient id="breadboard-trench" x1="0" y1="0" x2="0" y2="1"><stop stopColor="#92998b" /><stop offset="0.24" stopColor="#c2c8b9" /><stop offset="1" stopColor="#e1e4d5" /></linearGradient>
+      <linearGradient id="socket-metal" x1="0" y1="0" x2="0.9" y2="1"><stop stopColor="#f4f3dc" /><stop offset="0.22" stopColor="#c5c9be" /><stop offset="0.45" stopColor="#727c78" /><stop offset="0.58" stopColor="#dfe1cf" /><stop offset="0.84" stopColor="#8e9890" /><stop offset="1" stopColor="#e8e7d2" /></linearGradient>
+      <linearGradient id="hardware-steel" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#8c9794" /><stop offset="0.28" stopColor="#eef0df" /><stop offset="0.5" stopColor="#aab5ad" /><stop offset="0.72" stopColor="#5c6864" /><stop offset="1" stopColor="#c5cec2" /></linearGradient>
     </defs>
 
     <g aria-hidden="true" pointerEvents="none">
-      <rect x={48} y={83} width={824} height={446} rx={13} fill="#141914" opacity={0.2} />
-      <rect x={46} y={79} width={828} height={446} rx={13} fill="#dddccf" stroke="#c8cabb" strokeWidth={1.5} />
-      <rect x={54} y={86} width={812} height={431} rx={8} fill="#eeeee3" />
-      <rect x={58} y={88} width={804} height={57} rx={3} fill="#e6e7db" />
-      <rect x={58} y={454} width={804} height={52} rx={3} fill="#e6e7db" />
-      <rect x={57} y={286} width={806} height={21} rx={3} fill="#d3d5c6" />
-      <path d="M63 286H855" stroke="#c5c8b9" />
-      <path d="M63 306H855" stroke="#f9f8f0" />
-      <text x={75} y={300} fill="#8b9280" fontSize={8} fontWeight={600} letterSpacing={2}>SOLDERLESS BREADBOARD</text>
-      <text x={844} y={300} textAnchor="end" fill="#8b9280" fontSize={8} fontFamily="monospace">30 × 10 · SPLIT RAILS</text>
-      {[0, 1].map(segment => <g key={segment}>
-        {[{ y: 91, color: '#b9655b' }, { y: 138, color: '#668ca1' }, { y: 459, color: '#b9655b' }, { y: 505, color: '#668ca1' }].map(line => <path key={line.y} d={`M${90 + segment * 360} ${line.y}H${443 + segment * 360}`} stroke={line.color} strokeWidth={1.8} opacity={0.78} />)}
+      <rect x={3} y={2} width={914} height={548} rx={5} fill="url(#breadboard-pcb)" stroke="#4b504c" />
+      <path d="M10 74H910M10 532H910" stroke="#535b54" strokeOpacity={0.4} />
+      <path d="M34 104V205L15 224V458M886 114V246L906 266V443M37 452V486L15 508M882 315V385L907 410" fill="none" stroke="#626958" strokeWidth={1} opacity={0.18} />
+      <text transform="translate(28 386) rotate(-90)" fill="none" stroke="#c5d0c7" strokeWidth={0.7} fontSize={25} fontWeight={500} letterSpacing={4}>LABOR</text>
+      <text transform="translate(28 227) rotate(-90)" fill="#acb6ad" fontSize={5.5} fontFamily="monospace" letterSpacing={1}>ERICA SYNTHS · EDU</text>
+      {[{ x: 24, y: 33 }, { x: 896, y: 33 }, { x: 23, y: 91 }, { x: 897, y: 91 }, { x: 23, y: 516 }, { x: 897, y: 516 }].map(({ x, y }) => <g key={`${x}-${y}`} transform={`translate(${x} ${y})`}>
+        <circle cy={2} r={11} fill="#090e0d" opacity={0.75} />
+        <path d="M-5-9H5L10 0 5 9H-5L-10 0Z" fill="url(#hardware-steel)" stroke="#7b8781" strokeWidth={0.7} />
+        <circle r={6.3} fill="#aeb9ae" stroke="#dde2d5" strokeWidth={0.9} />
+        <circle r={4.7} fill="#65716a" />
+        <path d="M-3.8 0H3.8M0-3.8V3.8" stroke="#151d19" strokeWidth={2.1} transform="rotate(28)" />
+        <path d="M-6-5A8 8 0 0 1 5-6" fill="none" stroke="#f9f6df" strokeWidth={1.2} opacity={0.75} />
       </g>)}
-      {[{ y: 103, text: '+', color: '#b56156' }, { y: 128, text: '−', color: '#678899' }, { y: 472, text: '+', color: '#b56156' }, { y: 496, text: '−', color: '#678899' }].map(label => <g key={label.y} fill={label.color} fontSize={13} fontWeight={600} textAnchor="middle"><text x={75} y={label.y}>{label.text}</text><text x={835} y={label.y}>{label.text}</text></g>)}
-      {Array.from({ length: 30 }, (_, index) => index + 1).map(column => <g key={column} fill="#939989" fontSize={9} textAnchor="middle" fontFamily="monospace"><text x={100 + (column - 1) * 24} y={156}>{column}</text><text x={100 + (column - 1) * 24} y={444}>{column}</text></g>)}
-      {'abcdefghij'.split('').map((row, index) => <g key={row} fill="#929887" fontSize={10} fontFamily="monospace" textAnchor="middle"><text x={75} y={174 + index * 24 + (index > 4 ? 36 : 0)}>{row}</text><text x={834} y={174 + index * 24 + (index > 4 ? 36 : 0)}>{row}</text></g>)}
+      <rect x={47} y={84} width={828} height={445} rx={5} fill="#080c0a" opacity={0.65} />
+      <rect x={46} y={79} width={828} height={446} rx={5} fill="url(#breadboard-edge)" stroke="#b0b5a6" strokeWidth={1} />
+      <rect x={52} y={83} width={816} height={433} rx={2} fill="url(#breadboard-plastic)" />
+      <rect x={55} y={85} width={810} height={60} rx={1} fill="url(#breadboard-plastic)" stroke="#c7cebf" strokeWidth={0.7} />
+      <rect x={55} y={150} width={810} height={132} rx={1} fill="url(#breadboard-plastic)" />
+      <rect x={55} y={310} width={810} height={140} rx={1} fill="url(#breadboard-plastic)" />
+      <rect x={55} y={454} width={810} height={55} rx={1} fill="url(#breadboard-plastic)" stroke="#c0c8b8" strokeWidth={0.7} />
+      <path d="M55 146H865M55 452H865" stroke="#909c8d" strokeWidth={1} opacity={0.65} />
+      <path d="M55 148H865M55 453H865M56 86H864M53 513H867" stroke="#fffdef" strokeWidth={1.4} opacity={0.8} />
+      <rect x={54} y={283} width={812} height={27} fill="url(#breadboard-trench)" />
+      <path d="M56 283H864" stroke="#8b9487" />
+      <path d="M56 310H864" stroke="#fffdee" strokeWidth={1.5} />
+      <text x={75} y={300} fill="#778475" fontSize={6.8} fontFamily="monospace" letterSpacing={1}>SOLDERLESS BREADBOARD</text>
+      <text x={844} y={300} textAnchor="end" fill="#778475" fontSize={6.8} fontFamily="monospace" letterSpacing={0.6}>30 × 10 · SPLIT RAILS</text>
+      {[0, 1].map(segment => <g key={segment}>
+        {[{ y: 89, color: '#b95548' }, { y: 138, color: '#647e88' }, { y: 457, color: '#b95548' }, { y: 505, color: '#647e88' }].map(line => <path key={line.y} d={`M${90 + segment * 360} ${line.y}H${443 + segment * 360}`} stroke={line.color} strokeWidth={1.6} />)}
+      </g>)}
+      {[{ y: 104, text: '+', color: '#b95548' }, { y: 128, text: '−', color: '#647e88' }, { y: 472, text: '+', color: '#b95548' }, { y: 496, text: '−', color: '#647e88' }].map(label => <g key={label.y} fill={label.color} fontSize={13} fontWeight={500} textAnchor="middle"><text x={71} y={label.y}>{label.text}</text><text x={846} y={label.y}>{label.text}</text></g>)}
+      {Array.from({ length: 30 }, (_, index) => index + 1).map(column => <g key={column} fill="#536258" fontSize={8} textAnchor="middle" fontFamily="monospace"><text x={100 + (column - 1) * 24} y={157}>{column}</text><text x={100 + (column - 1) * 24} y={442}>{column}</text></g>)}
+      {'abcdefghij'.split('').map((row, index) => <g key={row} fill="#536258" fontSize={8.5} fontFamily="monospace" textAnchor="middle"><text x={71} y={173 + index * 24 + (index > 4 ? 36 : 0)}>{row.toUpperCase()}</text><text x={846} y={173 + index * 24 + (index > 4 ? 36 : 0)}>{row.toUpperCase()}</text></g>)}
       {strips.map(group => {
         const first = group[0], last = group[group.length - 1]
         const active = group.some(hole => highlighted.has(hole.id))
@@ -427,18 +449,23 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
         return <path key={first.group} d={`M${first.x} ${first.y}L${last.x} ${last.y}`} stroke={active ? '#bfd77d' : '#b6c0a3'} strokeWidth={active ? 13 : 8} strokeLinecap="round" opacity={active ? 0.55 : 0.25} />
       })}
       {HOLES.map(hole => <g key={hole.id}>
-        <rect x={hole.x - 4.4} y={hole.y - 4.4} width={8.8} height={8.8} rx={2} fill="#cecfbf" />
-        <rect x={hole.x - 2.9} y={hole.y - 3.1} width={5.8} height={5.8} rx={1.4} fill={highlighted.has(hole.id) ? '#748756' : '#5c6556'} />
-        <path d={`M${hole.x - 1.6} ${hole.y + 1.7}H${hole.x + 1.7}`} stroke="#3b4939" strokeWidth={1.3} />
+        <rect x={hole.x - 4.2} y={hole.y - 4.2} width={8.4} height={8.4} rx={0.6} fill="#c2c6b3" />
+        <path d={`M${hole.x - 4.2} ${hole.y + 4.2}H${hole.x + 4.2}V${hole.y - 4.2}`} fill="none" stroke="#fffbe7" strokeWidth={0.85} opacity={0.9} />
+        <rect x={hole.x - 3} y={hole.y - 3.2} width={6} height={6.2} rx={0.45} fill={highlighted.has(hole.id) ? '#6d8550' : '#3e4436'} />
+        <rect x={hole.x - 1.9} y={hole.y - 2.2} width={3.8} height={4.2} rx={0.25} fill={highlighted.has(hole.id) ? '#556c3e' : '#222a22'} />
+        <path d={`M${hole.x - 1.7} ${hole.y + 2.1}H${hole.x + 1.7}`} stroke="#a1a083" strokeWidth={0.75} />
       </g>)}
       {PORTS.map(port => {
         const terminal = terminalById[port.id]
         if (!terminal) return null
         return <g key={port.id}>
-          <text x={terminal.x} y={21} textAnchor="middle" fill={port.color} fontSize={9} letterSpacing={1.2} fontWeight={600}>{port.label}</text>
-          <circle cx={terminal.x} cy={terminal.y} r={14} fill="#151c18" stroke="#4b584b" strokeWidth={1} />
-          <circle cx={terminal.x} cy={terminal.y} r={9.5} fill="url(#socket-metal)" />
-          <circle cx={terminal.x} cy={terminal.y} r={6} fill="#141e16" stroke="#505b4a" strokeWidth={1.5} />
+          <text x={terminal.x} y={21} textAnchor="middle" fill="#cbd5cc" fontSize={9} letterSpacing={0.8} fontFamily="monospace">{port.label}</text>
+          <circle cx={terminal.x} cy={terminal.y + 2} r={15.5} fill="#0b100e" opacity={0.8} />
+          <path transform={`translate(${terminal.x} ${terminal.y}) rotate(15)`} d="M-7-12H7L14 0 7 12H-7L-14 0Z" fill="url(#socket-metal)" stroke="#89938b" strokeWidth={0.8} />
+          <circle cx={terminal.x} cy={terminal.y} r={11.3} fill="#151d18" stroke="#d5dbca" strokeWidth={1.5} />
+          <circle cx={terminal.x} cy={terminal.y} r={8.7} fill="url(#socket-metal)" />
+          <circle cx={terminal.x} cy={terminal.y} r={6.8} fill="#0c120e" stroke="#777c65" strokeWidth={1.1} />
+          <path d={`M${terminal.x - 6} ${terminal.y - 9}A11 11 0 0 1 ${terminal.x + 7} ${terminal.y - 8}`} fill="none" stroke="#faf3d3" strokeWidth={1.2} />
           {highlighted.has(port.id) && <circle cx={terminal.x} cy={terminal.y} r={17} fill="none" stroke="#c6df8e" strokeWidth={1.2} strokeDasharray="3 3" />}
         </g>
       })}

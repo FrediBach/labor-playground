@@ -19,13 +19,15 @@ Open the URL printed by Vite. No API keys, environment variables, accounts, or b
 1. Select **C1**, then try the **220 nF** preset. CH2 shows the changed filter output.
 2. Choose a part and click a hole, or drag it from the tray. Press **R** to rotate the placement. Drag an existing component to move it. Select a two-lead part and use **Move** beside either pin to change its spacing, with a preview before committing.
 3. Choose **Jumper wire** and click two free terminals. Select a wire to change its color, remove it, or move an endpoint.
-4. Select a scope probe and click a terminal. Use **Capture** or leave **Auto update** enabled. Open **Measurements** below the scope for minimum/maximum voltage, frequency, A/B cursors, and the CH1 − CH2 differential meter.
-5. Use **Monitor** below the scope: choose a channel, then click **Listen** for a one-shot preview or select **Steady loop** for a verified repeating signal. Adjust **Level** while listening. Audio starts muted; **Mute** and circuit edits stop playback.
+4. Click **CH1** or **CH2** on the integrated scope (or select a probe from the tray), then click a terminal. Use **Capture** or leave **Auto update** enabled. The small display shows the current capture; the full scope below the chassis provides adjustable scales and **Measurements**, including A/B cursors and the CH1 − CH2 differential meter.
+5. Use the **Audio / Power** module: choose a channel, then click the **Phones / Listen** jack for a one-shot preview or select **Steady loop** for a verified repeating signal. Turn **Volume** while listening. Audio starts muted; **Mute** and circuit edits stop playback.
 6. Try **Capacitor charge / decay**, **Op-amp gain stage**, or **Envelope shaping** from Examples. Each experiment has a **What to try** guide in the inspector. The gain stage requires both visible supply connections; removing either blocks capture.
 7. Open **DC operating point** below the scope for initial node voltages. Select a component to read its DC current and power in the inspector. **Trigger** frames rising or falling crossings without changing the circuit.
 8. **Export circuit** saves JSON. **Import** restores it, while browser recovery remembers the latest circuit when storage is available.
 
-Drag the frequency knob in a straight line; hold Shift for fine adjustment. Its numeric input and arrow keys edit the same parameter. Potentiometer wiper drags commit as a single undoable action.
+Drag any instrument knob up or right to increase its value; hold Shift for fine adjustment. Numeric inputs and arrow keys edit the same parameter. **Manual Gate** fires the envelope/trigger or latches the held gate, depending on **Type**.
+
+Use **Place** on the lower **Multipurpose Control Board** to add a potentiometer or switch to the breadboard. Wire its pins on the board, then operate its matching front-panel control. The inspector and control board share the same values, and a knob drag commits as one undoable action.
 
 Use **Pan**, Space-drag, or the middle mouse button to move a zoomed board. **Fit breadboard** frames the holes; **All / Fit workbench** includes the source terminals. Ordinary trackpad scrolling works inside the zoomed view. Drag the grip below the scope trace to resize it, or focus the grip and use Up/Down; Enter restores its default height. These view changes do not alter the circuit or undo history.
 
@@ -33,6 +35,7 @@ Keyboard: **W** wire, **V** select, **R** rotate placement, **Escape** cancel, *
 
 ## Included in this build
 
+- A LABOR-inspired birch chassis with black module panels, an integrated capture display, tactile knobs and gate button, metallic patch points, and a cream breadboard. The 30-column virtual board and existing source models remain distinct from the physical hardware.
 - A 30-column breadboard with separate five-hole strips, a center trench, and explicitly split, unpowered rails. Connected-net highlighting and **Show connections** expose its topology. Pan, center-preserving zoom, and separate breadboard/workbench fit actions keep parts reachable.
 - Eight component types: resistor, non-polarized capacitor, polarized electrolytic capacitor, potentiometer, generic silicon diode, generic red LED, switch, and generic dual op-amp. Placement checks every lead; DIP-8 parts straddle the trench in either orientation. Two-lead parts support individual pin movement with 1–8 hole spacings, polarity preservation, previews, keyboard controls, and occupancy checks. Probes attach without occupying holes.
 - Six ordinary editable examples: RC low-pass filter, voltage divider, diode clipper, capacitor charge/decay, op-amp gain stage, and envelope shaping.

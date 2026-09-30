@@ -1,0 +1,81 @@
+.rotary-control.frequency-knob {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 64px;
+  min-width: 0;
+  color: #d8e3e3;
+}
+.rotary-control .knob-ring {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+}
+.knob-ticks { position: absolute; inset: 0; width: 52px; height: 52px; overflow: visible; pointer-events: none; }
+.knob-ticks path { fill: none; stroke: #c0d0d3; stroke-width: 1; stroke-linecap: round; }
+.rotary-control .knob-face {
+  position: relative;
+  width: 35px;
+  height: 35px;
+  border-radius: 50%;
+  border: 1px solid #0b0d0e;
+  background: radial-gradient(ellipse at 34% 23%, #484c4e 0, #303437 30%, #242729 57%, #181b1c 77%, #34383b 81%, #131516 90%);
+  box-shadow: 2px 5px 5px #000a, inset 0 1px 1px #797c7e66, 0 0 0 1px #4a4c4f66;
+  pointer-events: none;
+}
+.rotary-control .knob-face i { position: absolute; top: 3px; left: 15px; width: 3px; height: 11px; border-radius: 1px; background: #e5e5dc; box-shadow: 0 0 1px #fff6; }
+.rotary-control .knob-interaction { position: absolute; inset: 0; width: 52px; height: 52px; margin: 0; padding: 0; border: 0; opacity: 0; cursor: ns-resize; touch-action: none; }
+.rotary-control .knob-ring:has(.knob-interaction:focus-visible) { outline: 2px solid #d3e9ed; outline-offset: 2px; }
+.rotary-control .knob-number { display: flex; align-items: center; justify-content: center; gap: 3px; width: 100%; height: 21px; margin: 4px 0 0; color: #b5c5c8; font: 9px monospace; white-space: nowrap; }
+.rotary-control .knob-number input { width: 40px; min-width: 0; height: 21px; margin: 0; padding: 2px; border: 1px solid #4b555966; border-radius: 2px; background: #10141688; color: #e1e6e4; font: inherit; text-align: right; appearance: textfield; }
+.rotary-control .knob-number input:focus-visible { outline: 1px solid #d3e9ed; outline-offset: 1px; border-color: #d3e9ed; }
+.rotary-control .knob-number input::-webkit-inner-spin-button { -webkit-appearance: none; }
+.rotary-control.control-disabled { opacity: .35; }
+.rotary-control.control-disabled .knob-interaction { cursor: default; }
+
+.hardware-envelope.envelope-controls {
+  display: grid;
+  grid-template-columns: 82px 64px minmax(78px, 1fr);
+  align-items: start;
+  gap: 7px 18px;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.hardware-envelope .instrument-label { display: block; margin: 0 0 5px; color: #c5d5d8; font: 8px monospace; letter-spacing: .55px; white-space: nowrap; }
+.hardware-envelope .manual-gate-control { display: flex; flex-direction: column; align-items: center; }
+.hardware-envelope .envelope-decay-control { display: flex; flex-direction: column; align-items: center; }
+.hardware-envelope .gate-button, .hardware-envelope .fire-button {
+  position: relative;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  width: 65px;
+  height: 61px;
+  padding: 0 3px 9px;
+  border: 5px solid #68716f;
+  border-radius: 6px;
+  background: linear-gradient(135deg, #f4f5ef, #d6d9d3 68%, #bfc5be);
+  box-shadow: inset 0 1px 2px #fff, inset -1px -2px 1px #9baba066, 1px 3px 4px #000a, 0 0 0 1px #b3bcb266;
+  color: #626a65;
+  font: 7px monospace;
+  letter-spacing: .25px;
+}
+.hardware-envelope .gate-button i, .hardware-envelope .fire-button i { position: absolute; top: 4px; left: calc(50% - 3px); width: 6px; height: 10px; background: #a4aaa2; border-top: 4px solid #d4d8d0; box-shadow: 0 0 1px #5a625f; }
+.hardware-envelope .gate-button[aria-pressed=true] i { background: #ff5332; border-color: #ff9c7b; box-shadow: 0 0 6px #ff532c99; }
+.hardware-envelope .gate-button[aria-pressed=true], .hardware-envelope .fire-button:active { background: #d0d5cd; box-shadow: inset 0 2px 4px #7b857866, 0 1px 1px #000a; color: #3c473f; }
+.hardware-envelope .gate-button:focus-visible, .hardware-envelope .fire-button:focus-visible { outline: 2px solid #d3e9ed; outline-offset: 3px; }
+.hardware-envelope .envelope-type-control { padding-top: 0; }
+.hardware-envelope .envelope-type-control select { width: 100%; min-width: 0; margin-top: 12px; padding: 5px 3px; border: 1px solid #5d686b; border-radius: 2px; background: #1b2022; color: #d8e2e1; font: 9px monospace; }
+.hardware-envelope .envelope-wave { display: block; color: #acbdc1; margin-top: 6px; font: 12px monospace; text-align: center; }
+.hardware-envelope .source-caption { grid-column: 1 / -1; margin: 0; color: #9bafb4; font: 7px monospace; letter-spacing: .25px; }
+@media(max-width: 480px) {
+  .hardware-envelope.envelope-controls { grid-template-columns: 78px 64px minmax(72px, 1fr); gap: 7px 12px; }
+}
