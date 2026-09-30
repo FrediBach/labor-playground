@@ -21,7 +21,7 @@ export default function PicoPanel(props: Props) {
     const model = monaco.editor.getModel(MAIN_URI) ?? monaco.editor.createModel(latest.current.source, 'python', MAIN_URI)
     appliedSourceSession.current = latest.current.sourceSession
     if (model.getValue() !== latest.current.source) model.setValue(latest.current.source)
-    const instance = monaco.editor.create(container.current!, { model, theme: 'vs-dark', editContext: false, automaticLayout: true, minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, ariaLabel: 'Pico main.py editor' })
+    const instance = monaco.editor.create(container.current!, { model, theme: 'vs-dark', fixedOverflowWidgets: true, editContext: false, automaticLayout: true, minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, ariaLabel: 'Pico main.py editor' })
     editor.current = instance
     disposables.push(instance, model.onDidChangeContent(() => {
       const source = model.getValue()

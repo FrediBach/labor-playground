@@ -1,4 +1,27 @@
 import { expect, test } from '@playwright/test'
+test('Monaco hover can extend above the editor without being clipped', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Load example').selectOption('pico-led')
+  await expect(page.getByText('IntelliSense ready', { exact: true })).toBeVisible({ timeout: 45000 })
+  await page.locator('.pico-editor').scrollIntoViewIfNeeded()
+  const editor = page.getByRole('textbox', { name: 'Pico main.py editor' })
+  await editor.focus()
+  await page.keyboard.press('Control+Home')
+  for (let line = 0; line < 3; line++) await page.keyboard.press('ArrowDown')
+  await page.keyboard.press('Home')
+  await page.keyboard.press('ArrowRight')
+  await page.keyboard.press('Control+k')
+  await page.keyboard.press('Control+i')
+  const hover = page.locator('.monaco-hover').filter({ hasText: 'print' }).first()
+  await expect(hover).toBeVisible()
+  await expect.poll(() => hover.evaluate(element => {
+    const rect = element.getBoundingClientRect()
+    const editorTop = document.querySelector('.pico-editor')!.getBoundingClientRect().top
+    const hit = document.elementFromPoint(rect.left + rect.width / 2, rect.top + 8)
+    return rect.top < editorTop && !!hit && element.contains(hit)
+  })).toBe(true)
+})
+
 test('Pico PWM workflow, local assets, keyboard focus, stale edits and persistence', async ({ page, context }, testInfo) => {
   test.setTimeout(90_000)
   const external: string[] = [], errors: string[] = []
