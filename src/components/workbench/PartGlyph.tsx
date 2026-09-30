@@ -29,7 +29,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       y: index < rowPins ? -30 : 30,
     }))
     const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
-    const inscription = kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : 'DUAL OP AMP'
+    const inscription = kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
     return <g>
       {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
@@ -46,7 +46,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={0.4}>{inscription}</text>
       {leads.map((pin, index) => <g key={index} pointerEvents="none">
         <text x={pin.x} y={pin.y < 0 ? -25 : 36} textAnchor="middle" fill="#53604f" fontFamily="monospace" fontSize={6.5}>{index + 1}</text>
-        <text x={pin.x} y={pin.y < 0 ? -10 : 15} textAnchor="middle" fill="#bac4af" fontFamily="monospace" fontSize={5.4}>{labels[index]}</text>
+        <text x={pin.x} y={pin.y < 0 ? -10 : 15} textAnchor="middle" fill="#bac4af" fontFamily="monospace" fontSize={Math.min(5.4, 35 / labels[index].length)}>{labels[index]}</text>
       </g>)}
     </g>
   }

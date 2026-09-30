@@ -6,8 +6,9 @@ import { picoExamples } from './pico/examples.ts'
 import { activeExamples } from './active-examples.ts'
 import { icExamples } from './ic-examples.ts'
 import { timer555Lines } from './timer555.ts'
+import { lm13700Lines } from './lm13700.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700'
 
 export interface Part {
   id: string
@@ -68,7 +69,7 @@ export interface Terminal {
 }
 
 export interface PartDefinition {
-  package?: 'DIP-8' | 'DIP-14'
+  package?: 'DIP-8' | 'DIP-14' | 'DIP-16'
   supplyHint?: string
   label: string
   unit: string
@@ -157,9 +158,9 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     package: 'DIP-8',
     supplyHint: 'Connect pin 8 to the positive supply and pin 4 to the negative supply. Both amplifiers share these rails.',
     pinNames: ['OUT A', 'IN− A', 'IN+ A', 'V−', 'IN+ B', 'IN− B', 'OUT B', 'V+'],
-    label: 'Dual op-amp', unit: '', defaultValue: 1, min: 1, max: 1,
-    description: 'Two feedback amplifiers in a DIP-8 package. Wire both visible supply pins and give every input a DC return.',
-    model: 'Generic educational dual op-amp: gain 100,000, 100 MΩ differential input resistance and 50 Ω output resistance. Outputs clip 1 V inside the connected supply rails; more than 2 V rail separation is required. No bandwidth, slew rate, input common-mode limit, supply-current, noise or damage model. Both halves require input connections. Not a calibrated manufacturer device.',
+    label: 'TL072-style dual op-amp', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Two feedback amplifiers with the TL072 DIP-8 pinout. Build buffers, mixers, and active filters on shared supply rails.',
+    model: 'Educational dual op-amp with the TL072 pinout, not a manufacturer-calibrated TL072 model. Gain 100,000, 100 MΩ differential input resistance and 50 Ω output resistance. Outputs clip 1 V inside the connected supply rails; more than 2 V rail separation is required. No bandwidth, slew rate, input common-mode limit, supply-current, noise or damage model. Both halves require input connections.',
   },
 
   quadopamp: {
@@ -177,6 +178,14 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     label: '555 timer', unit: '', defaultValue: 1, min: 1, max: 1,
     description: 'An eight-pin timer for clocks, gate pulses, and oscillators. External resistors and a capacitor set its timing.',
     model: 'Educational bipolar 555 approximation with a three-5 kΩ CTRL divider and stateful latch. Nominal thresholds are 1/3 and 2/3 of VCC; CTRL shifts both. RESET below 0.7 V overrides TRIG, which overrides THRESH. Supply 4.5–16 V; output resistance 50 Ω, high target VCC−1.2 V, low target 0.1 V; discharge 10 Ω on / 1 GΩ off. A 1 µs power-on reset initializes every capture, so DC analysis shows reset. No calibrated manufacturer timing, supply spikes, tolerances, thermal, or damage model.',
+  },
+  lm13700: {
+    package: 'DIP-16',
+    supplyHint: 'Connect pin 11 to V+ and pin 6 to V−, usually ±12 V. Feed IABC through a resistor to control gain. Feed diode-bias pins through resistors or leave them open. Both OTA inputs need DC returns. Buffers need an external pull-down to V−; unused buffer pins may stay open.',
+    pinNames: ['IABC A', 'DIODE A', 'IN+ A', 'IN− A', 'OUT A', 'V−', 'BUF IN A', 'BUF OUT A', 'BUF OUT B', 'BUF IN B', 'V+', 'OUT B', 'IN− B', 'IN+ B', 'DIODE B', 'IABC B'],
+    label: 'LM13700-style dual OTA', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Two current-controlled transconductance amplifiers for VCAs and filters. OUT supplies current; add a load resistor or a current-to-voltage amplifier to obtain a voltage.',
+    model: 'Educational LM13700 approximation with the DIP-16 pinout. Bias current controls each OTA’s transconductance and maximum output current. Includes differential-input saturation, output compliance, linearizing diodes and sourcing-only buffers. Supply 9.5–32 V total. Not a manufacturer-calibrated model; bandwidth, noise, offset, temperature drift and damage are not modeled.',
   },
 }
 
@@ -542,6 +551,89 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
   }
   traceReferences()
+  const externalReferences = new Set(referenced)
+  const loadEdges = new Map([...dcEdges].map(([node, neighbors]) => [node, new Set(neighbors)]))
+  for (const part of doc.parts.filter(part => part.kind === 'lm13700')) {
+    const nodes = part.pins.map(pin => nodeByTerminal[pin])
+    const negative = nodes[5]
+    const positive = nodes[10]
+    let powered = true
+    for (const index of [5, 10]) {
+      if (!externalReferences.has(nodes[index])) {
+        diagnostics.push({ severity: 'error', message: `${part.id} ${PARTS.lm13700.pinNames[index]} (pin ${index + 1}) has no connected supply. Wire V+ and V− to referenced DC supplies.`, partId: part.id })
+        powered = false
+      }
+    }
+    if (positive === negative) {
+      diagnostics.push({ severity: 'error', message: `${part.id} supply pins are on the same net. The LM13700 model needs 9.5–32 V from V+ to V−.`, partId: part.id })
+      powered = false
+    } else if (fixedVoltages.has(positive) && fixedVoltages.has(negative)) {
+      const span = fixedVoltages.get(positive)! - fixedVoltages.get(negative)!
+      if (span < 9.5 || span > 32) {
+        diagnostics.push({ severity: 'error', message: `${part.id} supply is ${span} V. The LM13700 model needs 9.5–32 V from V+ to V−.`, partId: part.id })
+        powered = false
+      }
+    } else if (powered) {
+      diagnostics.push({ severity: 'warning', message: `${part.id} supply voltage depends on the circuit. Keep V+ 9.5–32 V above V− for the LM13700 model.`, partId: part.id })
+    }
+    for (const index of [0, 15]) {
+      if (fixedVoltages.has(nodes[index]) && fixedVoltages.has(negative) && fixedVoltages.get(nodes[index])! > fixedVoltages.get(negative)!) {
+        diagnostics.push({ severity: 'error', message: `${part.id} ${PARTS.lm13700.pinNames[index]} (pin ${index + 1}) is directly connected to a supply. Feed bias current through a resistor; connect an unused IABC to V− or leave it open.`, partId: part.id })
+      }
+    }
+    for (const [diode, plus, minus] of [[1, 2, 3], [14, 13, 12]]) {
+      const diodeVoltage = fixedVoltages.get(nodes[diode])
+      if (diodeVoltage !== undefined && [plus, minus].some(index => {
+        const inputVoltage = fixedVoltages.get(nodes[index])
+        return inputVoltage !== undefined && diodeVoltage - inputVoltage > 0.7
+      })) {
+        diagnostics.push({ severity: 'error', message: `${part.id} ${PARTS.lm13700.pinNames[diode]} (pin ${diode + 1}) is directly forward-biased by a supply. Feed diode-bias current through a resistor or leave the pin open.`, partId: part.id })
+      }
+    }
+    if (powered) {
+      // Bias junctions and finite OTA output resistance return to the supplies.
+      // Buffer transistor junctions also allow unused buffer pins to stay open.
+      // Never use these paths to hide a missing differential-input return.
+      for (const index of [0, 4, 11, 15]) addEdge(nodes[index], negative)
+      for (const index of [6, 7, 8, 9]) addEdge(nodes[index], positive)
+      for (const index of [7, 8]) {
+        const connected = doc.wires.some(wire => nodes[index] === nodeByTerminal[wire.from] || nodes[index] === nodeByTerminal[wire.to])
+          || doc.parts.some(other => other !== part && other.pins.some(pin => nodes[index] === nodeByTerminal[pin]))
+          || Object.values(doc.probes).some(pin => pin !== null && nodes[index] === nodeByTerminal[pin])
+        const inputVoltage = fixedVoltages.get(nodes[index === 7 ? 6 : 9])
+        const visited = new Set<string>()
+        const queue = [nodes[index]]
+        let hasPullDown = false
+        while (queue.length) {
+          const node = queue.pop()!
+          if (visited.has(node)) continue
+          visited.add(node)
+          const loadVoltage = fixedVoltages.get(node)
+          if (node === negative || (inputVoltage !== undefined && loadVoltage !== undefined && loadVoltage < inputVoltage - 1.4)) {
+            hasPullDown = true
+            break
+          }
+          // A path through V+ is a pull-up, even if another rail load eventually
+          // leads to ground. Stop at every source rather than traversing it.
+          if (node === positive || fixedVoltages.has(node)) continue
+          for (const next of loadEdges.get(node) ?? []) queue.push(next)
+        }
+        if (connected && !hasPullDown) {
+          diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS.lm13700.pinNames[index]} (pin ${index + 1}) needs an external pull-down/load to V− for its sourcing-only buffer.`, partId: part.id })
+        }
+      }
+    }
+  }
+  traceReferences()
+  for (const part of doc.parts.filter(part => part.kind === 'lm13700')) {
+    const nodes = part.pins.map(pin => nodeByTerminal[pin])
+    // Linearizing diodes may be left open. They reference the diode-bias pin
+    // through an already-connected input, without validating a floating input.
+    for (const [diode, plus, minus] of [[1, 2, 3], [14, 13, 12]]) {
+      for (const input of [plus, minus]) if (referenced.has(nodes[input])) addEdge(nodes[diode], nodes[input])
+    }
+  }
+  traceReferences()
   const warnedFloating = new Set<string>()
   for (const part of doc.parts) {
     for (const [index, pin] of part.pins.entries()) {
@@ -550,7 +642,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
         const input = amplifierPinouts[part.kind]?.sections.some(([, minus, plus]) => index === minus || index === plus)
         diagnostics.push({ severity: 'error', message: input
           ? `${part.id} ${PARTS[part.kind].pinNames[index]} (pin ${index + 1}) at ${pin} is floating. Connect an external DC return; wire unused amplifiers as grounded followers.`
-          : `${part.id}${part.kind === 'timer555' ? ` ${PARTS.timer555.pinNames[index]} (pin ${index + 1})` : ''} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
+          : `${part.id}${PARTS[part.kind].package ? ` ${PARTS[part.kind].pinNames[index]} (pin ${index + 1})` : ''} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
         warnedFloating.add(node)
       }
     }
@@ -598,8 +690,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     lines.push(`VEG eg_internal 0 EXP(0 5 0.001 1e-7 0.001001 ${spiceNumber(envelope.decayMs / 1000)})`)
   }
   lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
-  // Fixed templates emit at most 12 devices / 4 internal nodes per part
-  // (quad op-amp); the 30-part limit bounds expansion to 360 devices / 120 nodes.
+  // Fixed templates emit at most 23 devices / 4 internal nodes per part
+  // (LM13700); the 30-part limit bounds expansion to 690 devices / 120 nodes.
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
     const safeId = spiceDeviceId(part)
@@ -623,6 +715,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       lines.push(`RP_${safeId}_cw ${b} ${c} ${spiceNumber(Math.max(1, (1 - position) * part.value))}`)
     }
     if (part.kind === 'timer555') lines.push(...timer555Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    if (part.kind === 'lm13700') lines.push(...lm13700Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
     const layout = amplifierPinouts[part.kind]
     if (layout) {
       const nodes = part.pins.map(pin => nodeByTerminal[pin])
@@ -669,6 +762,7 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'opamp') return 'Dual · DIP-8'
   if (kind === 'quadopamp') return 'Quad · DIP-14'
   if (kind === 'timer555') return 'Timer · DIP-8'
+  if (kind === 'lm13700') return 'Dual OTA · DIP-16'
   if (kind === 'switch') return value === 1 ? 'Closed' : 'Open'
   const prefixes: [number, string][] = [[1e6, 'M'], [1e3, 'k'], [1, ''], [1e-3, 'm'], [1e-6, 'µ'], [1e-9, 'n'], [1e-12, 'p']]
   const [scale, prefix] = prefixes.find(([scale]) => Math.abs(value) >= scale * (1 - 1e-12)) ?? [1, '']

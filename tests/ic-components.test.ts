@@ -36,10 +36,11 @@ function crossings(time: number[], values: number[], level: number, rising: bool
   return result
 }
 
-test('555 and quad op-amp footprints preserve physical pin numbering across supported rotations and imports', () => {
+test('IC footprints preserve physical pin numbering across supported rotations and imports', () => {
   assert.deepEqual(PARTS.timer555.pinNames, ['GND', 'TRIG', 'OUT', 'RESET', 'CTRL', 'THRESH', 'DISCH', 'VCC'])
   assert.deepEqual(PARTS.quadopamp.pinNames, ['OUT A', 'IN− A', 'IN+ A', 'V+', 'IN+ B', 'IN− B', 'OUT B', 'OUT C', 'IN− C', 'IN+ C', 'V−', 'IN+ D', 'IN− D', 'OUT D'])
-  for (const [kind, half] of [['timer555', 4], ['quadopamp', 7]] as const) {
+  assert.deepEqual(PARTS.lm13700.pinNames, ['IABC A', 'DIODE A', 'IN+ A', 'IN− A', 'OUT A', 'V−', 'BUF IN A', 'BUF OUT A', 'BUF OUT B', 'BUF IN B', 'V+', 'OUT B', 'IN− B', 'IN+ B', 'DIODE B', 'IABC B'])
+  for (const [kind, half] of [['timer555', 4], ['quadopamp', 7], ['lm13700', 8]] as const) {
     const standard = Array.from({ length: half }, (_, index) => `e${11 + index}`).concat(Array.from({ length: half }, (_, index) => `f${10 + half - index}`))
     const rotated = standard.slice(half).concat(standard.slice(0, half))
     assert.deepEqual(getPlacement(kind, 'e11'), standard)
@@ -75,6 +76,9 @@ test('IC examples fit the editable board with explicit supplies and physical com
     if (ic.kind === 'quadopamp') {
       assert.equal(nodes[ic.pins[3]], nodes.vplus, 'TL074 pin 4 is positive supply')
       assert.equal(nodes[ic.pins[10]], nodes.vminus, 'TL074 pin 11 is negative supply')
+    } else if (ic.kind === 'lm13700') {
+      assert.equal(nodes[ic.pins[5]], nodes.vminus, 'LM13700 pin 6 is negative supply')
+      assert.equal(nodes[ic.pins[10]], nodes.vplus, 'LM13700 pin 11 is positive supply')
     } else {
       assert.equal(nodes[ic.pins[0]], '0', '555 pin 1 is GND')
       assert.equal(nodes[ic.pins[7]], nodes[id === '555-astable' ? 'vplus' : 'cv'], '555 pin 8 is VCC')
@@ -123,6 +127,51 @@ test('555 supplies and reset are explicit while the internal CTRL divider may pr
   const openControl = example('555-astable')
   openControl.parts = openControl.parts.filter((part) => part.id !== 'C2')
   assert.deepEqual(compileCircuit(openControl).diagnostics, [])
+})
+
+test('LM13700 requires external supplies, input returns, and resistive bias feeds', () => {
+  for (const wireId of ['W6', 'W7']) {
+    const document = example('lm13700-vca')
+    document.wires = document.wires.filter(wire => wire.id !== wireId)
+    assert.ok(compileCircuit(document).diagnostics.some(item => item.severity === 'error' && /no connected supply/.test(item.message)))
+  }
+  for (const [plus, minus] of [['vminus', 'vplus'], ['cv', 'gnd'], ['vplus', 'vplus']]) {
+    const document = example('lm13700-vca')
+    if (plus === 'cv') document.wires = document.wires.filter(wire => !['W2', 'W5'].includes(wire.id))
+    document.wires.find(wire => wire.id === 'W3')!.from = plus
+    document.wires.find(wire => wire.id === 'W4')!.from = plus === minus ? 'tp12' : minus
+    assert.ok(compileCircuit(document).diagnostics.some(item => item.severity === 'error' && /9\.5–32 V/.test(item.message)))
+  }
+  for (const [remove, label] of [['W11', 'IN− A'], ['W16', 'IN− B']]) {
+    const document = example('lm13700-vca')
+    document.wires = document.wires.filter(wire => wire.id !== remove)
+    assert.ok(compileCircuit(document).diagnostics.some(item => item.severity === 'error' && item.message.includes(label) && /no DC path/.test(item.message)))
+  }
+  const floatingPositive = example('lm13700-vca')
+  floatingPositive.parts = floatingPositive.parts.filter(part => !['R1', 'R2'].includes(part.id))
+  assert.ok(compileCircuit(floatingPositive).diagnostics.some(item => /IN\+ A.*no DC path/.test(item.message)))
+  const directBias = example('lm13700-vca')
+  directBias.parts = directBias.parts.filter(part => part.id !== 'R3')
+  directBias.wires.push({ id: 'W18', from: 'c3', to: 'b11', color: '#ffffff' })
+  assert.ok(compileCircuit(directBias).diagnostics.some(item => item.severity === 'error' && /IABC A.*through a resistor/.test(item.message)))
+  for (const [pin, label] of [['a12', 'DIODE A'], ['h12', 'DIODE B']]) {
+    const directDiodeBias = example('lm13700-vca')
+    directDiodeBias.wires.push({ id: 'W18', from: 'tp12', to: pin, color: '#ffffff' })
+    assert.ok(compileCircuit(directDiodeBias).diagnostics.some(item => item.severity === 'error' && item.message.includes(label) && /through a resistor/.test(item.message)))
+  }
+})
+
+test('LM13700 optional pins may stay open and a used buffer needs an external load', () => {
+  const document = example('lm13700-vca')
+  document.wires = document.wires.filter(wire => !['W13', 'W14', 'W17'].includes(wire.id))
+  assert.deepEqual(compileCircuit(document).diagnostics, [], 'Unused bias, diodes, outputs, and buffers may stay open')
+  document.probes.CH2 = 'b18'
+  assert.ok(compileCircuit(document).diagnostics.some(item => item.severity === 'warning' && /BUF OUT A.*pull-down/.test(item.message)))
+  document.parts.push({ id: 'R5', kind: 'resistor', value: 10_000, pins: ['b18', 'b22'] })
+  document.wires.push({ id: 'W18', from: 'bn13', to: 'a22', color: '#ffffff' })
+  assert.deepEqual(compileCircuit(document).diagnostics, [])
+  document.wires.find(wire => wire.id === 'W18')!.from = 'tp12'
+  assert.ok(compileCircuit(document).diagnostics.some(item => item.severity === 'warning' && /BUF OUT A.*pull-down/.test(item.message)), 'A pull-up to V+ is not a buffer pull-down')
 })
 
 test('real ngspice: editable 555 astable frequency and duty cycle follow both external timing resistors and capacitor', { timeout: 15_000 }, async () => {

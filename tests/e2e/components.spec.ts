@@ -112,7 +112,7 @@ test('DIP-8 placement and movement preserve every pin and probes can reach the s
   await page.goto('/')
   await page.getByRole('button', { name: 'Clear board', exact: true }).click()
   const library = page.getByRole('complementary', { name: 'Parts library' })
-  await library.getByRole('button', { name: /Dual op-amp/ }).click()
+  await library.getByRole('button', { name: /TL072-style dual op-amp/ }).click()
   await terminal(page, 'a6').click()
   await expect(page.getByText('0 / 30 parts placed', { exact: true })).toBeVisible()
   await terminal(page, 'e6').click()

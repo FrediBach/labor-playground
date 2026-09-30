@@ -10,7 +10,7 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'passive', label: 'Passive', kinds: ['resistor', 'capacitor', 'electrolytic', 'inductor'] },
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
   resistor: 'resistance ohm', capacitor: 'ceramic non-polarized capacitance farad',
@@ -19,6 +19,7 @@ const keywords: Partial<Record<ComponentKind, string>> = {
   led: 'light emitting red', npn: 'bjt bipolar collector base emitter', pnp: 'bjt bipolar collector base emitter',
   potentiometer: 'pot variable resistance wiper', switch: 'spst on off', opamp: 'op amp operational amplifier dual dip8 tl072',
   quadopamp: 'op amp operational amplifier quad dip14 tl074 buffer mixer filter', timer555: '555 ne555 timer clock oscillator pulse astable monostable dip8',
+  lm13700: 'ota operational transconductance amplifier dual dip16 vca voltage controlled amplifier filter buffer bias',
 }
 
 export function PartsLibrary({ tool, onToolChange, onPlace, hasPico, onAddPico, wireColor, wireColors, onWireColorChange, partCount, onClear, onCollapse }: {

@@ -6,7 +6,7 @@ test('synth examples load by difficulty, capture, and expose hardware build note
   await page.goto('/')
   const select = page.getByRole('combobox', { name: 'Load example' })
   await expect(select.locator('optgroup')).toHaveCount(3)
-  await expect(select.locator('option')).toHaveCount(20)
+  await expect(select.locator('option')).toHaveCount(21)
   for (const id of ['cv-attenuator', 'ac-coupling', 'gate-to-trigger', 'envelope-follower', 'cv-mixer', 'attenuverter', 'sallen-key-filter']) {
     await select.selectOption(id)
     await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
@@ -20,7 +20,7 @@ test('synth examples load by difficulty, capture, and expose hardware build note
   await expect(lesson).toContainText('4.7')
   await lesson.getByText('Build on EDU LABOR', { exact: true }).click()
   await expect(lesson).toContainText('TL072')
-  await expect(lesson.locator('.experiment-parts')).toContainText('Dual op-amp')
+  await expect(lesson.locator('.experiment-parts')).toContainText('TL072-style dual op-amp')
   await expect(lesson.getByRole('link', { name: 'LABOR manual' })).toHaveAttribute('href', /ericasynths/)
   await page.screenshot({ path: testInfo.outputPath('sallen-key-example.png'), fullPage: true })
   await page.setViewportSize({ width: 390, height: 844 })
