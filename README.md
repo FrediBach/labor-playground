@@ -4,6 +4,8 @@ A local circuit workbench built with React, TypeScript, Vite, SVG, and shadcn/ui
 
 This build implements the editable workbench, starter component library, and thirteen examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
 
+Planned extension: [Raspberry Pi Pico with MicroPython and Monaco IntelliSense](./docs/pico-implementation-plan.md). The plan covers browser emulation, editor integration, GPIO/PWM circuit captures, and a later analog-feedback milestone.
+
 ## Try it
 
 Use Node.js 24 (see `.nvmrc`) and npm:
