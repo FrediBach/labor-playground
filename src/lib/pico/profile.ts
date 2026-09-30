@@ -1,3 +1,5 @@
+// Center the dock between the breadboard panel edge and the workbench edge.
+export const PICO_DOCK_CENTER_X = (917 + 1110) / 2
 export const PICO_PROFILE = 'rp2-pico-1.20.0-v1'
 export const PROJECT_LIMITS = { bytes: 200_000, sourceBytes: 32_768 } as const
 export interface PicoConfiguration { board: 'pico'; profile: typeof PICO_PROFILE; source: string; captureMs: 100 }
@@ -19,7 +21,7 @@ export const PICO_PINS = labels.map((label, index) => ({
   gpio: label.startsWith('GP') ? Number(label.slice(2)) : null,
   supported: label.startsWith('GP') || ['GND', 'AGND', '3V3'].includes(label),
   group: label === 'GND' || label === 'AGND' ? 'pico-ground' : `pico:${index + 1}`,
-  x: index < 20 ? 935 : 1075, y: 75 + (index < 20 ? index : 39 - index) * 22,
+  x: PICO_DOCK_CENTER_X + (index < 20 ? -70 : 70), y: 75 + (index < 20 ? index : 39 - index) * 22,
 }))
 export const picoGround = 'pico:3'
 export function validatePico(raw: unknown): PicoConfiguration {

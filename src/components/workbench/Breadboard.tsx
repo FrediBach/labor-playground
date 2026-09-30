@@ -1,4 +1,4 @@
-import { PICO_PINS } from '@/lib/pico/profile'
+import { PICO_DOCK_CENTER_X, PICO_PINS } from '@/lib/pico/profile'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import {
@@ -473,11 +473,11 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     </g>
 
     {document.pico && <g aria-label="Original Raspberry Pi Pico dock" pointerEvents="none">
-      <rect x={922} y={52} width={166} height={453} rx={7} fill="#24664b" stroke="#9bbca0" strokeWidth={2} />
-      <rect x={984} y={43} width={42} height={32} rx={3} fill="#afbab3" stroke="#293d31" />
-      <rect x={983} y={240} width={43} height={43} fill="#1d2924" transform="rotate(45 1005 261)" />
-      <text x={1005} y={325} fill="#e7efe4" textAnchor="middle" fontSize={10} transform="rotate(-90 1005 325)">RASPBERRY PI PICO</text>
-      <text x={1005} y={525} fill="#b9cbbf" textAnchor="middle" fontSize={9}>USB POWER · 3.3 V · OUTPUTS ONLY</text>
+      <rect x={PICO_DOCK_CENTER_X - 83} y={52} width={166} height={453} rx={7} fill="#24664b" stroke="#9bbca0" strokeWidth={2} />
+      <rect x={PICO_DOCK_CENTER_X - 21} y={43} width={42} height={32} rx={3} fill="#afbab3" stroke="#293d31" />
+      <rect x={PICO_DOCK_CENTER_X - 22} y={240} width={43} height={43} fill="#1d2924" transform={`rotate(45 ${PICO_DOCK_CENTER_X} 261)`} />
+      <text x={PICO_DOCK_CENTER_X} y={325} fill="#e7efe4" textAnchor="middle" fontSize={10} transform={`rotate(-90 ${PICO_DOCK_CENTER_X} 325)`}>RASPBERRY PI PICO</text>
+      <text x={PICO_DOCK_CENTER_X} y={525} fill="#b9cbbf" textAnchor="middle" fontSize={9}>USB POWER · 3.3 V · OUTPUTS ONLY</text>
       {PICO_PINS.map(pin => <g key={pin.id} opacity={pin.supported ? 1 : .45}>
         <rect x={pin.x - 6} y={pin.y - 6} width={12} height={12} rx={2} fill="#c6b873" />
         <circle cx={pin.x} cy={pin.y} r={3} fill="#1b3529" />
