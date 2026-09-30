@@ -11,12 +11,12 @@ export function clampBoardZoom(value: number): number {
   return Number.isFinite(value) ? Math.max(BOARD_ZOOM_MIN, Math.min(BOARD_ZOOM_MAX, value)) : 1
 }
 
-export function boardViewportLayout(viewport: ViewportSize, zoom: number) {
+export function boardViewportLayout(viewport: ViewportSize, zoom: number, workbenchWidth = WORKBENCH_EXTENT.width as number) {
   const width = Math.max(1, viewport.width)
   const height = Math.max(1, viewport.height)
-  const baseScale = Math.min(width / WORKBENCH_EXTENT.width, height / WORKBENCH_EXTENT.height)
+  const baseScale = Math.min(width / workbenchWidth, height / WORKBENCH_EXTENT.height)
   const scale = baseScale * clampBoardZoom(zoom)
-  const stageWidth = WORKBENCH_EXTENT.width * scale
+  const stageWidth = workbenchWidth * scale
   const stageHeight = WORKBENCH_EXTENT.height * scale
   return {
     width, height, baseScale, scale, stageWidth, stageHeight,
@@ -43,9 +43,9 @@ export function boardViewportScroll(layout: BoardViewportLayout, center: Viewpor
   }
 }
 
-export function boardViewportFit(viewport: ViewportSize, mode: BoardFit) {
-  const bounds = mode === 'breadboard' ? BREADBOARD_EXTENT : WORKBENCH_EXTENT
-  const { baseScale } = boardViewportLayout(viewport, 1)
+export function boardViewportFit(viewport: ViewportSize, mode: BoardFit, workbenchWidth = WORKBENCH_EXTENT.width as number) {
+  const bounds = mode === 'breadboard' ? BREADBOARD_EXTENT : { ...WORKBENCH_EXTENT, width: workbenchWidth }
+  const { baseScale } = boardViewportLayout(viewport, 1, workbenchWidth)
   return {
     zoom: clampBoardZoom(Math.min(viewport.width / bounds.width, viewport.height / bounds.height) / baseScale),
     center: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },

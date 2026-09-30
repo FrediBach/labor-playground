@@ -43,7 +43,7 @@ test('real ngspice: antiparallel generic diodes limit both polarities', { timeou
 })
 
 test('the editable divider, RC, and clipper documents compile to the expected real measurements', { timeout: 15_000 }, async () => {
-  for (const example of examples) {
+  for (const example of examples.filter(example => !example.document.pico)) {
     const document = example.document
     const compiled = compileCircuit(document)
     assert.equal(compiled.diagnostics.filter((diagnostic) => diagnostic.severity === 'error').length, 0)

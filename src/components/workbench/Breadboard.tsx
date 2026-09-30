@@ -1,3 +1,4 @@
+import { PICO_PINS } from '@/lib/pico/profile'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import {
@@ -142,7 +143,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
 
   useEffect(() => {
     const cancel = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape') return
+      if (event.key !== 'Escape' || (event.target instanceof Element && event.target.closest('.pico-panel'))) return
       if (leadPart) {
         event.preventDefault()
         onFinishLeadEdit?.()
@@ -253,7 +254,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     if (!direction) return
     event.preventDefault()
     event.stopPropagation()
-    const candidate = TERMINALS.filter(other => (other.x - terminal.x) * direction.x + (other.y - terminal.y) * direction.y > 0)
+    const candidate = TERMINALS.filter(other => (document.pico || !other.id.startsWith('pico:'))).filter(other => (other.x - terminal.x) * direction.x + (other.y - terminal.y) * direction.y > 0)
       .sort((a, b) => {
         const score = (item: Terminal) => Math.hypot(item.x - terminal.x, item.y - terminal.y) + Math.abs((item.x - terminal.x) * direction.y - (item.y - terminal.y) * direction.x) * 5
         return score(a) - score(b)
@@ -376,7 +377,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
 
   const cursor = tool === 'select' && !wireStart && !leadPart ? 'default' : 'crosshair'
   const wireSource = wireStart ? terminalById[wireStart] : null
-  return <svg ref={svg} className="breadboard-svg" data-fit={zoom === 1} viewBox="0 0 920 550" width={920 * zoom} height={550 * zoom}
+  return <svg ref={svg} className="breadboard-svg" data-fit={zoom === 1} viewBox={`0 0 ${document.pico ? 1110 : 920} 550`} width={(document.pico ? 1110 : 920) * zoom} height={550 * zoom}
     style={{ display: 'block', width: `${zoom * 100}%`, minWidth: 670 * zoom, height: 'auto', flexShrink: 0, userSelect: 'none', touchAction: 'none', cursor }}
     aria-label="Interactive breadboard. Use arrow keys to move between holes; Enter connects or places the selected tool."
     onPointerMove={pointerMove} onPointerUp={pointerUp}
@@ -471,11 +472,25 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       })}
     </g>
 
-    {TERMINALS.map(terminal => <circle key={terminal.id} data-terminal={terminal.id}
+    {document.pico && <g aria-label="Original Raspberry Pi Pico dock" pointerEvents="none">
+      <rect x={922} y={52} width={166} height={453} rx={7} fill="#24664b" stroke="#9bbca0" strokeWidth={2} />
+      <rect x={984} y={43} width={42} height={32} rx={3} fill="#afbab3" stroke="#293d31" />
+      <rect x={983} y={240} width={43} height={43} fill="#1d2924" transform="rotate(45 1005 261)" />
+      <text x={1005} y={325} fill="#e7efe4" textAnchor="middle" fontSize={10} transform="rotate(-90 1005 325)">RASPBERRY PI PICO</text>
+      <text x={1005} y={525} fill="#b9cbbf" textAnchor="middle" fontSize={9}>USB POWER · 3.3 V · OUTPUTS ONLY</text>
+      {PICO_PINS.map(pin => <g key={pin.id} opacity={pin.supported ? 1 : .45}>
+        <rect x={pin.x - 6} y={pin.y - 6} width={12} height={12} rx={2} fill="#c6b873" />
+        <circle cx={pin.x} cy={pin.y} r={3} fill="#1b3529" />
+        <text x={pin.number <= 20 ? pin.x + 10 : pin.x - 10} y={pin.y + 3} textAnchor={pin.number <= 20 ? 'start' : 'end'} fontSize={8} fill="#ecf2e6">{pin.number} {pin.label}</text>
+        <title>{pin.number}: {pin.label}{pin.supported ? '' : ' · unsupported connection'}</title>
+      </g>)}
+    </g>}
+
+    {TERMINALS.filter(terminal => document.pico || !terminal.id.startsWith('pico:')).map(terminal => <circle key={terminal.id} data-terminal={terminal.id}
       ref={element => { if (element) terminalElements.current.set(terminal.id, element); else terminalElements.current.delete(terminal.id) }}
       cx={terminal.x} cy={terminal.y} r={10} fill="transparent" stroke={hoverId === terminal.id ? '#97b652' : 'transparent'} strokeWidth={1.5}
       role="button" tabIndex={terminal.id === focusId ? 0 : -1}
-      aria-label={`${terminal.id.toUpperCase()}${occupied.has(terminal.id) ? ', occupied' : ', available'}`}
+      aria-label={`${terminal.id.startsWith('pico:') ? `Pico pin ${PICO_PINS.find(pin => pin.id === terminal.id)?.number} ${PICO_PINS.find(pin => pin.id === terminal.id)?.label}` : terminal.id.toUpperCase()}${occupied.has(terminal.id) ? ', occupied' : ', available'}`}
       style={{ outline: 'none' }}
       onFocus={() => { setHoverId(terminal.id); setFocusId(terminal.id) }}
       onClick={event => { event.stopPropagation(); if (!suppressClick.current) clickTerminal(terminal) }}

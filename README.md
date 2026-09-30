@@ -2,9 +2,9 @@
 
 A local circuit workbench built with React, TypeScript, Vite, SVG, and shadcn/ui. Start with an editable RC filter, change the capacitor, and see the result from a real ngspice simulation running in a browser worker.
 
-This build implements the editable workbench, starter component library, and thirteen examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
+This build implements the editable workbench, starter component library, Pico programming, and seventeen examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
 
-Planned extension: [Raspberry Pi Pico with MicroPython and Monaco IntelliSense](./docs/pico-implementation-plan.md). The plan covers browser emulation, editor integration, GPIO/PWM circuit captures, and a later analog-feedback milestone.
+The [Pico runtime](./docs/pico-runtime.md) adds local MicroPython execution, Monaco semantic IntelliSense, and GPIO/PWM-to-ngspice captures. Select a Pico example, edit `main.py`, and press **Run · 100 ms**. Circuit-fed inputs, ADC feedback, PIO and multicore are unsupported. The [implementation plan](./docs/pico-implementation-plan.md) records the release scope and later feedback milestone.
 
 ## Try it
 
@@ -47,6 +47,7 @@ Keyboard: **W** wire, **V** select, **R** rotate placement, **Escape** cancel, *
 - An initial DC meter using the separate operating-point solve, including CH1 − CH2 voltage. The inspector shows signed DC currents and absorbed power for resistors, switches, potentiometers, diodes, LEDs, and ideal capacitors. Channel labels highlight their breadboard connections.
 - Deliberate one-shot audio and optional sustained playback of a verified steady region. Loops require at least three matching cycles and phase-aligned boundaries; irregular or one-shot signals cannot loop. Timestamp resampling, periodic filtering, DC removal, gain limiting, and start/stop fades keep monitor processing separate from measurements. Live level changes do not restart playback.
 - Measured reverse-bias warnings for polarized capacitors and explicit missing-supply/input diagnostics for op-amps. Warnings identify the affected part; no destruction animation or hidden repair connection is added.
+- A docked original Pico with 26 GPIO headers, explicit common ground, local firmware/language workers, Run/Stop/Reset, a bounded console, and four editable Pico examples. Source and circuit round-trip in schema-2 projects; legacy schema-1 documents remain supported.
 - Undo/redo, example restore, clear board, validated JSON import/export, and optional browser recovery. No waveform or audio arrays are saved with the circuit.
 
 ## Current boundaries

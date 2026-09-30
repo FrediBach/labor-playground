@@ -1,3 +1,4 @@
+import type { PicoElectricalCheck } from './pico/checks.ts'
 import type { Capture, OperatingPointRequest, ProbeNodes, SimulationRequest, SimulationResponse, VoltageCheck } from './simulation-types.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 
@@ -22,10 +23,10 @@ export class SimulationClient {
 
   get isReady() { return this.ready }
 
-  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest): Promise<Capture> {
+  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest, picoChecks?: PicoElectricalCheck[]): Promise<Capture> {
     this.discardQueued()
     return new Promise((resolve, reject) => {
-      this.pending = { request: { type: 'run', netlist, nodes, revision, voltageChecks, operatingPoint }, resolve, reject, phase }
+      this.pending = { request: { type: 'run', netlist, nodes, revision, voltageChecks, operatingPoint, picoChecks }, resolve, reject, phase }
       phase?.(this.ready ? 'calculating' : 'loading')
       if (!this.worker) this.initialize()
       this.pump()

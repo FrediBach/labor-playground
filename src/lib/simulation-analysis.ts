@@ -1,3 +1,4 @@
+import { checkPicoEnvelope } from './pico/checks.ts'
 import type { Simulation } from 'eecircuit-engine'
 import type { Capture, SimulationRequest } from './simulation-types.ts'
 import { extractCapture, extractOperatingPoint, fatalSimulationMessages, requireAnalysisCompletion, requireCompleteCapture } from './simulation-results.ts'
@@ -33,6 +34,7 @@ export async function runCircuitCapture(engine: Engine, request: SimulationReque
   let operatingPoint: Capture['operatingPoint']
   if (request.operatingPoint) {
     const result = await executeAnalysis(engine, request.operatingPoint.netlist)
+    if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
     operatingPoint = extractOperatingPoint(result, request.operatingPoint.parts, performance.now() - started)
     requireAnalysisCompletion(result, engine.getInfo(), 'operating-point')
     const errors = fatalSimulationMessages(engine.getError(), { analysis: 'operating-point', complete: true })
@@ -40,6 +42,7 @@ export async function runCircuitCapture(engine: Engine, request: SimulationReque
   }
 
   const result = await executeAnalysis(engine, request.netlist)
+  if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
   const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started, request.voltageChecks)
   requireCompleteCapture(capture)
   requireAnalysisCompletion(result, engine.getInfo(), 'transient')

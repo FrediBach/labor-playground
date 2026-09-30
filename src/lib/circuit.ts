@@ -1,4 +1,8 @@
+import { PICO_PINS, PROJECT_LIMITS, picoGround, validatePico, type PicoConfiguration } from './pico/profile.ts'
+import { picoDriverLines } from './pico/electrical.ts'
+import type { PicoTrace } from './pico/runtime.ts'
 import { passiveExamples } from './passive-examples.ts'
+import { picoExamples } from './pico/examples.ts'
 import { activeExamples } from './active-examples.ts'
 
 export type ComponentKind = 'resistor' | 'capacitor' | 'diode' | 'led' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp'
@@ -30,7 +34,8 @@ export interface EnvelopeSettings {
 export const DEFAULT_ENVELOPE: Readonly<EnvelopeSettings> = Object.freeze({ mode: 'envelope', gateHigh: false, decayMs: 20 })
 
 export interface CircuitDocument {
-  schemaVersion: 1
+  schemaVersion: 1 | 2
+  pico?: PicoConfiguration
   boardVersion: 'virtual-1'
   title: string
   /** Omitted in legacy documents: periodic oscillator capture. */
@@ -140,6 +145,7 @@ export const HOLES: Terminal[] = [
 
 export const TERMINALS: Terminal[] = [
   ...HOLES,
+  ...PICO_PINS.filter(pin => pin.supported),
   ...['osc', 'cv', 'gnd', 'vplus', 'vminus'].map((id, index) => ({ id, x: 135 + index * 160, y: 52, group: id })),
   { id: 'eg', x: 855, y: 52, group: 'eg' },
 ]
@@ -215,12 +221,14 @@ function finiteNumber(value: unknown, name: string, min: number, max: number): n
 export function validateDocument(input: unknown): CircuitDocument {
   let serialized: string
   try { serialized = JSON.stringify(input) } catch { throw new Error('The circuit must contain valid JSON data.') }
-  if (!serialized || serialized.length > 100_000) throw new Error('Circuit files must be smaller than 100 kB.')
+  if (!serialized || new TextEncoder().encode(serialized).length > PROJECT_LIMITS.bytes) throw new Error('Project files must be smaller than 200 kB.')
   const raw = object(input, 'Circuit')
-  if (raw.schemaVersion !== 1 || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
+  if (![1, 2].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
   if (typeof raw.title !== 'string' || raw.title.length > 100) throw new Error('Circuit title must contain at most 100 characters.')
   if (!Array.isArray(raw.parts) || raw.parts.length > 30) throw new Error('A circuit may contain up to 30 components.')
   if (!Array.isArray(raw.wires) || raw.wires.length > 120) throw new Error('A circuit may contain up to 120 wires.')
+  if (raw.pico !== undefined && raw.schemaVersion !== 2) throw new Error('Pico projects require schema version 2.')
+  const pico = raw.pico === undefined ? undefined : validatePico(raw.pico)
   const ids = new Set<string>()
   const occupied = new Set<string>()
   const readId = (value: unknown): string => {
@@ -231,6 +239,7 @@ export function validateDocument(input: unknown): CircuitDocument {
   }
   const readTerminal = (value: unknown): string => {
     if (typeof value !== 'string' || !Object.hasOwn(terminalById, value)) throw new Error(`Unknown terminal: ${String(value)}.`)
+    if (value.startsWith('pico:') && !pico) throw new Error('A Pico terminal requires a Pico board.')
     return value
   }
   const occupy = (terminals: string[]) => {
@@ -280,7 +289,8 @@ export function validateDocument(input: unknown): CircuitDocument {
   const probes = object(raw.probes, 'Probes')
   if (raw.stimulus !== undefined && raw.stimulus !== 'periodic' && raw.stimulus !== 'step') throw new Error('Unsupported capture stimulus.')
   return {
-    schemaVersion: 1, boardVersion: 'virtual-1', title: raw.title,
+    schemaVersion: raw.schemaVersion as 1 | 2, boardVersion: 'virtual-1', title: raw.title,
+    ...(pico ? { pico } : {}),
     parts, wires,
     ...(raw.stimulus === undefined ? {} : { stimulus: raw.stimulus as CircuitDocument['stimulus'] }),
     instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'], ...(envelope === undefined ? {} : { envelope }) },
@@ -310,9 +320,10 @@ export function spiceDeviceId(part: Pick<Part, 'id'>): string {
   return part.id.replace(/[^a-zA-Z0-9]/g, (character) => `_${character.charCodeAt(0).toString(16)}`)
 }
 
-export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient'): CompiledCircuit {
-  const diagnostics: Diagnostic[] = []
-  const parent = new Map(TERMINALS.map(({ id }) => [id, id]))
+/** Shared connectivity for wires, Pico grounds, compiler and probing. */
+export function resolveTopology(doc: CircuitDocument) {
+  const terminals = TERMINALS.filter(pin => doc.pico || !pin.id.startsWith('pico:'))
+  const parent = new Map(terminals.map(({ id }) => [id, id]))
   const find = (id: string): string => {
     const next = parent.get(id)
     if (!next || next === id) return id
@@ -325,26 +336,33 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     parent.set(roots[1], roots[0])
   }
   const firstInGroup = new Map<string, string>()
-  for (const terminal of TERMINALS) {
+  for (const terminal of terminals) {
     const first = firstInGroup.get(terminal.group)
     if (first) union(first, terminal.id)
     else firstInGroup.set(terminal.group, terminal.id)
   }
+  for (const wire of doc.wires) union(wire.from, wire.to)
+  const rootToNode = new Map<string, string>([[find('gnd'), '0']])
+  // Root names make output deterministic regardless of wire or component array order.
+  const roots = [...new Set(terminals.map(({ id }) => find(id)))].sort()
+  for (const root of roots) if (!rootToNode.has(root)) rootToNode.set(root, `n${rootToNode.size}`)
+  const nodeByTerminal = Object.fromEntries(terminals.map(({ id }) => [id, rootToNode.get(find(id))!]))
+  const nets: Record<string, string[]> = {}
+  for (const { id } of terminals) (nets[nodeByTerminal[id]] ??= []).push(id)
+  return { nodeByTerminal, nets }
+}
+
+export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace): CompiledCircuit {
+  const diagnostics: Diagnostic[] = []
   let doc: CircuitDocument
   try { doc = validateDocument(document) } catch (error) {
     return { netlist: '', diagnostics: [{ severity: 'error', message: error instanceof Error ? error.message : 'Invalid circuit document.' }], nodeByTerminal: {}, nets: {} }
   }
-  for (const wire of doc.wires) union(wire.from, wire.to)
-  const rootToNode = new Map<string, string>([[find('gnd'), '0']])
-  // Root names make output deterministic regardless of wire or component array order.
-  const roots = [...new Set(TERMINALS.map(({ id }) => find(id)))].sort()
-  for (const root of roots) if (!rootToNode.has(root)) rootToNode.set(root, `n${rootToNode.size}`)
-  const nodeByTerminal = Object.fromEntries(TERMINALS.map(({ id }) => [id, rootToNode.get(find(id))!]))
-  const nets: Record<string, string[]> = {}
-  for (const { id } of TERMINALS) (nets[nodeByTerminal[id]] ??= []).push(id)
+  const { nodeByTerminal, nets } = resolveTopology(doc)
   const usedTerminals = [...doc.parts.flatMap((part) => part.pins), ...doc.wires.flatMap((wire) => [wire.from, wire.to]), ...Object.values(doc.probes).filter((probe): probe is string => probe !== null)]
   const activeNodes = new Set(usedTerminals.map((terminal) => nodeByTerminal[terminal]))
   if (activeNodes.size > 60) diagnostics.push({ severity: 'error', message: 'This workbench supports up to 60 connected circuit nodes. Simplify the circuit before capturing.' })
+  if (doc.pico && nodeByTerminal[picoGround] !== '0') diagnostics.push({ severity: 'error', message: 'Connect a Pico GND pin to workbench GND before capturing.' })
   const idealSources = ['gnd', 'cv', 'vplus', 'vminus']
   for (let a = 0; a < idealSources.length; a++) {
     for (let b = a + 1; b < idealSources.length; b++) {
@@ -361,6 +379,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     dcEdges.get(a)!.add(b)
     dcEdges.get(b)!.add(a)
   }
+  if (doc.pico) for (const pin of PICO_PINS.filter(pin => pin.supported)) addEdge(nodeByTerminal[pin.id], nodeByTerminal[picoGround])
   const fixedVoltages = new Map([
     [nodeByTerminal.gnd, 0], [nodeByTerminal.cv, doc.instruments.cv],
     [nodeByTerminal.vplus, 12], [nodeByTerminal.vminus, -12],
@@ -461,6 +480,10 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     '.model D_SIGNAL D(Is=2.52e-9 N=1.752 Rs=0.568 Cjo=4e-12)',
     '.model D_RED D(Is=1e-20 N=2 Rs=5 Cjo=10e-12)',
   ]
+  if (doc.pico) {
+    try { lines.push(...picoDriverLines(nodeByTerminal, activeNodes, picoTrace, analysis === 'operating-point')) }
+    catch (error) { diagnostics.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid Pico trace.' }) }
+  }
   const envelope = envelopeSettings(doc)
   if (envelope.mode === 'gate') {
     lines.push(`VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
@@ -506,7 +529,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       }
     }
   }
-  const step = spiceNumber(Math.min(1e-5, period / 80))
+  const step = spiceNumber(Math.min(doc.pico ? 5e-6 : 1e-5, period / 80))
   const savedCurrents = analysis === 'operating-point'
     ? [...doc.parts].filter((part) => part.kind === 'diode' || part.kind === 'led').sort((a, b) => a.id.localeCompare(b.id)).map((part) => `@D_${spiceDeviceId(part)}[id]`)
     : []
@@ -631,4 +654,5 @@ export const examples: CircuitExample[] = [
   },
   ...passiveExamples,
   ...activeExamples,
+  ...picoExamples,
 ]

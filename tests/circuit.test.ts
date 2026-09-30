@@ -18,7 +18,7 @@ test('breadboard strips, trench, and split rails have explicit connectivity', ()
 })
 
 test('all bundled examples validate and compile without structural errors', () => {
-  assert.equal(examples.length, 13)
+  assert.equal(examples.length, 17)
   assert.equal(new Set(examples.map(example => example.id)).size, examples.length)
   assert.deepEqual(new Set(examples.map(example => example.level)), new Set(['Basic', 'Intermediate', 'Advanced']))
   for (const example of examples) {
@@ -95,7 +95,7 @@ test('placement rotates, crosses the trench, and rejects outside holes', () => {
 
 test('malformed imports and unbounded values fail before compilation', () => {
   const cases: [string, (doc: any) => void][] = [
-    ['version', (doc) => { doc.schemaVersion = 2 }],
+    ['version', (doc) => { doc.schemaVersion = 3 }],
     ['terminal', (doc) => { doc.parts[0].pins[0] = 'missing' }],
     ['occupancy', (doc) => { doc.wires[0].to = 'a6' }],
     ['duplicate ID', (doc) => { doc.wires[0].id = 'r1' }],
@@ -103,7 +103,7 @@ test('malformed imports and unbounded values fail before compilation', () => {
     ['nonfinite', (doc) => { doc.parts[0].value = Infinity }],
     ['out of range', (doc) => { doc.instruments.frequency = 100_000 }],
     ['netlist injection', (doc) => { doc.parts[0].id = 'R1\n.control' }],
-    ['oversize', (doc) => { doc.extra = 'x'.repeat(100_000) }],
+    ['oversize', (doc) => { doc.extra = 'x'.repeat(200_000) }],
     ['prototype key', (doc) => { doc.parts[0].kind = '__proto__' }],
   ]
   for (const [name, mutate] of cases) {

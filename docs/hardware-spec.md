@@ -77,7 +77,7 @@ The DIP-8 pin order was verified against [TI's TL07xx datasheet, Figure 4-5 and 
 
 The compiler follows [ngspice analysis and model documentation](https://ngspice.sourceforge.io/docs.html), including exponential and piecewise-linear sources in sections 4.1.3–4.1.4 and B-source voltage expressions in section 5.1.1 of the [ngspice user manual](https://ngspice.sourceforge.io/docs/ngspice-39-manual.pdf). The op-amp uses bounded expressions in that documented behavioral source, verified against the shipped WASM engine. Each capture performs a transient analysis for 100 ms, beginning with the DC operating point. Timestep is at most 10 µs and is further limited to one eightieth of the oscillator period. No `.uic` flag, hidden grounding resistor, or previous capacitor charge is supplied. Open or floating circuit nodes without a modeled DC return are reported before simulation. Operating-point compilation replaces the transient directive with `.op`, retaining identical device and node names. It saves diode/LED branch-current vectors explicitly along with all node voltages. DC operating-point values are distinct from means of a transient capture; trigger/envelope sources are still 0 V at that initial point. Periodic captures retain the selected sine/triangle/square waveform. Step captures temporarily drive OSC from 0 V to the amplitude at 1 ms, hold it until 51 ms, and return to 0 V, with 1 µs transitions and a 1 s repeat period. Only one pulse occurs in the 100 ms capture; the stored oscillator waveform is preserved.
 
-Import boundaries: schema 1, board `virtual-1`, at most 30 components, 120 wires, 60 active external electrical nodes, 100 kB serialized data, finite bounded parameters, valid terminal references, unique IDs, and no overlapping occupancy. The compiler returns deterministic nodes and a physical-terminal map so probes retain their attachment across edits. Arbitrary SPICE, scripts, model URLs, and imported extra properties are never compiled. Fixed model expansion is bounded by six devices and two internal nodes per component: at most 180 component-model devices and 60 internal model nodes, in addition to at most seven instrument devices (five original source devices plus two for EG OUT). Schema 1 remains backward compatible: omitted `stimulus` means periodic, omitted potentiometer `position` means midpoint, and these optional fields are not injected into legacy imports. An omitted `instruments.envelope` uses mode `envelope`, `gateHigh: false`, and `decayMs: 20` without adding that object during import. When supplied, all three settings are required; mode, boolean gate state, finite 1–40 ms decay, and allowed property names are validated. Rigid potentiometer and IC footprints are validated during import; pin count and occupancy apply to every lead.
+Import boundaries: schemas 1 and 2, board `virtual-1`, at most 30 components, 120 wires, 60 active external electrical nodes, 200,000 UTF-8 bytes of serialized project data (including at most 32 KiB of Pico source), finite bounded parameters, valid terminal references, unique IDs, and no overlapping occupancy. The compiler returns deterministic nodes and a physical-terminal map so probes retain their attachment across edits. Arbitrary SPICE, model URLs, and imported extra properties are never compiled. Pico Python source runs only in the isolated emulator after an explicit Run. Fixed model expansion is bounded by six devices and two internal nodes per component: at most 180 component-model devices and 60 internal model nodes, in addition to at most seven instrument devices (five original source devices plus two for EG OUT). Schema 1 remains backward compatible: omitted `stimulus` means periodic, omitted potentiometer `position` means midpoint, and these optional fields are not injected into legacy imports. An omitted `instruments.envelope` uses mode `envelope`, `gateHigh: false`, and `decayMs: 20` without adding that object during import. When supplied, all three settings are required; mode, boolean gate state, finite 1–40 ms decay, and allowed property names are validated. Rigid potentiometer and IC footprints are validated during import; pin count and occupancy apply to every lead.
 
 ## Example circuits
 
@@ -103,7 +103,7 @@ The seven additional experiments form a progression using supported components. 
 | Intermediate | Buffered attenuverter | Sweep modulation continuously from inverted through zero to positive, using both amplifier halves. |
 | Advanced | Sallen–Key low-pass | Explore a two-pole active filter and the effect of feedback on its damping. Equal 10 kΩ/100 nF filter components give a nominal 159 Hz natural frequency; 4.7 kΩ/10 kΩ gain resistors give gain 1.47 and Q ≈ 0.654. Changing the feedback resistor to 10 kΩ gives gain 2 and Q ≈ 1. |
 
-All thirteen examples are ordinary editable documents. Scope channels attach to physical terminals. The JSON document stores no traces or audio data. Difficulty and build guidance are catalog metadata, leaving the saved document schema unchanged.
+The thirteen analog examples are ordinary editable documents. Scope channels attach to physical terminals. The JSON document stores no traces or audio data. Difficulty and build guidance are catalog metadata, leaving the saved document schema unchanged.
 
 ### Building the examples on EDU LABOR
 
@@ -120,3 +120,30 @@ Checked against the [official LABOR manual, pp. 2–5](https://www.ericasynths.l
 Resistors, capacitors, electrolytics, diodes, LEDs, and switches can move one lead independently. The other lead, pin order, component value, and polarity are preserved. A new edited spacing must be between 24 and 192 SVG units (1–8 hole pitches), use distinct breadboard holes, and respect occupied holes. Imported legacy two-lead spacing remains valid; these bounds apply to new individual-lead edits. Each completed move is one undo action. Wires and probes remain attached to their physical holes. Potentiometer and DIP-8 geometry stays rigid.
 
 Pan, zoom, fit actions, and scope height are presentation state only. They do not change saved documents, connectivity, captures, or undo history. At 100% the responsive viewport fits the 920 × 550 workbench extent, including source terminals. Fit breadboard frames the board body at (46, 79), with extent 828 × 450; source terminals may be outside this closer view. Zoom buttons preserve the visible center subject to the scroll bounds.
+
+## Original Pico output model — `rp2-pico-1.20.0-v1`
+
+One docked Pico is virtually USB-powered. Supported terminals are the 26 exposed GPIOs, all GND/AGND headers, and 3V3 OUT. GP25 is internal to the board. Other power/control pins are decorative and reject connections. Internal grounds are joined, but an explicit jumper to workbench GND is mandatory. The model does not power breadboard rails automatically.
+
+| Element | Educational constant |
+| --- | --- |
+| HIGH / LOW target | 3.3 V / 0 V, relative to Pico GND |
+| Push-pull output resistance | 50 Ω |
+| Disabled output | Driver conductance zero; 1 GΩ leakage to Pico GND |
+| Enabled pull-up / pull-down | 50 kΩ to 3.3 V / GND |
+| Edge duration | 1 µs, linear conductance transition |
+| 3V3 OUT | 3.3 V through 1 Ω; no regulator or supply-current model |
+| Supported GPIO voltage envelope | −0.3 V to +3.6 V |
+| Supported GPIO net driver current | Up to 20 mA magnitude |
+| Maximum repetition per connected GPIO | 5 kHz, within the shared 2,000-event budget |
+| Maximum analog step with Pico | 5 µs, with PWL edge breakpoints |
+
+These are teaching constants, not calibrated RP2040 silicon characteristics. Overvoltage or excessive driver current fails a capture, including on unprobed connected GPIOs. No damage, thermal, protection-diode, regulator, drive-strength or supply-current fidelity is claimed. The 3V3 source must not be used as a model of a physical regulator.
+
+The initial state comes from the freshly booted emulator immediately before user-code dispatch. Firmware-reset pull-downs can therefore be present before `Pin` configuration. Both `.op` and `.tran` use that same initial state; startup is not assumed to be a running PWM steady state. Each connected GPIO has its own leakage path. Unrelated floating components retain the existing DC-return diagnostics.
+
+PWL controls preserve plateaus by adding points at each transition and at its finite edge end. Output disable removes the driver instead of substituting a LOW source. Pull and direction changes are recorded even if the logic level stays unchanged. Coincident changes on different controls are deterministic; changes to one conductance within an unfinished 1 µs edge are rejected. Solved loading/contention changes the scope voltage; ideal pin levels never replace ngspice results.
+
+See [Pico runtime](pico-runtime.md) for timing, guard behavior, resource limits, assets and persistence.
+
+Pico driver expansion adds at most 106 devices and 53 internal nodes, independently of the generic component model limit.

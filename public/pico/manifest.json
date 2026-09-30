@@ -1,0 +1,13 @@
+{
+  "id": "rp2-pico-1.20.0-v1",
+  "emulator": "rp2040js@1.4.0",
+  "firmware": "RPI_PICO-20230426-v1.20.0",
+  "stubs": "micropython-rp2-pico-stubs@1.20.0.post5",
+  "bootrom": "B1 00a4a19114195e20fb817bdfbca1165e157eef37",
+  "assets": {
+    "bootrom.bin": "90b31e108faedfa6bbcfcc33ba05dac61e645108cfbbdc385f8dafc71fde44ae",
+    "micropython.uf2": "d9d97d8b495da476006125e73dc203a428ce7b6be27a5a76eda1dd85b2efe99d",
+    "stubs.json": "ac1b34c9482dbcda5f83e0ed46e1dd48207870aca8f9387ac02f3a7886532b9a"
+  },
+  "stdlib": "micropython-stdlib-stubs@1.1.0"
+}

@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { createPico, PROJECT_LIMITS } from '@/lib/pico/profile'
+const PicoPanel = lazy(() => import('@/components/pico/PicoPanel'))
+import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, Cable, Check, ChevronDown, CircleHelp, CircuitBoard, Crosshair, Hand, Info, Maximize2, Minus, MousePointer2, PanelLeftClose, PanelLeftOpen, Play, Plus, Redo2, RotateCcw, RotateCw, Search, SlidersHorizontal, Undo2, X, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadboard } from '@/components/workbench/Breadboard'
@@ -24,7 +26,7 @@ const WIRE_COLORS = ['#de8564', '#e5bd68', '#91bfad', '#86a8d7', '#b899ce', '#d2
 const kindList: ComponentKind[] = ['resistor', 'capacitor', 'electrolytic', 'potentiometer', 'diode', 'led', 'switch', 'opamp']
 
 export default function App() {
-  const { document, change, undo, redo, canUndo, canRedo, saved } = useDocument()
+  const { document, sourceSession, change, replace, changeSource, undo, redo, canUndo, canRedo, saved } = useDocument()
   const [tool, setToolState] = useState<Tool>('select')
   const [panEnabled, setPanEnabled] = useState(false)
   const [leadEdit, setLeadEdit] = useState<(LeadEdit & { document: CircuitDocument }) | null>(null)
@@ -69,7 +71,7 @@ export default function App() {
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
       if (helpOpen) return
-      if (e.target instanceof HTMLElement && (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable)) return
+      if (e.target instanceof HTMLElement && (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable || e.target.closest('.pico-panel'))) return
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return }
       if (e.key === 'Escape') { setTool('select'); setHelpOpen(false) }
@@ -84,7 +86,7 @@ export default function App() {
   function loadExample(id: string) {
     const example = examples.find(item => item.id === id)
     if (!example) return
-    change(structuredClone(example.document)); setSelectedId(example.document.parts.find(p => ['capacitor', 'electrolytic', 'opamp'].includes(p.kind))?.id ?? example.document.parts[0]?.id ?? null); setTool('select')
+    replace(structuredClone(example.document)); setSelectedId(example.document.parts.find(p => ['capacitor', 'electrolytic', 'opamp'].includes(p.kind))?.id ?? example.document.parts[0]?.id ?? null); setTool('select')
     message(`${example.name} loaded. Your previous circuit is available with Undo.`)
   }
   function exportDocument() {
@@ -96,9 +98,9 @@ export default function App() {
   async function importDocument(file: File | undefined) {
     if (!file) return
     try {
-      if (file.size > 100_000) throw new Error('Project files must be smaller than 100 KB.')
+      if (file.size > PROJECT_LIMITS.bytes) throw new Error('Project files must be smaller than 200 kB.')
       const next = validateDocument(JSON.parse(await file.text()))
-      change(next); setSelectedId(null); setTool('select'); message(`Imported ${next.title}.`)
+      replace(next); setSelectedId(null); setTool('select'); message(`Imported ${next.title}.`)
     } catch (error) { message(`Import failed: ${error instanceof Error ? error.message : 'Invalid circuit file.'}`) }
     finally { if (fileInput.current) fileInput.current.value = '' }
   }
@@ -114,9 +116,9 @@ export default function App() {
         <div className="panel-heading"><h2>Parts library</h2><button className="icon-button" aria-label="Collapse parts library" onClick={() => setPartsOpen(false)}><PanelLeftClose size={16} /></button></div>
         <label className="parts-search"><Search size={14} /><input placeholder="Find a component…" aria-label="Find a component" value={search} onChange={e => setSearch(e.target.value)} /></label><div className="tray-category">BASIC COMPONENTS <span>{kindList.length}</span></div>
         <div className="parts-list">{kindList.filter(kind => PARTS[kind].label.toLowerCase().includes(search.toLowerCase())).map(kind => <button key={kind} className={`part-item ${tool === kind ? 'active' : ''}`} aria-pressed={tool === kind} draggable onDragStart={e => { e.dataTransfer.setData('application/labor-part', kind); setTool(kind) }} onClick={() => { setTool(tool === kind ? 'select' : kind); setRotation(0) }}><span className="part-thumbnail"><PartIcon kind={kind} /></span><span><strong>{PARTS[kind].label}</strong><small>{kind === 'diode' || kind === 'led' ? 'Generic model' : kind === 'switch' ? 'SPST · on / off' : formatValue(PARTS[kind].defaultValue, kind)}</small></span><Plus size={13} /></button>)}</div>
-        <div className="tray-category tools-label">CONNECTIONS</div><button className={`connection-item ${tool === 'wire' ? 'active' : ''}`} onClick={() => setTool(tool === 'wire' ? 'select' : 'wire')} aria-pressed={tool === 'wire'}><Cable size={18} /><span>Jumper wire</span><kbd>W</kbd></button><div className="wire-palette">{WIRE_COLORS.map(color => <button key={color} aria-label={`Wire color ${color}`} aria-pressed={wireColor === color} style={{ backgroundColor: color }} onClick={() => setWireColor(color)}>{wireColor === color && <Check size={12} />}</button>)}</div>
+        <button className="connection-item" disabled={!!document.pico} onClick={() => change({ ...document, schemaVersion: 2, pico: createPico() })}>＋ Raspberry Pi Pico</button><div className="tray-category tools-label">CONNECTIONS</div><button className={`connection-item ${tool === 'wire' ? 'active' : ''}`} onClick={() => setTool(tool === 'wire' ? 'select' : 'wire')} aria-pressed={tool === 'wire'}><Cable size={18} /><span>Jumper wire</span><kbd>W</kbd></button><div className="wire-palette">{WIRE_COLORS.map(color => <button key={color} aria-label={`Wire color ${color}`} aria-pressed={wireColor === color} style={{ backgroundColor: color }} onClick={() => setWireColor(color)}>{wireColor === color && <Check size={12} />}</button>)}</div>
         <button className={`connection-item ${tool === 'probe1' ? 'active' : ''}`} onClick={() => setTool('probe1')}><Crosshair size={18} className="ch1-text" /><span>Scope probe</span><span className="ch1-text mono">CH1</span></button><button className={`connection-item ${tool === 'probe2' ? 'active' : ''}`} onClick={() => setTool('probe2')}><Crosshair size={18} className="ch2-text" /><span>Scope probe</span><span className="ch2-text mono">CH2</span></button>
-        <div className="tray-note"><MousePointer2 size={16} /><p>Pick a part, then click the board to place it.<br /><span>Rotate with <kbd>R</kbd> · Cancel with <kbd>esc</kbd></span></p></div><div className="tray-bottom"><span className="small-status-dot" /><span>{document.parts.length} / 30 parts placed</span><button className="subtle-button" onClick={() => { change(createEmptyDocument()); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }}>Clear board</button></div>
+        <div className="tray-note"><MousePointer2 size={16} /><p>Pick a part, then click the board to place it.<br /><span>Rotate with <kbd>R</kbd> · Cancel with <kbd>esc</kbd></span></p></div><div className="tray-bottom"><span className="small-status-dot" /><span>{document.parts.length} / 30 parts placed</span><button className="subtle-button" onClick={() => { change({ ...createEmptyDocument(), ...(document.pico ? { schemaVersion: 2 as const, pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }}>Clear board</button></div>
       </aside>}
       <div className="workspace">
         <div className="workspace-intro"><div><div className="eyebrow">ELECTRONICS LEARNING LAB</div><h1>A familiar place to experiment.</h1></div><div className="workspace-intro-actions">{!partsOpen && <button className="icon-button" aria-label="Open parts library" onClick={() => setPartsOpen(true)}><PanelLeftOpen size={18} /></button>}<button className={`icon-button ${inspectorOpen ? 'is-on' : ''}`} aria-label="Toggle inspector" aria-pressed={inspectorOpen} onClick={() => setInspectorOpen(!inspectorOpen)}><SlidersHorizontal size={17} /></button></div></div>
@@ -125,7 +127,7 @@ export default function App() {
           <div className="labor-case">
             <div className="chassis-brand"><div className="labor-wordmark"><strong>LABOR</strong><span>EDU / VIRTUAL WORKBENCH</span></div><span className="chassis-description">PATCH. EXPERIMENT. LEARN.</span><span className="chassis-revision">PLAYGROUND / 01</span></div>
             <div className="instrument-panel">
-              <ScopeModule windowSeconds={document.stimulus === 'step' || exampleId === 'envelope-shaping' ? 0.1 : Math.min(0.1, 3 / document.instruments.frequency)} capture={simulation.status === 'ready' ? simulation.capture : null} status={simulation.status} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
+              <ScopeModule windowSeconds={document.pico ? 0.1 : document.stimulus === 'step' || exampleId === 'envelope-shaping' ? 0.1 : Math.min(0.1, 3 / document.instruments.frequency)} capture={simulation.status === 'ready' ? simulation.capture : null} status={simulation.status} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
               <div className="source-module hardware-panel">
                 <div className="module-heading"><span>SIGNAL GENERATOR</span><span>01</span></div>
                 <div className="generator-controls">
@@ -138,12 +140,13 @@ export default function App() {
               </div>
               <div className="output-module hardware-panel"><div className="module-heading"><span>AUDIO / POWER</span><span>02</span></div><AudioMonitor capture={simulation.status === 'ready' ? simulation.capture : null} onMessage={message} /><div className="supply-indicators" aria-label="Power supplies: plus 12 volts and minus 12 volts available"><span><i />+12 V</span><span><i />−12 V</span><span className="supply-label">DC SUPPLY</span></div></div>
             </div>
-            <div className="breadboard-panel"><div className="board-silkscreen"><span>BREADBOARD / PATCH FIELD</span><span>30 COLUMNS · SPLIT RAILS</span></div><BoardViewport ref={viewport} zoom={zoom} onZoomChange={setZoom} panEnabled={panEnabled} onPanEnabledChange={setPanEnabled}><Breadboard document={document} selectedId={selectedId} onSelect={setSelectedId} onChange={change} tool={tool} rotation={rotation} wireColor={wireColor} showConnections={showConnections} highlightTerminal={highlightedChannel ? document.probes[highlightedChannel] : null} zoom={1} onMessage={message} editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit} /></BoardViewport></div>
+            <div className="breadboard-panel"><div className="board-silkscreen"><span>BREADBOARD / PATCH FIELD</span><span>30 COLUMNS · SPLIT RAILS</span></div><BoardViewport workbenchWidth={document.pico ? 1110 : 920} ref={viewport} zoom={zoom} onZoomChange={setZoom} panEnabled={panEnabled} onPanEnabledChange={setPanEnabled}><Breadboard document={document} selectedId={selectedId} onSelect={setSelectedId} onChange={change} tool={tool} rotation={rotation} wireColor={wireColor} showConnections={showConnections} highlightTerminal={highlightedChannel ? document.probes[highlightedChannel] : null} zoom={1} onMessage={message} editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit} /></BoardViewport></div>
             <ControlCarrier document={document} onChange={change} onSelect={id => { setSelectedId(id); setTool('select'); setInspectorOpen(true) }} onPlace={kind => { setTool(kind); setRotation(0); message(`Choose free breadboard holes for your ${kind}.`) }} />
             <div className="device-footer"><span>LABOR / VIRTUAL-1</span><span>PATCH SUPPLIES TO RAILS WITH JUMPERS</span><span>EDU</span></div></div><div className="board-hint"><MousePointer2 size={12} /><span>{toolHint}</span><span className="board-count">{document.wires.length} wires</span></div>
         </section>
-        <div className="capture-toolbar"><label className="auto-update"><input type="checkbox" checked={autoUpdate} onChange={e => setAutoUpdate(e.target.checked)} /><span className="toggle-track" /><span>Auto update</span></label><div className="capture-actions"><select className="stimulus-select" aria-label="Capture stimulus" value={document.stimulus ?? 'periodic'} onChange={event => change({ ...document, stimulus: event.target.value as 'periodic' | 'step' })}><option value="periodic">Periodic input</option><option value="step">Charge / decay step</option></select><button className="subtle-button reset-button" onClick={simulation.reset} title="Reset simulation engine"><RotateCcw size={14} />Reset</button><Button className="capture-button" onClick={simulation.captureNow} disabled={simulation.status === 'calculating' || simulation.status === 'loading'}><Play size={13} fill="currentColor" />Capture</Button></div></div>
-        <Scope key={exampleId || document.title} defaultTimeScale={exampleId === 'envelope-shaping' ? 10 : undefined} onHighlight={highlightChannel} stimulus={document.stimulus ?? 'periodic'} defaultScale={document.stimulus === 'step' || ['opamp-amplifier', 'voltage-divider', 'envelope-shaping'].includes(exampleId) ? 2 : 1} capture={simulation.status === 'ready' ? simulation.capture : null} status={simulation.status} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
+        {document.pico && <Suspense fallback={<p>Loading Pico editor…</p>}><PicoPanel sourceSession={sourceSession} source={document.pico.source} onChange={changeSource} onRun={simulation.captureNow} onStop={simulation.stop} onReset={simulation.reset} busy={simulation.status === 'calculating' || simulation.status === 'loading'} serial={simulation.serial} phase={simulation.picoPhase} error={simulation.error} onRemove={() => { const { pico: _pico, ...circuit } = document; change({ ...circuit, wires: circuit.wires.filter(wire => !wire.from.startsWith('pico:') && !wire.to.startsWith('pico:')), probes: { CH1: circuit.probes.CH1?.startsWith('pico:') ? null : circuit.probes.CH1, CH2: circuit.probes.CH2?.startsWith('pico:') ? null : circuit.probes.CH2 } }); message('Pico removed. Undo restores the board, wiring and source.') }} /></Suspense>}
+        <div className="capture-toolbar"><label className="auto-update"><input type="checkbox" disabled={!!document.pico} checked={autoUpdate && !document.pico} onChange={e => setAutoUpdate(e.target.checked)} /><span className="toggle-track" /><span>Auto update</span></label><div className="capture-actions"><select className="stimulus-select" aria-label="Capture stimulus" value={document.stimulus ?? 'periodic'} onChange={event => change({ ...document, stimulus: event.target.value as 'periodic' | 'step' })}><option value="periodic">Periodic input</option><option value="step">Charge / decay step</option></select><button className="subtle-button reset-button" onClick={simulation.reset} title="Reset simulation engine"><RotateCcw size={14} />Reset</button><Button className="capture-button" onClick={simulation.captureNow} disabled={simulation.status === 'calculating' || simulation.status === 'loading'}><Play size={13} fill="currentColor" />Capture</Button></div></div>
+        <Scope key={exampleId || document.title} defaultTimeScale={document.pico || exampleId === 'envelope-shaping' ? 10 : undefined} onHighlight={highlightChannel} stimulus={document.stimulus ?? 'periodic'} defaultScale={document.stimulus === 'step' || ['opamp-amplifier', 'voltage-divider', 'envelope-shaping'].includes(exampleId) ? 2 : 1} capture={simulation.status === 'ready' ? simulation.capture : null} status={simulation.status} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
         <OperatingPointPanel operatingPoint={operatingPoint} probes={document.probes} nodeByTerminal={simulation.nodeByTerminal} onHighlight={highlightChannel} />
       </div>
       {inspectorOpen && (

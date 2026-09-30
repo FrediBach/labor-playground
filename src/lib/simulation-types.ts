@@ -1,3 +1,4 @@
+import type { PicoElectricalCheck } from './pico/checks.ts'
 import type { Diagnostic } from './circuit'
 
 export type Channel = 'CH1' | 'CH2'
@@ -56,6 +57,7 @@ export interface SimulationRequest {
   netlist: string
   nodes: ProbeNodes
   voltageChecks?: VoltageCheck[]
+  picoChecks?: PicoElectricalCheck[]
   operatingPoint?: OperatingPointRequest
 }
 

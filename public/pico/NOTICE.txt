@@ -1,0 +1,19 @@
+LABOR Pico runtime profile rp2-pico-1.20.0-v1
+
+Firmware: https://micropython.org/resources/firmware/RPI_PICO-20230426-v1.20.0.uf2
+MicroPython and component notices accompany this file. The firmware is redistributed
+unchanged. Its exact checksum, boot ROM revision and stub versions are in manifest.json.
+
+Boot ROM B1 is from https://github.com/wokwi/rp2040js/blob/main/demo/bootrom.ts,
+built from Raspberry Pi pico-bootrom commit 00a4a19114195e20fb817bdfbca1165e157eef37.
+
+Board stubs: https://pypi.org/project/micropython-rp2-pico-stubs/1.20.0.post5/
+Standard library stubs: https://pypi.org/project/micropython-stdlib-stubs/1.1.0/
+Stub signatures receive a documented application overlay; source archives are unmodified.
+
+JavaScript packages: rp2040js 1.4.0, monaco-editor 0.57.0,
+browser-basedpyright 1.40.1. Their licenses and Monaco's third-party notices are included.
+
+Original Pico artwork in the application is an educational SVG illustration.
+Raspberry Pi and MicroPython names identify the emulated board and firmware.
+This application is not an official Raspberry Pi product.

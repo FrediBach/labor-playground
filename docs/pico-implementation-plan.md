@@ -1,10 +1,12 @@
 # Raspberry Pi Pico implementation plan
 
-Status: planned, implementation has not started. Updated 2026-09-30.
+Status: first-release implementation delivered and verified in the production browser bundle. Updated 2026-09-30.
+
+Implementation evidence, measured limits, pinned assets, and compatibility overlays are recorded in [pico-runtime.md](pico-runtime.md). The bridge remains one way; the later analog-feedback milestone below is not enabled.
 
 Add one original RP2040 Raspberry Pi Pico to LABOR Playground using `rp2040js`, with MicroPython programming in **Monaco and full semantic IntelliSense**. Keep execution, language analysis, circuit simulation, and project storage in the browser. The first release connects Pico GPIO and PWM outputs to the existing ngspice circuit captures and oscilloscope.
 
-This extends the [original implementation plan](../plan.md). The current circuit workbench remains the foundation. The choices below are implementation decisions and validation targets; the proposed dependency combination has not yet been tested in this repository.
+This extends the [original implementation plan](../plan.md). The current circuit workbench remains the foundation. The choices below are implementation decisions and validation targets; the dependency combination is now pinned and tested in this repository; the runtime report records the resolved versions.
 
 ## Scope
 
@@ -143,42 +145,42 @@ Centralize project-size limits: the current 100 kB limit is duplicated in valida
 
 ### Milestone 1 Prove runtime and editor compatibility
 
-- [ ] Bundle `rp2040js`, boot assets, and one compatible MicroPython firmware; execute a short GPIO/PWM script and read serial output in a browser worker.
-- [ ] Demonstrate a deterministic user-code start boundary, a bounded 100 ms trace, and cancellation during boot and execution.
-- [ ] Prove runtime rejection of unsupported circuit-fed GPIO/ADC observations, including indirect calls, while allowing the firmware's required internal operations.
-- [ ] Bundle Monaco, `browser-basedpyright`, and matching Pico stubs; exercise every IntelliSense acceptance row against the production Vite build.
-- [ ] Record exact package/asset versions, checksums, licenses/notices, any compatibility overlays, cold startup, memory use, and worker recovery behavior.
-- [ ] Verify all features with external network requests blocked after loading local application assets.
+- [x] Bundle `rp2040js`, boot assets, and one compatible MicroPython firmware; execute a short GPIO/PWM script and read serial output in a browser worker.
+- [x] Demonstrate a deterministic user-code start boundary, a bounded 100 ms trace, and cancellation during boot and execution.
+- [x] Prove runtime rejection of unsupported circuit-fed GPIO/ADC observations, including indirect calls, while allowing the firmware's required internal operations.
+- [x] Bundle Monaco, `browser-basedpyright`, and matching Pico stubs; exercise every IntelliSense acceptance row against the production Vite build.
+- [x] Record exact package/asset versions, checksums, licenses/notices, any compatibility overlays, cold startup, memory use, and worker recovery behavior.
+- [x] Verify all features with external network requests blocked after loading local application assets.
 
 Both spikes are prerequisites for the feature. If browser language analysis cannot meet the semantic acceptance cases, resolve that integration before calling the editor complete. Adding a hosted language service would change the browser-only architecture and requires a separate product decision.
 
 ### Milestone 2 Add the board and project model
 
-- [ ] Add schema migration, source storage, the Pico terminal definition, and reusable topology resolution.
-- [ ] Render the board dock with supported pin connections, labels, ground behavior, and one-instance enforcement.
-- [ ] Integrate the Monaco panel, versioned language workspace, console, problems navigation, and focus-scoped shortcuts.
-- [ ] Verify legacy projects, import/export, browser recovery, source undo, circuit undo, and error handling for unsupported profiles or pins.
+- [x] Add schema migration, source storage, the Pico terminal definition, and reusable topology resolution.
+- [x] Render the board dock with supported pin connections, labels, ground behavior, and one-instance enforcement.
+- [x] Integrate the Monaco panel, versioned language workspace, console, problems navigation, and focus-scoped shortcuts.
+- [x] Verify legacy projects, import/export, browser recovery, source undo, circuit undo, and error handling for unsupported profiles or pins.
 
 ### Milestone 3 Implement deterministic execution
 
-- [ ] Add the Pico worker protocol and source/circuit snapshot coordinator.
-- [ ] Implement fresh-run boot, raw REPL submission, bounded serial capture, pin-state snapshots, and timestamped GPIO/PWM/mode events.
-- [ ] Implement Stop, Reset, cancellation on edits, and stale-message rejection throughout the pipeline.
-- [ ] Verify identical runs and different worker batch sizes produce equivalent traces; verify failures and resource limits recover without reloading the page.
+- [x] Add the Pico worker protocol and source/circuit snapshot coordinator.
+- [x] Implement fresh-run boot, raw REPL submission, bounded serial capture, pin-state snapshots, and timestamped GPIO/PWM/mode events.
+- [x] Implement Stop, Reset, cancellation on edits, and stale-message rejection throughout the pipeline.
+- [x] Verify identical runs and different worker batch sizes produce equivalent traces; verify failures and resource limits recover without reloading the page.
 
 ### Milestone 4 Connect firmware output to ngspice
 
-- [ ] Compile driver/pull models and PWL controls from the trace; generate matching operating-point and transient initial conditions.
-- [ ] Add pin diagnostics, event-density checks, timestep constraints, and atomic publication of measurements.
-- [ ] Verify loaded HIGH/LOW output, high impedance and leakage, pull changes, PWM frequency/duty, and PWM through an RC filter from the initial disabled-driver state using the real installed engine.
-- [ ] Verify unsupported feedback, missing ground, conflicting drives, limits, and edits during each phase cannot produce a successful stale or misleading capture.
+- [x] Compile driver/pull models and PWL controls from the trace; generate matching operating-point and transient initial conditions.
+- [x] Add pin diagnostics, event-density checks, timestep constraints, and atomic publication of measurements.
+- [x] Verify loaded HIGH/LOW output, high impedance and leakage, pull changes, PWM frequency/duty, and PWM through an RC filter from the initial disabled-driver state using the real installed engine.
+- [x] Verify unsupported feedback, missing ground, conflicting drives, limits, and edits during each phase cannot produce a successful stale or misleading capture.
 
 ### Milestone 5 Deliver examples and complete acceptance
 
-- [ ] Add editable examples for onboard LED/console output, an external LED with a resistor, a pulse train, and PWM through an RC low-pass filter.
-- [ ] Use example timing that is visible within the 100 ms window. Show how to change frequency or duty cycle in Monaco and rerun the experiment.
-- [ ] Document the runtime profile, pin model, first-release limits, and source/circuit persistence behavior.
-- [ ] Run the repository's appropriate numerical, editor, worker, and production-browser checks; complete the release criteria below.
+- [x] Add editable examples for onboard LED/console output, an external LED with a resistor, a pulse train, and PWM through an RC low-pass filter.
+- [x] Use example timing that is visible within the 100 ms window. Show how to change frequency or duty cycle in Monaco and rerun the experiment.
+- [x] Document the runtime profile, pin model, first-release limits, and source/circuit persistence behavior.
+- [x] Run the repository's appropriate numerical, editor, worker, and production-browser checks; complete the release criteria below.
 
 ## Validation and release criteria
 

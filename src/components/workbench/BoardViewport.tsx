@@ -11,6 +11,7 @@ export interface BoardViewportHandle {
 
 interface BoardViewportProps {
   zoom: number
+  workbenchWidth?: number
   onZoomChange: (zoom: number) => void
   panEnabled: boolean
   onPanEnabledChange?: (enabled: boolean) => void
@@ -29,7 +30,7 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /** View changes stay outside the circuit document and its undo history. */
-export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>(function BoardViewport({ zoom, onZoomChange, panEnabled, onPanEnabledChange, children }, ref) {
+export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>(function BoardViewport({ workbenchWidth = 920, zoom, onZoomChange, panEnabled, onPanEnabledChange, children }, ref) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<ViewportSize>({ width: 920, height: 550 })
   const [spaceHeld, setSpaceHeld] = useState(false)
@@ -46,7 +47,7 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
   const pendingCenter = useRef<ViewportPoint | null>(null)
   const previousLayout = useRef<BoardViewportLayout | null>(null)
   const scroll = useRef<ViewportPoint>({ x: 0, y: 0 })
-  const layout = useMemo(() => boardViewportLayout(size, zoom), [size, zoom])
+  const layout = useMemo(() => boardViewportLayout(size, zoom, workbenchWidth), [size, zoom, workbenchWidth])
 
   const position = useCallback((next: ViewportPoint) => {
     const element = viewport.current
@@ -85,12 +86,12 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
       setPositionVersion(version => version + 1)
     },
     fit(mode) {
-      const fit = boardViewportFit(size, mode)
+      const fit = boardViewportFit(size, mode, workbenchWidth)
       pendingCenter.current = fit.center
       onZoomChange(fit.zoom)
       setPositionVersion(version => version + 1)
     },
-  }), [layout, onZoomChange, size])
+  }), [layout, onZoomChange, size, workbenchWidth])
 
   const finishPan = useCallback((cancelled: boolean) => {
     const active = gesture.current
