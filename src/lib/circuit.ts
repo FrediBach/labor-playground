@@ -471,7 +471,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       ? `PULSE(${spiceNumber(-amplitude)} ${spiceNumber(amplitude)} 0 ${spiceNumber(edge)} ${spiceNumber(edge)} ${spiceNumber(period / 2 - edge)} ${spiceNumber(period)})`
       : `PULSE(${spiceNumber(-amplitude)} ${spiceNumber(amplitude)} 0 ${spiceNumber(period / 2)} ${spiceNumber(period / 2)} 0 ${spiceNumber(period)})`
   const lines = [
-    '* LABOR Playground virtual-1; local educational circuit',
+    '* Pico Labor virtual-1; local educational circuit',
     'VOSC osc_internal 0 ' + stimulus,
     `ROSC osc_internal ${nodeByTerminal.osc} 100`,
     `VCV ${nodeByTerminal.cv} 0 ${spiceNumber(cv)}`,

@@ -1,4 +1,4 @@
-# LABOR Playground
+# Pico Labor
 
 A local circuit workbench built with React, TypeScript, Vite, SVG, and shadcn/ui. Start with an editable RC filter, change the capacitor, and see the result from a real ngspice simulation running in a browser worker.
 
@@ -99,3 +99,9 @@ Browser tests require Chromium (`npx playwright install chromium` if needed). Se
 | `docs/` | Hardware/model specification and simulation integration notes |
 
 Use `@/` to import from `src/`. The document format only accepts supported component data and physical terminal references; imported scripts, external models, and arbitrary SPICE directives are not executed.
+
+## Production deployment
+
+The public site is **https://picolabor.com**. Import this repository into Vercel and use Node.js 24. The checked-in `vercel.json` configures the Vite build, `dist` output, security headers, and immutable caching for fingerprinted assets. Add `picolabor.com` in the Vercel project's Domains settings and configure the DNS records Vercel provides. If adding `www.picolabor.com`, redirect it to the apex domain there.
+
+The canonical URL, Open Graph and Twitter metadata live in `index.html`; crawler files and branding assets live in `public`. To regenerate the PNG sharing image and icons after changing the vector artwork, run `node scripts/generate-branding.mjs` (requires Playwright Chromium).

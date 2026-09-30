@@ -20,6 +20,23 @@ function terminal(page: Page, id: string) {
   return page.getByRole('button', { name: new RegExp(`^${id.toUpperCase()}, (?:available|occupied)$`) })
 }
 
+test('component selection survives pointer release and a later background click clears it', async ({ page }) => {
+  await page.goto('/')
+  await page.getByRole('button', { name: 'Select tool', exact: true }).click()
+  const inspector = page.getByRole('complementary', { name: 'Inspector' })
+  const part = page.locator('[data-part="R1"]')
+  const bounds = await part.boundingBox()
+  expect(bounds).toBeTruthy()
+  await page.mouse.move(bounds!.x + bounds!.width / 2, bounds!.y + 15)
+  await page.mouse.down()
+  await expect(inspector.getByText('A closer look.', { exact: true })).toBeHidden()
+  await page.mouse.up()
+  await expect(inspector.getByText('A closer look.', { exact: true })).toBeHidden()
+  await expect(part).toBeFocused()
+  await page.locator('.breadboard-svg').click({ position: { x: 2, y: 2 } })
+  await expect(inspector.getByText('A closer look.', { exact: true })).toBeVisible()
+})
+
 test('real ngspice capture changes when capacitance changes, and Undo restores it', async ({ page }) => {
   const errors: string[] = []
   page.on('pageerror', error => errors.push(error.message))

@@ -282,9 +282,11 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     const current = moveRef.current
     if (!current) return
     if (svg.current?.hasPointerCapture(event.pointerId)) svg.current.releasePointerCapture(event.pointerId)
+    // SVG pointer capture retargets the subsequent click to the board even
+    // without a drag. Preserve the part selected on pointer-down.
+    suppressClick.current = true
+    window.setTimeout(() => { suppressClick.current = false }, 0)
     if (current.dragging) {
-      suppressClick.current = true
-      window.setTimeout(() => { suppressClick.current = false }, 0)
       if (current.pins && canPlace(document, current.pins, current.part.id)) {
         if (current.pins[0] !== current.part.pins[0]) {
           onChange({ ...document, parts: document.parts.map(part => part.id === current.part.id ? { ...part, pins: current.pins! } : part) })
