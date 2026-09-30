@@ -39,7 +39,7 @@ Stop terminates the active worker phase, discards partial results and stops audi
 - Boot: at most 10 simulated seconds; whole emulator work: 200 million instructions and 60 wall-clock seconds. The main-thread worker watchdog is 65 seconds. The existing ngspice timeout remains independent.
 - Runtime trace: 20,000 state events and 2 MB serialized trace; electrical compilation: at most 2,000 events.
 - Console: 16 KiB UTF-8, visibly truncated. Logs, traces and emulator memory are not saved.
-- Driver edges: 1 µs. Changes to the same conductance less than 1 µs apart are rejected; simultaneous changes to separate controls retain deterministic event order. Output repetition is capped at 5 kHz per connected GPIO, with a shared 2,000-event budget. The 1 kHz examples and a 5 kHz RC fixture are tested; excessive frequency/density fails explicitly instead of silently dropping edges.
+- Driver edges: 1 µs. Changes to the same driver or pull control less than 1 µs apart are rejected; independent driver and pull transitions can overlap during pin initialization. Output repetition is capped at 5 kHz per connected GPIO, with a shared 2,000-event budget. The 1 kHz examples and a 5 kHz RC fixture are tested; excessive frequency/density fails explicitly instead of silently dropping edges.
 
 See [hardware-spec.md](hardware-spec.md) for the educational driver constants and supported electrical envelope. Actual solved node voltages feed scope and audio. Every analog experiment starts from the initial GPIO operating point; capacitor charge does not survive runs.
 

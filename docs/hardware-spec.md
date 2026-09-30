@@ -142,8 +142,8 @@ These are teaching constants, not calibrated RP2040 silicon characteristics. Ove
 
 The initial state comes from the freshly booted emulator immediately before user-code dispatch. Firmware-reset pull-downs can therefore be present before `Pin` configuration. Both `.op` and `.tran` use that same initial state; startup is not assumed to be a running PWM steady state. Each connected GPIO has its own leakage path. Unrelated floating components retain the existing DC-return diagnostics.
 
-PWL controls preserve plateaus by adding points at each transition and at its finite edge end. Output disable removes the driver instead of substituting a LOW source. Pull and direction changes are recorded even if the logic level stays unchanged. Coincident changes on different controls are deterministic; changes to one conductance within an unfinished 1 µs edge are rejected. Solved loading/contention changes the scope voltage; ideal pin levels never replace ngspice results.
+PWL controls preserve plateaus by adding points at each transition and at its finite edge end. Output disable removes the driver instead of substituting a LOW source. Pull and direction changes are recorded even if the logic level stays unchanged. Output drivers and pull resistors have independent PWL controls, so nearby register changes during pin initialization can overlap without being mistaken for short pulses. Changes to the same control within an unfinished 1 µs edge are rejected. Solved loading/contention changes the scope voltage; ideal pin levels never replace ngspice results.
 
 See [Pico runtime](pico-runtime.md) for timing, guard behavior, resource limits, assets and persistence.
 
-Pico driver expansion adds at most 106 devices and 53 internal nodes, independently of the generic component model limit.
+Pico driver expansion adds at most 210 devices and 157 internal nodes, independently of the generic component model limit.

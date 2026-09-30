@@ -44,6 +44,35 @@ test('actual firmware PWM drives real ngspice RC capture', { timeout: 30000 }, a
   assert.ok(Math.max(...capture.channels.CH1) > 3.1)
 })
 
+test('stock LED and pulse examples tolerate independent output and pull initialization', { timeout: 30000 }, async () => {
+  const engine = new Simulation(); await engine.start()
+  for (const example of picoExamples.slice(1, 3)) {
+    const doc = example.document
+    const trace = await runPico({ ...assets, source: doc.pico!.source })
+    const events = trace.events.filter(event => event.gpio === 0)
+    assert.ok(events[1].ns - events[0].ns < 1000, 'firmware initializes output and pull less than 1 µs apart')
+    const transient = compileCircuit(doc, 'transient', trace)
+    const dc = compileCircuit(doc, 'operating-point', trace)
+    assert.deepEqual(transient.diagnostics.filter(item => item.severity === 'error'), [])
+    assert.deepEqual(dc.diagnostics.filter(item => item.severity === 'error'), [])
+    const node = transient.nodeByTerminal['b4']
+    const capture = await runCircuitCapture(engine, { type: 'run', revision: 1, netlist: transient.netlist, nodes: { CH1: node, CH2: transient.nodeByTerminal['b8'] }, operatingPoint: { netlist: dc.netlist, parts: operatingPointDescriptors(doc, dc.nodeByTerminal) }, picoChecks: [{ gpio: 0, node }] })
+    assert.ok(Math.max(...capture.channels.CH1) > 3)
+    if (example.id === 'pico-led') {
+      assert.match(trace.console, /External LED on/)
+      assert.ok(capture.channels.CH1.at(-1)! > 3)
+      assert.ok(capture.channels.CH2.at(-1)! > 1 && capture.channels.CH2.at(-1)! < 2.5)
+    } else {
+      assert.ok(capture.channels.CH1[capture.time.findIndex(time => time >= .003)] > 3)
+      assert.ok(capture.channels.CH1[capture.time.findIndex(time => time >= .008)] < .01)
+    }
+    // Genuine rapid changes to the same driver must still fail.
+    const high = events.find(event => event.enabled && event.state === 1)!
+    const rapid = { ...trace, events: [{ ...high, ns: 10000 }, { ...high, state: 0, ns: 10500 }] }
+    assert.match(compileCircuit(doc, 'transient', rapid).diagnostics.map(item => item.message).join(' '), /edges are less than 1 µs apart/)
+  }
+})
+
 test('real ngspice finite loading, disabled driver, pull changes and contention envelope', { timeout: 30000 }, async () => {
   const { checkPicoEnvelope } = await import('../src/lib/pico/checks.ts')
   const engine = new Simulation(); await engine.start()

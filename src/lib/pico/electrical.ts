@@ -6,8 +6,10 @@ function conductance(state: PinState) {
   if (state.enabled && ![4, 5].includes(state.function)) throw new Error(`GP${state.gpio}: unsupported peripheral function.`)
   if (state.state === 5) throw new Error(`GP${state.gpio}: bus keeper mode is unsupported.`)
   return {
-    high: (state.enabled && state.state === 1 ? 1 / PICO_MODEL.outputOhms : 0) + (state.pullUp ? 1 / PICO_MODEL.pullOhms : 0),
-    low: (state.enabled && state.state === 0 ? 1 / PICO_MODEL.outputOhms : 0) + (state.pullDown ? 1 / PICO_MODEL.pullOhms : 0),
+    high: state.enabled && state.state === 1 ? 1 / PICO_MODEL.outputOhms : 0,
+    low: state.enabled && state.state === 0 ? 1 / PICO_MODEL.outputOhms : 0,
+    pullHigh: state.pullUp ? 1 / PICO_MODEL.pullOhms : 0,
+    pullLow: state.pullDown ? 1 / PICO_MODEL.pullOhms : 0,
   }
 }
 export function picoDriverLines(nodes: Record<string, string>, used: Set<string>, trace?: PicoTrace, dc = false): string[] {
@@ -27,7 +29,9 @@ export function picoDriverLines(nodes: Record<string, string>, used: Set<string>
       }
       wasHigh = high
     }
-    for (const side of ['high', 'low'] as const) {
+    // Driver and pull registers can change independently during Pin initialization.
+    // Apply edge spacing to each physical control, not their summed conductance.
+    for (const side of ['high', 'low', 'pullHigh', 'pullLow'] as const) {
       let last = start[side], end = 0
       const points: [number, number][] = [[0, last]]
       if (!dc) for (const event of events) {
@@ -40,8 +44,12 @@ export function picoDriverLines(nodes: Record<string, string>, used: Set<string>
         points.push([end, value]); last = value
       }
       if (end < 0.1) points.push([0.1, last])
-      const control = `pico_${pin.gpio}_${side}`
+      const control = `pico_${pin.gpio}_${side}_control`
       lines.push(`V${control} ${control} 0 ${dc ? n(start[side]) : `PWL(${points.map(([time, value]) => `${n(time)} ${n(value)}`).join(' ')})`}`)
+    }
+    for (const side of ['high', 'low'] as const) {
+      const pull = side === 'high' ? 'pullHigh' : 'pullLow'
+      lines.push(`BPICO_SUM_${pin.gpio}_${side} pico_${pin.gpio}_${side} 0 V = v(pico_${pin.gpio}_${side}_control)+v(pico_${pin.gpio}_${pull}_control)`)
     }
     const node = nodes[pin.id]
     lines.push(`RPICO_LEAK_${pin.gpio} ${node} ${ground} ${PICO_MODEL.leakageOhms}`)
