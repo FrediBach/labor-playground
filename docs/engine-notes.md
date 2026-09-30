@@ -63,7 +63,7 @@ The monitor is a bounded preview, not a calibrated audio interface. It accepts o
 - RC sinusoidal attenuation against the analytical transfer function.
 - Nonlinear limiting with opposing generic signal diodes.
 - Bounded LED forward voltage and the documented open/closed switch resistance.
-- All six editable example documents, including the effect of changing C1.
+- All thirteen editable example documents, including attenuation, AC coupling, edge shaping, envelope following, mixing, attenuversion, and two-pole filtering with meaningful parameter changes.
 - Probe extraction, adaptive resampling, DC removal, fade endpoints, and above-band attenuation.
 - Latest-request coalescing and termination/recreation of a stuck worker using a controlled worker fixture.
 

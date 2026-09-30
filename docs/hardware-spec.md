@@ -89,7 +89,31 @@ Import boundaries: schema 1, board `virtual-1`, at most 30 components, 120 wires
 
 - **Envelope shaping:** EG OUT drives 10 kΩ and 100 nF; CH1 follows the input envelope and CH2 shows the rounded attack. The 20 ms default decay is independent of the RC filter’s 1.01 ms time constant including source resistance. Increasing the capacitor to 470 nF lowers and delays the output peak.
 
-All six examples are ordinary editable documents. Scope channels attach to physical terminals. The JSON document stores no traces or audio data.
+### Modular synth examples
+
+The seven additional experiments form a progression using supported components. These are circuit topologies that can be rebuilt on EDU LABOR, with source levels checked on the hardware; the virtual board is not a physical wiring template.
+
+| Level | Experiment | Synth application |
+| --- | --- | --- |
+| Basic | CV attenuator | Scale a modulation depth with a linear potentiometer. |
+| Basic | AC coupling / high-pass | Remove DC and attenuate low frequencies with a series capacitor and ground-return resistor. |
+| Intermediate | Gate-to-trigger | Turn a positive gate’s edges into decaying pulses; the falling edge is negative, so this is an edge-shaping lesson rather than a protected logic output. |
+| Intermediate | Diode envelope follower | Rectify audio and smooth the peaks into a control voltage, with diode loss, ripple, and loading visible. |
+| Intermediate | CV/audio mixer | Add an oscillator and DC offset with two inverting stages, restoring the signal polarity. |
+| Intermediate | Buffered attenuverter | Sweep modulation continuously from inverted through zero to positive, using both amplifier halves. |
+| Advanced | Sallen–Key low-pass | Explore a two-pole active filter and the effect of feedback on its damping. Equal 10 kΩ/100 nF filter components give a nominal 159 Hz natural frequency; 4.7 kΩ/10 kΩ gain resistors give gain 1.47 and Q ≈ 0.654. Changing the feedback resistor to 10 kΩ gives gain 2 and Q ≈ 1. |
+
+All thirteen examples are ordinary editable documents. Scope channels attach to physical terminals. The JSON document stores no traces or audio data. Difficulty and build guidance are catalog metadata, leaving the saved document schema unchanged.
+
+### Building the examples on EDU LABOR
+
+Checked against the [official LABOR manual, pp. 2–5](https://www.ericasynths.lv/service/file/download/product_id/804/file_id/534/) on 2026-09-30: the full kit adds experimental components including two TL072s, ten 1N4148s, ten each of 10 kΩ and 100 kΩ resistors, five 100 nF capacitors, one 470 nF capacitor, and two 10 nF capacitors. The main kit includes linear B10K and B100K potentiometers. The new experiments use listed values and fit the full-kit inventory individually; the components can be reused between experiments. A partial kit requires separately sourced experimental parts. Some suggested variations in older lessons (such as 220 nF, 2.2 µF, or 20 kΩ) need additional parts.
+
+- Reproduce electrical connections, not the virtual coordinates. Confirm the real breadboard rail continuity and bridge rails as needed. Connect circuit ground to LABOR GND. Potentiometer CCW, wiper, and CW connections must follow the actual adapter orientation described on manual pp. 13–14.
+- Use a DIP-8 TL072 for the generic dual op-amp, with pin 8 at +12 V and pin 4 at −12 V. The three new active examples include a 100 nF capacitor from each supply pin to GND; place these close to the IC. Add the same bypassing when building the older gain-stage example. Keep unused halves connected as grounded followers. This follows [TI’s TL072 pinout and supply-bypassing guidance, §8.4.1](https://www.ti.com/lit/ds/symlink/tl072.pdf). The virtual model does not predict the device’s exact bandwidth, output swing, or saturation recovery.
+- Use non-polarized signal and bypass capacitors rated at least 25 V; only use a polarized capacitor where explicitly specified, with its marked polarity respected. These are build recommendations, not a claim about the supplied capacitors’ ratings. The 1N4148 stripe marks its cathode; the simulator uses a generic silicon model.
+- Set frequency, shape, CV, and EG mode using LABOR’s controls and measure the actual outputs. Its manual does not specify a calibrated oscillator amplitude adjustment or the simulator’s 100 Ω source impedance. Use a passive attenuator to reduce physical input levels as needed. For the simulated positive gate step, press and release EG OUT in gate mode; the precise simulated pulse duration is not a physical preset. Connect circuit audio to AUDIO IN for monitoring through LABOR’s amplifier.
+- The Sallen–Key lesson uses [TI’s equal-component relation Q = 1 / (3 − K)](https://www.ti.com/lit/an/sloa024b/sloa024b.pdf), where K is the non-inverting amplifier gain. The suggested resistor change stays below K = 3. Free-running oscillators, VCAs, and transistor-based VCFs are outside these examples because the current component set and static op-amp model do not support a faithful implementation.
 
 ## Editing and view geometry
 

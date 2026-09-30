@@ -1,5 +1,5 @@
 import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2, Zap } from 'lucide-react'
-import { PARTS, type CircuitDocument, type CircuitExample, type Diagnostic } from '@/lib/circuit'
+import { PARTS, formatValue, type CircuitDocument, type CircuitExample, type Diagnostic } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
@@ -111,7 +111,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
         <div className="inspector-empty"><MousePointer2 size={28} /><h2>A closer look.</h2><p>Select a component or a wire to inspect its values and connections.</p></div>
       )}
       <div className="experiment-card">
-        <span className="eyebrow"><Zap size={12} /> THE EXPERIMENT</span>
+        <span className="eyebrow"><Zap size={12} /> {example ? `${example.level} · ${example.document.parts.length} ${example.document.parts.length === 1 ? 'part' : 'parts'}` : 'THE EXPERIMENT'}</span>
         <h3>{example?.name ?? 'A blank canvas'}</h3>
         {example ? <>
           <p>{example.description}</p>
@@ -120,6 +120,15 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
             <h4>Change</h4><p>{example.whatToChange}</p>
             <h4>Observe</h4><p>{example.whatToObserve}</p>
             <h4>Why it happens</h4><p>{example.why}</p>
+          </details>
+          <details className="experiment-lesson">
+            <summary>Build on EDU LABOR</summary>
+            <p>{example.hardware}</p>
+            <h4>Parts on this board</h4>
+            <ul className="experiment-parts">{document.parts.map(item => <li key={item.id}><strong>{item.id}</strong> {PARTS[item.kind].label} · {formatValue(item.value, item.kind)}</li>)}</ul>
+            <p>Use full-kit parts or equivalent separately sourced components. Recreate the electrical connections on LABOR’s breadboard; virtual hole names are not hardware coordinates. Use non-polarized capacitors rated at least 25 V unless a polarized part is specified.</p>
+            <p>Connect a common GND. Measure physical source levels and use attenuation where needed; virtual amplitude and timing settings are illustrative. Send audio through LABOR AUDIO IN and its output amplifier.</p>
+            <a href="https://www.ericasynths.lv/service/file/download/product_id/804/file_id/534/" target="_blank" rel="noreferrer">LABOR manual ↗</a>
           </details>
           <button className="subtle-button" onClick={() => onRestore(example.id)}><RotateCcw size={12} />Restore example</button>
         </> : <p>Add components, wire them to a source and ground, and measure what you build.</p>}

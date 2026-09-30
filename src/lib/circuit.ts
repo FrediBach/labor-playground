@@ -1,3 +1,6 @@
+import { passiveExamples } from './passive-examples.ts'
+import { activeExamples } from './active-examples.ts'
+
 export type ComponentKind = 'resistor' | 'capacitor' | 'diode' | 'led' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp'
 
 export interface Part {
@@ -524,16 +527,19 @@ export function formatValue(value: number, kind: ComponentKind): string {
 export interface CircuitExample {
   id: string
   name: string
+  level: 'Basic' | 'Intermediate' | 'Advanced'
   description: string
   whatToChange: string
   whatToObserve: string
   why: string
+  hardware: string
   document: CircuitDocument
 }
 
 export const examples: CircuitExample[] = [
   {
-    id: 'rc-filter', name: 'RC low-pass filter', description: 'Let the low notes through. Explore how a capacitor softens a signal.',
+    id: 'rc-filter', name: 'RC low-pass filter', level: 'Basic', description: 'Let the low notes through. Explore how a capacitor softens a signal.',
+    hardware: 'Use a 10 kΩ resistor and a non-polarized 100 nF capacitor. Patch SIGNAL OUT to the resistor input and connect the capacitor return to LABOR GND. This passive tone filter loses level; a following module’s input impedance also affects its response.',
     whatToChange: 'Select C1 and change its capacitance from 100 nF to 220 nF.',
     whatToObserve: 'The amber output gets smaller and lags further behind the cyan input.',
     why: 'A capacitor carries more current as frequency rises. R1 and C1 form a frequency-dependent divider. With 10 kΩ and 100 nF, the nominal corner is about 159 Hz.',
@@ -545,7 +551,8 @@ export const examples: CircuitExample[] = [
     },
   },
   {
-    id: 'voltage-divider', name: 'Voltage divider', description: 'Two resistors, one useful ratio. Turn 5 volts into 2.5.',
+    id: 'voltage-divider', name: 'Voltage divider', level: 'Basic', description: 'Two resistors, one useful ratio. Turn 5 volts into 2.5.',
+    hardware: 'Use two 10 kΩ resistors between VARIABLE CV and GND. Set the physical CV output to +5 V with a meter. The midpoint is a simple CV attenuator; a connected load changes the division ratio.',
     whatToChange: 'Change R2 from 10 kΩ to 20 kΩ.',
     whatToObserve: 'CH2 rises from 2.50 V to about 3.33 V. CH1 stays at 5 V.',
     why: 'The two resistors share the supply voltage. The midpoint is 5 × R2 / (R1 + R2). The scope measures a constant DC voltage.',
@@ -557,7 +564,8 @@ export const examples: CircuitExample[] = [
     },
   },
   {
-    id: 'diode-clipper', name: 'Diode clipper', description: 'Flatten the peaks with a pair of opposing signal diodes.',
+    id: 'diode-clipper', name: 'Diode clipper', level: 'Basic', description: 'Flatten the peaks with a pair of opposing signal diodes.',
+    hardware: 'Use a 1 kΩ series resistor and two 1N4148 signal diodes in opposite directions between output and GND. The stripe marks the cathode. Real clipping levels depend on diode type, current, and temperature.',
     whatToChange: 'Increase the oscillator amplitude, then try a triangle wave.',
     whatToObserve: 'CH2 flattens around the diodes’ forward voltage while CH1 keeps growing.',
     why: 'Opposing diodes conduct on opposite signal polarities and divert current to ground. R1 limits that current. The clipping voltage depends on current and the diode model.',
@@ -569,7 +577,8 @@ export const examples: CircuitExample[] = [
     },
   },
   {
-    id: 'capacitor-charge', name: 'Capacitor charge & decay', description: 'Watch a capacitor store a pulse and release it through a resistor.',
+    id: 'capacitor-charge', name: 'Capacitor charge & decay', level: 'Basic', description: 'Watch a capacitor store a pulse and release it through a resistor.',
+    hardware: 'Use a 10 kΩ resistor and a 1 µF electrolytic rated at least 25 V, with its negative lead at GND. On LABOR use EG OUT in gate mode and press/release the button to charge and discharge it. The simulated 50 ms positive pulse is a capture stimulus, not a physical oscillator setting.',
     whatToChange: 'Change C1 from 1 µF to 2.2 µF, then capture again.',
     whatToObserve: 'The amber output rises and falls more slowly. The input rises at 1 ms and falls at 51 ms.',
     why: 'This capture starts at 0 V, then applies a 5 V pulse for 50 ms. The 10 kΩ resistor and 1 µF capacitor have a 10.1 ms time constant including the oscillator’s 100 Ω output resistance. Each capture starts again from the DC operating point.',
@@ -582,7 +591,8 @@ export const examples: CircuitExample[] = [
     },
   },
   {
-    id: 'opamp-amplifier', name: 'Op-amp gain stage', description: 'Double a signal with feedback and explicitly powered amplifier pins.',
+    id: 'opamp-amplifier', name: 'Op-amp gain stage', level: 'Intermediate', description: 'Double a signal with feedback and explicitly powered amplifier pins.',
+    hardware: 'Use a DIP-8 TL072 on ±12 V (pin 8 positive, pin 4 negative) and two 10 kΩ resistors. Add a 100 nF non-polarized bypass capacitor from each supply pin to GND beside the IC. Keep the unused half wired as the shown grounded follower. Real output swing depends on load and device; ±11 V is the virtual model’s limit.',
     whatToChange: 'Change feedback resistor R1 from 10 kΩ to 20 kΩ.',
     whatToObserve: 'CH2 grows from about 5 V peak to 7.5 V peak while CH1 stays at 2.5 V. Larger gains clip near the supply limits.',
     why: 'Negative feedback makes the gain approximately 1 + R1/R2. U1 needs both visible supply connections; its output clips 1 V inside the rails. The unused amplifier is a grounded follower so its inputs stay defined.',
@@ -606,7 +616,8 @@ export const examples: CircuitExample[] = [
     },
   },
   {
-    id: 'envelope-shaping', name: 'Envelope shaping', description: 'Soften the attack of a decaying envelope with a resistor and capacitor.',
+    id: 'envelope-shaping', name: 'Envelope shaping', level: 'Intermediate', description: 'Soften the attack of a decaying envelope with a resistor and capacitor.',
+    hardware: 'Connect LABOR EG OUT in envelope mode through 10 kΩ to a non-polarized 100 nF capacitor returned to GND. Fire the manual envelope and adjust its decay by observation: the virtual 5 V level and millisecond settings are not calibrated hardware values.',
     whatToChange: 'Change the envelope decay from 20 ms to 5 ms, then try C1 at 470 nF.',
     whatToObserve: 'CH1 shows the rapid attack and exponential decay. CH2 rounds off the attack; a larger capacitor makes the peak smaller and later.',
     why: 'EG OUT rises to 5 V at 1 ms, then decays with the chosen time constant. R1 and C1 store and release charge, filtering that envelope. The source’s 100 Ω resistance is included in the calculation. Each capture and Fire action starts again from 0 V.',
@@ -618,4 +629,6 @@ export const examples: CircuitExample[] = [
       probes: { CH1: 'd6', CH2: 'd17' },
     },
   },
+  ...passiveExamples,
+  ...activeExamples,
 ]

@@ -2,7 +2,7 @@
 
 A local circuit workbench built with React, TypeScript, Vite, SVG, and shadcn/ui. Start with an editable RC filter, change the capacitor, and see the result from a real ngspice simulation running in a browser worker.
 
-This build implements the editable workbench, starter component library, and six examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
+This build implements the editable workbench, starter component library, and thirteen examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
 
 ## Try it
 
@@ -21,7 +21,7 @@ Open the URL printed by Vite. No API keys, environment variables, accounts, or b
 3. Choose **Jumper wire** and click two free terminals. Select a wire to change its color, remove it, or move an endpoint.
 4. Click **CH1** or **CH2** on the integrated scope (or select a probe from the tray), then click a terminal. Use **Capture** or leave **Auto update** enabled. The small display shows the current capture; the full scope below the chassis provides adjustable scales and **Measurements**, including A/B cursors and the CH1 − CH2 differential meter.
 5. Use the **Audio / Power** module: choose a channel, then click the **Phones / Listen** jack for a one-shot preview or select **Steady loop** for a verified repeating signal. Turn **Volume** while listening. Audio starts muted; **Mute** and circuit edits stop playback.
-6. Try **Capacitor charge / decay**, **Op-amp gain stage**, or **Envelope shaping** from Examples. Each experiment has a **What to try** guide in the inspector. The gain stage requires both visible supply connections; removing either blocks capture.
+6. Explore **Examples**, grouped into Basic, Intermediate, and Advanced. Start with attenuation and filtering, then try envelope following, CV mixing, an attenuverter, and the Sallen–Key filter. Each experiment has **What to try** and **Build on EDU LABOR** guides in the inspector, including a parts list. Active circuits require both visible supply connections; removing either blocks capture.
 7. Open **DC operating point** below the scope for initial node voltages. Select a component to read its DC current and power in the inspector. **Trigger** frames rising or falling crossings without changing the circuit.
 8. **Export circuit** saves JSON. **Import** restores it, while browser recovery remembers the latest circuit when storage is available.
 
@@ -38,7 +38,7 @@ Keyboard: **W** wire, **V** select, **R** rotate placement, **Escape** cancel, *
 - A LABOR-inspired birch chassis with black module panels, an integrated capture display, tactile knobs and gate button, metallic patch points, and a cream breadboard. The 30-column virtual board and existing source models remain distinct from the physical hardware.
 - A 30-column breadboard with separate five-hole strips, a center trench, and explicitly split, unpowered rails. Connected-net highlighting and **Show connections** expose its topology. Pan, center-preserving zoom, and separate breadboard/workbench fit actions keep parts reachable.
 - Eight component types: resistor, non-polarized capacitor, polarized electrolytic capacitor, potentiometer, generic silicon diode, generic red LED, switch, and generic dual op-amp. Placement checks every lead; DIP-8 parts straddle the trench in either orientation. Two-lead parts support individual pin movement with 1–8 hole spacings, polarity preservation, previews, keyboard controls, and occupancy checks. Probes attach without occupying holes.
-- Six ordinary editable examples: RC low-pass filter, voltage divider, diode clipper, capacitor charge/decay, op-amp gain stage, and envelope shaping.
+- Thirteen ordinary editable examples, grouped by difficulty: the original RC low-pass, voltage divider, diode clipper, capacitor charge/decay, op-amp gain stage, and envelope shaping, plus CV attenuation, AC coupling, gate-to-trigger shaping, diode envelope following, CV/audio mixing, a buffered attenuverter, and a Sallen–Key two-pole low-pass. The seven new circuits use component values in the EDU LABOR full-kit inventory. The partial kit needs separately sourced experimental components; physical source levels and breadboard coordinates differ from the simulation.
 - Oscillator waveform/frequency/amplitude controls, a DC CV source, GND, and ±12 V source terminals. A separate capture stimulus selects periodic input or a 0 → amplitude → 0 charging/decay step. The EG terminal supplies a held gate, 1 ms trigger, or exponential decay envelope (1–40 ms time constant), with a virtual 5 V level and 100 Ω output resistance. **Fire** starts a fresh event capture.
 - A separate DC operating-point solve followed by real 100 ms transient captures through `eecircuit-engine` 1.8.0, isolated in a dedicated worker. Edits coalesce, outdated results are discarded, and a timed-out worker can be recreated.
 - A resizable two-channel scope with independent voltage scales, shared time scale, autoscale, min/max/peak-to-peak/time-weighted mean, conservative frequency detection, persistent A/B time cursors, Δt/ΔV, and a differential voltage meter. Basic rising/falling triggering frames the first confirmed crossing; no crossing is explicitly reported. Cursors retain absolute capture times. DC and irregular signals display frequency unavailable.
@@ -68,11 +68,11 @@ npm run test:e2e  # Playwright browser integration tests
 npm run preview   # Serve the production build locally
 ```
 
-The unit/numerical suite covers topology and import validation, real ngspice divider/filter/diode behavior, potentiometer endpoints, capacitor charging/decay, op-amp gain and supply-dependent clipping, envelope timing and loading, separate operating-point currents and power, polarity checks, trigger framing, measurement interpolation, audio, and worker recovery. Browser tests cover placement, eight-pin movement, component controls and undo, individual lead editing, board navigation, scope resizing, live audio and mute behavior, live measurements, DC readings, envelope controls, trigger framing, stale results, import/export, and recovery. Run the application workflows against the production bundle with:
+The unit/numerical suite covers topology and import validation, real ngspice divider/filter/diode behavior, potentiometer endpoints, capacitor charging/decay, op-amp gain and supply-dependent clipping, envelope timing and loading, the new synth examples and their suggested changes, separate operating-point currents and power, polarity checks, trigger framing, measurement interpolation, audio, and worker recovery. Browser tests cover example selection and build guides, placement, eight-pin movement, component controls and undo, individual lead editing, board navigation, scope resizing, live audio and mute behavior, live measurements, DC readings, envelope controls, trigger framing, stale results, import/export, and recovery. Run the application workflows against the production bundle with:
 
 ```sh
 npm run build
-LABOR_PRODUCTION=1 npm run test:e2e -- workbench.spec.ts components.spec.ts measurements.spec.ts instruments.spec.ts trigger.spec.ts lead-editing.spec.ts viewport.spec.ts monitor.spec.ts
+LABOR_PRODUCTION=1 npm run test:e2e -- examples.spec.ts workbench.spec.ts components.spec.ts measurements.spec.ts instruments.spec.ts trigger.spec.ts lead-editing.spec.ts viewport.spec.ts monitor.spec.ts
 ```
 
 Browser tests require Chromium (`npx playwright install chromium` if needed). See `playwright.config.ts` for the configured browser and isolated local server on port 5177.
@@ -85,6 +85,7 @@ Browser tests require Chromium (`npx playwright install chromium` if needed). Se
 | `src/components/workbench/` | SVG breadboard, component artwork, inspector, numeric controls, Canvas scope |
 | `src/components/ui/` | Project-owned shadcn components |
 | `src/lib/circuit.ts` | Versioned documents, virtual geometry, validation, connectivity compiler, examples |
+| `src/lib/passive-examples.ts`, `src/lib/active-examples.ts` | Modular synth experiments, hardware notes, and editable circuit documents |
 | `src/lib/use-document.ts` | Undo history and browser recovery |
 | `src/lib/simulation*.ts` | Simulation hook, worker client, worker, capture extraction, limits |
 | `src/lib/measurements.ts` | Time-weighted statistics, frequency detection, cursor interpolation, differential voltage |

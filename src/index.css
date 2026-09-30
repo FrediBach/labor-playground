@@ -219,6 +219,10 @@ select { color-scheme: dark; }
 .experiment-lesson summary { color: #cacbcb; font-size: 10px; }
 .experiment-lesson h4 { margin-top: 12px; font-size: 8px; text-transform: uppercase; letter-spacing: .9px; color: #cecfcf; }
 .experiment-lesson p { margin: 4px 0; }
+.experiment-parts { list-style: none; padding: 0; margin: 6px 0 10px; color: #b8b9b9; font-size: 10px; line-height: 1.7; }
+.experiment-parts strong { color: #dedfdf; font-weight: 500; }
+.experiment-lesson a { display: inline-block; margin-top: 8px; color: #d4ba85; font-size: 10px; text-decoration: underline; text-underline-offset: 3px; }
+@media(max-width:740px) { .inspector > .experiment-card { grid-column: 1 / -1; } }
 .stimulus-select { border: 1px solid #464747; background: #2b2c2c; color: #bebfbf; font: 9px 'Geist Variable',sans-serif; border-radius: 3px; padding: 5px; max-width: 133px; }
 .knob-ring[role=slider] { cursor: ns-resize; touch-action: none; }
 .knob-ring[role=slider]:focus-visible { outline: 2px solid #c1c2c2; outline-offset: 3px; }
