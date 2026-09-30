@@ -1,0 +1,263 @@
+/* Interface sizing is independent of the miniature hardware's silkscreen. */
+.app-shell { font-size: 14px; --muted-foreground: #b1b9b4; }
+.app-header { min-height: 64px; height: auto; padding-block: 12px; }
+.brand-slogan { font-size: 13px; }
+.about-link { font-size: 12px; color: #b4bdb7; }
+.local-indicator { font-size: 10px; }
+.icon-button { width: 36px; height: 36px; color: #bac3bd; }
+.subtle-button { font-size: 13px; min-height: 36px; }
+
+/* The primary action stays reachable beside the project, including long Pico sessions. */
+.project-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 20px;
+  min-height: 76px;
+  padding: 12px 24px;
+  background: #252a27;
+  box-shadow: 0 3px 12px #0003;
+}
+.project-title { min-width: 0; flex: 1 1 170px; }
+.project-title > div { min-width: 0; }
+.project-title strong { font-size: 14px; line-height: 1.4; overflow-wrap: anywhere; }
+.project-title span { font-size: 10px; color: #acb6ae; }
+.project-actions { gap: 12px; flex-wrap: wrap; }
+.history-actions { gap: 2px; padding-right: 10px; }
+.example-select > span { font-size: 12px; color: #b1bbb4; }
+.example-select select { font-size: 13px; min-height: 40px; max-width: 190px; }
+.import-button, .export-button { min-height: 40px; font-size: 13px; gap: 6px; }
+.export-button { padding-inline: 12px; border-color: #566057; background: #303732; }
+.simulation-actions { display: flex; align-items: center; gap: 16px; border-left: 1px solid #4a554b; padding-left: 20px; }
+.simulation-feedback { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; max-width: 205px; }
+.simulation-status { display: flex; align-items: center; gap: 7px; color: #c2ccc4; font-size: 12px; line-height: 1.4; }
+.simulation-status-dot { width: 6px; height: 6px; border-radius: 50%; background: #d7b47c; flex-shrink: 0; }
+.simulation-status.ready .simulation-status-dot { background: #9dceb4; }
+.simulation-status.error, .simulation-status.invalid { color: #ffc0a1; }
+.simulation-status.error .simulation-status-dot, .simulation-status.invalid .simulation-status-dot { background: #ec9f7a; }
+.simulation-shortcut { font-size: 11px; color: #aebbb0; }
+.simulation-results-link { font-size: 12px; color: #d7dfd6; text-underline-offset: 3px; text-decoration: underline; }
+.simulate-button {
+  min-width: 132px;
+  height: 44px;
+  padding: 0 19px;
+  border: 1px solid #ffdda1;
+  border-radius: 6px;
+  background: #edc580;
+  color: #28251f;
+  font-size: 14px;
+  font-weight: 700;
+  gap: 9px;
+  box-shadow: inset 0 1px 0 #fff4d488, 0 2px 5px #0003;
+}
+.simulate-button:hover:not(:disabled) { background: #f8d697; border-color: #ffe3af; }
+.simulate-button:disabled { opacity: .65; }
+.simulate-button:focus-visible { outline: 3px solid #f8d697; outline-offset: 4px; }
+.simulation-spinner { animation: simulation-spin 1s linear infinite; }
+@keyframes simulation-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .simulation-spinner { animation: none; } }
+.simulation-error { display: flex; align-items: flex-start; gap: 10px; padding: 14px; margin-bottom: 16px; border: 1px solid #936951; border-radius: 6px; background: #3c3029; color: #ffccb0; }
+.simulation-error > svg { flex-shrink: 0; margin-top: 2px; }
+.simulation-error p { margin: 5px 0; line-height: 1.6; font-size: 13px; overflow-wrap: anywhere; }
+.simulation-error .subtle-button { color: #ffdbbf; text-decoration: underline; text-underline-offset: 3px; }
+#simulation-results { scroll-margin-top: 105px; }
+.diagnostics { scroll-margin-top: 110px; }
+
+/* Readable navigation, guidance, and component editing. */
+.workbench-layout { grid-template-columns: 216px minmax(0, 1fr) 270px; }
+.workbench-layout.parts-collapsed { grid-template-columns: minmax(0, 1fr) 270px; }
+.workbench-layout.inspector-collapsed { grid-template-columns: 216px minmax(0, 1fr); }
+.workbench-layout.parts-collapsed.inspector-collapsed { grid-template-columns: minmax(0, 1fr); }
+.parts-tray { padding: 20px 14px; }
+.panel-heading h2 { font-size: 12px; color: #d0d8d1; }
+.parts-search { height: 40px; }
+.parts-search input { font-size: 13px; color: #e1e7e0; }
+.parts-search input::placeholder { color: #acb7af; }
+.parts-search:focus-within { outline: 2px solid #b9dce3; outline-offset: 2px; }
+.tray-category, .section-overline { font-size: 11px; color: #b0bcb2; letter-spacing: 1px; }
+.part-item { min-height: 62px; padding: 7px 5px; gap: 10px; }
+.part-item > span:nth-child(2) { min-width: 0; }
+.part-thumbnail { width: 48px; flex-shrink: 0; }
+.part-item strong { font-size: 13px; line-height: 1.4; color: #e2e8df; }
+.part-item small { font-size: 11px; line-height: 1.5; color: #b1bcb3; margin-top: 3px; }
+.part-item > svg { flex-shrink: 0; }
+.connection-item { font-size: 13px; min-height: 40px; gap: 8px; }
+.connection-item .mono { font-size: 11px; }
+.connection-tools .add-pico { margin-top: 8px; }
+.wire-palette { gap: 5px; flex-wrap: wrap; padding: 5px 2px; }
+.wire-palette button { width: 26px; height: 26px; min-width: 26px; }
+.parts-empty { padding: 10px 3px; font-size: 13px; line-height: 1.6; color: #c1cdc2; overflow-wrap: anywhere; }
+.parts-empty p { margin: 0; }
+.parts-empty button { color: #f0d2a0; text-decoration: underline; text-underline-offset: 3px; }
+.tray-note { font-size: 12px; line-height: 1.7; color: #bbc5bd; }
+.tray-note p, .tray-note span, .tray-bottom { font-size: 11px; }
+.tray-bottom { color: #b8c4ba; }
+.eyebrow, .selected-part-summary > .eyebrow, .experiment-card > .eyebrow { font-size: 10px; line-height: 1.5; }
+.workspace h1 { font-size: 25px; line-height: 1.25; }
+.experiment-tip { font-size: 13px; line-height: 1.6; padding: 8px 12px; gap: 10px; }
+.experiment-tip > span:nth-child(2) { flex: 1; }
+.experiment-tip button { min-width: 32px; min-height: 32px; }
+.board-toolbar { gap: 10px; flex-wrap: wrap; padding-bottom: 10px; }
+.tool-group { gap: 4px; flex-wrap: wrap; }
+.connections-toggle { font-size: 12px; min-height: 36px; color: #c2ccc4; }
+.connections-toggle input { width: 15px; height: 15px; }
+.zoom-controls { gap: 3px; }
+.zoom-controls > span { font-size: 11px; min-width: 36px; }
+.fit-workbench { font-size: 11px; min-height: 32px; padding-inline: 8px; }
+.board-hint { font-size: 12px; line-height: 1.6; color: #b8c5ba; margin-top: 12px; }
+.board-count { font-size: 11px; white-space: nowrap; }
+.inspector { padding-inline: 18px; }
+.selected-part-summary p, .inspector-empty p, .model-details p, .muted-copy { font-size: 13px; line-height: 1.65; color: #bec8bf; }
+.number-field > span, .number-field > div > span { font-size: 12px; color: #bec8bf; }
+.number-field > div { min-height: 40px; }
+.value-presets { gap: 4px; }
+.value-presets button { min-height: 34px; font-size: 12px; color: #c6d0c8; }
+.pin-row, .ic-pin-list .pin-row, .pin-row code { font-size: 12px; }
+.micro-copy { font-size: 12px; color: #aebeb1; line-height: 1.65; }
+.model-details summary, .delete-part, .switch-value, .commit-slider { font-size: 13px; }
+.model-details summary, .experiment-lesson summary, .debug-details summary { padding-block: 6px; }
+.move-lead-button { min-height: 30px; font-size: 11px; padding-inline: 8px; }
+.cancel-lead-edit, .reverse-polarity { font-size: 12px; }
+.experiment-card { padding: 15px; }
+.experiment-card h3 { font-size: 15px; }
+.experiment-card p, .experiment-parts, .experiment-lesson a { font-size: 12px; color: #bdcbbd; line-height: 1.7; }
+.experiment-lesson summary { font-size: 13px; }
+.experiment-lesson h4 { font-size: 11px; }
+.experiment-card .subtle-button { font-size: 12px; }
+.healthy-status, .diagnostic, .error-copy { font-size: 12px; line-height: 1.6; }
+.debug-details, .debug-details pre { font-size: 11px; }
+.dc-part-row, .dc-part-row output { font-size: 12px; }
+.tiny-tag { font-size: 10px; }
+.capture-toolbar { flex-wrap: wrap; gap: 12px; }
+.capture-actions { margin-left: auto; flex-wrap: wrap; gap: 12px; }
+.auto-update { font-size: 13px; min-height: 36px; }
+.auto-update:has(input:disabled) { opacity: .6; }
+.capture-mode-note { font-size: 12px; color: #bdc8bf; }
+.stimulus-select { font-size: 12px; min-height: 36px; max-width: 166px; }
+.capture-button { font-size: 13px; min-height: 36px; padding-inline: 14px; }
+.app-footer { font-size: 11px; line-height: 1.6; color: #abb8ae; }
+.toast { font-size: 13px; line-height: 1.6; }
+.guide-dialog { max-width: 640px; }
+.guide-dialog p, .guide-dialog li { font-size: 14px; }
+.guide-note p { font-size: 12px; }
+
+/* Instrument controls retain their physical character with larger functional markings. */
+.module-heading, .scope-module-heading { font-size: 10px; letter-spacing: .5px; }
+.instrument-panel .instrument-label { font-size: 10px; letter-spacing: 0; line-height: 1.4; }
+.instrument-panel .source-caption { font-size: 9px; white-space: normal; text-align: center; line-height: 1.5; }
+.instrument-panel .waveform-buttons button { width: 34px; height: 28px; }
+.rotary-control.frequency-knob { width: 72px; }
+.rotary-control .knob-number { height: 28px; font-size: 11px; }
+.rotary-control .knob-number input { width: 47px; height: 28px; }
+.hardware-envelope .instrument-label { font-size: 10px; letter-spacing: 0; }
+.hardware-envelope .fire-button, .hardware-envelope .gate-button { font-size: 10px; color: #3d4b40; }
+.hardware-envelope .envelope-type-control select { min-height: 32px; font-size: 11px; }
+.monitor-routing label { font-size: 9px; letter-spacing: 0; }
+.monitor-routing select { min-height: 30px; font-size: 10px; }
+.monitor-listen, .audio-monitor .monitor-mute { font-size: 10px; }
+.audio-monitor .monitor-mute { min-height: 30px; }
+.monitor-note { font-size: 10px; line-height: 1.6; }
+.scope-module-input { font-size: 10px; min-height: 34px; }
+.scope-module-inputs { flex-wrap: wrap; gap: 8px; }
+.scope-module-input-label { font-size: 8px; }
+.scope-module-readout, .scope-module-status { font-size: 8px; }
+.carrier-heading { font-size: 9px; }
+.carrier-module-heading h3 { font-size: 10px; }
+.carrier-module-heading > button { font-size: 11px; min-height: 30px; padding-inline: 7px; }
+.carrier-empty { font-size: 11px; line-height: 1.6; }
+.carrier-caption { font-size: 9px; line-height: 1.5; }
+.carrier-part-link { font-size: 12px; min-height: 30px; }
+.carrier-part-link span, .carrier-pins, .hardware-toggle small { font-size: 10px; }
+
+@media (min-width: 1051px) and (max-width: 1360px) {
+  .instrument-panel { grid-template-columns: minmax(160px, .8fr) minmax(300px, 1.6fr); }
+  .output-module { grid-column: 1 / -1; }
+  .instrument-panel .audio-monitor-controls { grid-template-columns: 64px 72px minmax(0, 1fr); gap: 8px 12px; }
+  .instrument-panel .monitor-routing { grid-column: auto; align-self: center; }
+  .instrument-panel .audio-monitor .monitor-mute { grid-column: 3; }
+  .chassis-description { display: none; }
+}
+@media (max-width: 1200px) and (min-width: 741px) {
+  .project-title { flex: 1; }
+  .project-actions { order: 3; flex-basis: 100%; }
+  .simulation-actions { border-left: 0; }
+  #simulation-results, .diagnostics { scroll-margin-top: 155px; }
+}
+@media (max-width: 1050px) and (min-width: 741px) {
+  .workbench-layout, .workbench-layout.inspector-collapsed { grid-template-columns: 200px minmax(0, 1fr); }
+  .workbench-layout.parts-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .inspector { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+  .project-title span, .example-select > span { display: block; }
+  .import-button { font-size: 13px; }
+}
+@media (max-width: 900px) and (min-width: 741px) {
+  .instrument-panel { grid-template-columns: minmax(0, 1fr); }
+  .chassis-brand { flex-wrap: wrap; }
+}
+@media (max-width: 740px) {
+  .app-header { padding: 12px 14px; }
+  .brand-slogan { font-size: 11px; line-height: 1.5; }
+  .project-toolbar { padding: 10px 12px; gap: 10px; }
+  .project-title { flex: 1 1 0; gap: 7px; }
+  .project-title > svg { display: none; }
+  .project-title strong { font-size: 13px; }
+  .simulation-actions { display: contents; }
+  .simulation-feedback { order: 4; flex-basis: 100%; max-width: none; flex-direction: row; align-items: center; justify-content: space-between; gap: 10px; }
+  .simulation-status { font-size: 11px; }
+  .simulation-shortcut { display: none; }
+  .simulate-button { min-width: 119px; padding-inline: 13px; }
+  .project-actions { order: 3; width: 100%; gap: 6px; flex-wrap: nowrap; }
+  .history-actions { gap: 0; }
+  .example-select { flex: 1; min-width: 0; }
+  .example-select select { max-width: 100%; width: 100%; font-size: 12px; }
+  .import-button, .export-button { width: 36px; min-width: 36px; height: 38px; min-height: 38px; padding: 0; justify-content: center; }
+  .import-button span, .export-button span { display: none; }
+  .workbench-layout, .workbench-layout.inspector-collapsed, .workbench-layout.parts-collapsed { grid-template-columns: minmax(0, 1fr); }
+  .parts-tray { padding: 12px; min-width: 0; }
+  .parts-tray .panel-heading { display: flex; margin-bottom: 8px; }
+  .parts-tray .parts-search { display: flex; margin-bottom: 10px; }
+  .parts-list { gap: 6px; padding-bottom: 6px; }
+  .part-item { min-height: 46px; gap: 6px; padding: 5px 8px; }
+  .part-item strong { font-size: 12px; }
+  .part-thumbnail { width: 34px; }
+  .connection-tools { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; border-top: 1px solid #465047; padding-top: 8px; margin-top: 4px; }
+  .connection-tools .connection-item { display: flex; width: auto; min-height: 38px; padding: 6px 8px; font-size: 12px; margin: 0; }
+  .connection-tools .wire-palette { display: flex; gap: 8px; }
+  .connection-tools .tools-label { display: none; }
+  .workspace h1 { font-size: 23px; }
+  .eyebrow { font-size: 10px; }
+  .experiment-tip { font-size: 12px; }
+  .tool-group .icon-button, .zoom-controls .icon-button { width: 36px; }
+  .connections-toggle span { max-width: none; display: inline; }
+  .zoom-controls { margin-left: auto; }
+  .board-hint { font-size: 12px; }
+  .inspector { display: flex; flex-direction: column; gap: 18px; padding: 20px; }
+  .inspector-section { padding-block: 14px; border-top: 1px solid #465047; }
+  .carrier-modules { grid-template-columns: minmax(0, 1fr); gap: 14px; }
+  .carrier-module + .carrier-module { border: 0; padding: 0; }
+  .carrier-module-heading h3 { font-size: 11px; }
+  .carrier-heading { font-size: 9px; }
+  .carrier-empty { font-size: 11px; }
+  .capture-toolbar { gap: 10px; }
+  .capture-actions { width: 100%; justify-content: space-between; gap: 8px; }
+  .reset-button { display: flex; }
+  .stimulus-select { max-width: 155px; }
+  .app-footer { font-size: 10px; }
+  #simulation-results, .diagnostics { scroll-margin-top: 165px; }
+}
+@media (max-width: 480px) {
+  .instrument-panel { grid-template-columns: minmax(0, 1fr); }
+  .instrument-panel .source-module { grid-row: 2; }
+  .scope-module-screen svg { max-height: 130px; }
+  .scope-module-input-label { font-size: 9px; }
+  .generator-controls { grid-template-columns: 1fr 36px 1fr 1fr; gap: 4px; }
+  .hardware-envelope.envelope-controls { grid-template-columns: 78px 64px minmax(64px, 1fr); gap: 8px; }
+  .instrument-panel .instrument-label { font-size: 9px; }
+  .instrument-panel .audio-monitor-controls { grid-template-columns: 64px 72px minmax(0, 1fr); gap: 10px; }
+  .instrument-panel .monitor-routing { grid-column: auto; grid-template-columns: minmax(0, 1fr); }
+  .instrument-panel .audio-monitor .monitor-mute { grid-column: 1 / -1; }
+  .rotary-control.frequency-knob { width: 64px; }
+  .rotary-control .knob-number input { width: 42px; }
+}

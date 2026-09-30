@@ -5,7 +5,7 @@ import { passiveExamples } from './passive-examples.ts'
 import { picoExamples } from './pico/examples.ts'
 import { activeExamples } from './active-examples.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'diode' | 'led' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp'
 
 export interface Part {
   id: string
@@ -89,17 +89,47 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     description: 'Stores charge. Combine with a resistor to shape a signal.',
     model: 'Ideal non-polarized capacitor. Every capture starts at the DC operating point; charge is not preserved between edits.',
   },
+  inductor: {
+    pinNames: ['1', '2'],
+    label: 'Inductor', unit: 'H', defaultValue: 10e-3, min: 1e-6, max: 10,
+    description: 'Stores energy in a magnetic field and resists changes in current.',
+    model: 'Linear inductor with a fixed 1 Ω series winding resistance. No magnetic saturation, core loss, coupling, or thermal model. Current starts at the DC operating point on every capture.',
+  },
   diode: {
     pinNames: ['Anode', 'Cathode'],
     label: 'Signal diode', unit: '', defaultValue: 1, min: 1, max: 1,
     description: 'Conducts from the first lead (anode) to the striped lead (cathode).',
     model: 'Generic silicon diode: Is=2.52 nA, N=1.752, Rs=0.568 Ω, Cjo=4 pF. Educational model, not a named manufacturer part.',
   },
+  schottky: {
+    pinNames: ['Anode', 'Cathode'],
+    label: 'Schottky diode', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'A diode with a lower forward voltage. The stripe marks its cathode.',
+    model: 'Generic Schottky-like diode: Is=200 nA, N=1.05, Rs=0.2 Ω, Cjo=10 pF, Eg=0.69 eV. No reverse-breakdown or damage model. Educational model, not a named manufacturer part.',
+  },
+  zener: {
+    pinNames: ['Anode', 'Cathode'],
+    label: 'Zener diode', unit: 'V', defaultValue: 5.1, min: 2.4, max: 24,
+    description: 'Limits reverse voltage near its nominal breakdown voltage. Add a series resistor.',
+    model: 'Generic zener diode with editable nominal breakdown voltage (BV), specified at 1 mA (IBV); Is=1 pA, N=1, Rs=2 Ω, Cjo=50 pF. The actual voltage depends on current. Forward conduction is also modeled; no tolerance, thermal, or damage model.',
+  },
   led: {
     pinNames: ['Anode', 'Cathode'],
     label: 'Red LED', unit: '', defaultValue: 1, min: 1, max: 1,
     description: 'A light-emitting diode. Add a series resistor to limit current.',
     model: 'Generic red LED diode: Is=1e-20 A, N=2, Rs=5 Ω. Fixed model; visual glow is not a calibrated brightness measurement.',
+  },
+  npn: {
+    pinNames: ['Collector', 'Base', 'Emitter'],
+    label: 'NPN transistor', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'A small base current controls collector current. Pins are C, B, E in that order.',
+    model: 'Generic NPN bipolar transistor: Is=10 fA, forward beta=100, reverse beta=1, Early voltage=100 V, Cje=10 pF, Cjc=4 pF, Tf=0.5 ns, Tr=10 ns. Fixed educational C–B–E package; not a manufacturer pinout. No breakdown, thermal, or damage model.',
+  },
+  pnp: {
+    pinNames: ['Collector', 'Base', 'Emitter'],
+    label: 'PNP transistor', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'The complementary bipolar transistor. Pins are C, B, E in that order.',
+    model: 'Generic PNP bipolar transistor: Is=10 fA, forward beta=100, reverse beta=1, Early voltage=100 V, Cje=10 pF, Cjc=4 pF, Tf=0.5 ns, Tr=10 ns. Fixed educational C–B–E package; not a manufacturer pinout. No breakdown, thermal, or damage model.',
   },
   switch: {
     pinNames: ['1', '2'],
@@ -176,14 +206,15 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
     }
     return null
   }
-  const span = kind === 'capacitor' || kind === 'electrolytic' || kind === 'potentiometer' ? 1 : 3
-  const count = kind === 'potentiometer' ? 3 : 2
+  const threeLead = kind === 'potentiometer' || kind === 'npn' || kind === 'pnp'
+  const span = kind === 'capacitor' || kind === 'electrolytic' || threeLead ? 1 : 3
+  const count = threeLead ? 3 : 2
   const pins = Array.from({ length: count }, (_, index) => {
     const nextColumn = column + (direction === 0 ? span : direction === 2 ? -span : 0) * index
     const nextRow = row + (direction === 1 ? span : direction === 3 ? -span : 0) * index
     return nextColumn < 1 || nextColumn > 30 || nextRow < 0 || nextRow >= rows.length ? null : `${rows[nextRow]}${nextColumn}`
   })
-  if (kind === 'potentiometer' && pins.some((pin) => pin !== null && (rows.indexOf(pin[0]) < 5) !== (row < 5))) return null
+  if (threeLead && pins.some((pin) => pin !== null && (rows.indexOf(pin[0]) < 5) !== (row < 5))) return null
   return pins.some((pin) => pin === null) ? null : pins as string[]
 }
 
@@ -191,7 +222,7 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
 export function isValidFootprint(kind: ComponentKind, pins: string[]): boolean {
   if (!Object.hasOwn(PARTS, kind) || pins.length !== PARTS[kind].pinNames.length || new Set(pins).size !== pins.length) return false
   if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
-  if (kind !== 'potentiometer' && kind !== 'opamp') return true
+  if (kind !== 'potentiometer' && kind !== 'opamp' && kind !== 'npn' && kind !== 'pnp') return true
   return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation)?.every((pin, index) => pin === pins[index]))
 }
 
@@ -388,8 +419,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
     if (part.kind === 'opamp') continue
-    if (part.kind === 'potentiometer') {
-      if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. A potentiometer needs three separate strips to act as a divider.`, partId: part.id })
+    if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
+      if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
       addEdge(a, b)
       addEdge(b, c)
     } else {
@@ -479,6 +510,9 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     `VMINUS ${nodeByTerminal.vminus} 0 -12`,
     '.model D_SIGNAL D(Is=2.52e-9 N=1.752 Rs=0.568 Cjo=4e-12)',
     '.model D_RED D(Is=1e-20 N=2 Rs=5 Cjo=10e-12)',
+    '.model D_SCHOTTKY D(Is=2e-7 N=1.05 Rs=0.2 Cjo=10e-12 Eg=0.69)',
+    '.model Q_NPN NPN(Is=1e-14 Bf=100 Br=1 Vaf=100 Cje=10e-12 Cjc=4e-12 Tf=0.5e-9 Tr=10e-9)',
+    '.model Q_PNP PNP(Is=1e-14 Bf=100 Br=1 Vaf=100 Cje=10e-12 Cjc=4e-12 Tf=0.5e-9 Tr=10e-9)',
   ]
   if (doc.pico) {
     try { lines.push(...picoDriverLines(nodeByTerminal, activeNodes, picoTrace, analysis === 'operating-point')) }
@@ -504,7 +538,16 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     const safeId = spiceDeviceId(part)
     if (part.kind === 'resistor') lines.push(`R_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
     if (part.kind === 'capacitor' || part.kind === 'electrolytic') lines.push(`C_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
-    if (part.kind === 'diode' || part.kind === 'led') lines.push(`D_${safeId} ${a} ${b} ${part.kind === 'led' ? 'D_RED' : 'D_SIGNAL'}`)
+    if (part.kind === 'inductor') {
+      lines.push(`L_${safeId} ${a} ind_${safeId} ${spiceNumber(part.value)}`)
+      lines.push(`RL_${safeId} ind_${safeId} ${b} 1`)
+    }
+    if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky') lines.push(`D_${safeId} ${a} ${b} ${part.kind === 'led' ? 'D_RED' : part.kind === 'schottky' ? 'D_SCHOTTKY' : 'D_SIGNAL'}`)
+    if (part.kind === 'zener') {
+      lines.push(`.model DZ_${safeId} D(Is=1e-12 N=1 Rs=2 Cjo=50e-12 Bv=${spiceNumber(part.value)} Ibv=1e-3)`)
+      lines.push(`D_${safeId} ${a} ${b} DZ_${safeId}`)
+    }
+    if (part.kind === 'npn' || part.kind === 'pnp') lines.push(`Q_${safeId} ${a} ${b} ${nodeByTerminal[part.pins[2]]} ${part.kind === 'npn' ? 'Q_NPN' : 'Q_PNP'}`)
     if (part.kind === 'switch') lines.push(`R_${safeId} ${a} ${b} ${part.value === 1 ? '1' : '1e9'}`)
     if (part.kind === 'potentiometer') {
       const position = part.position ?? 0.5
@@ -531,7 +574,13 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   }
   const step = spiceNumber(Math.min(doc.pico ? 5e-6 : 1e-5, period / 80))
   const savedCurrents = analysis === 'operating-point'
-    ? [...doc.parts].filter((part) => part.kind === 'diode' || part.kind === 'led').sort((a, b) => a.id.localeCompare(b.id)).map((part) => `@D_${spiceDeviceId(part)}[id]`)
+    ? [...doc.parts].sort((a, b) => a.id.localeCompare(b.id)).flatMap((part) => {
+      const safeId = spiceDeviceId(part)
+      if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
+      if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
+      if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
+      return []
+    })
     : []
   lines.push('.options reltol=0.001 abstol=1e-12 vntol=1e-6', ['.save all', ...savedCurrents].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} 0.1 0 ${step}`, '.end')
   return { netlist: lines.join('\n') + '\n', diagnostics, nodeByTerminal, nets }
@@ -539,6 +588,9 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
 
 export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'diode') return 'Silicon'
+  if (kind === 'schottky') return 'Low Vf'
+  if (kind === 'npn') return 'NPN · C–B–E'
+  if (kind === 'pnp') return 'PNP · C–B–E'
   if (kind === 'led') return 'Red'
   if (kind === 'opamp') return 'Dual · DIP-8'
   if (kind === 'switch') return value === 1 ? 'Closed' : 'Open'

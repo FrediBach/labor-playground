@@ -31,10 +31,14 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
   const definition = part ? PARTS[part.kind] : null
   const resistive = part?.kind === 'resistor' || part?.kind === 'potentiometer'
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
+  const inductive = part?.kind === 'inductor'
+  const zener = part?.kind === 'zener'
+  const transistor = part?.kind === 'npn' || part?.kind === 'pnp'
+  const polarized = part?.kind === 'electrolytic' || part?.kind === 'diode' || part?.kind === 'schottky' || zener || part?.kind === 'led'
   const dc = part ? operatingPoint?.parts[part.id] : undefined
-  const unit = resistive ? 'kΩ' : part?.kind === 'electrolytic' ? 'µF' : 'nF'
-  const factor = resistive ? 1e3 : part?.kind === 'electrolytic' ? 1e-6 : 1e-9
-  const presets = resistive ? [1, 4.7, 10, 22, 100] : part?.kind === 'electrolytic' ? [0.47, 1, 2.2, 4.7, 10] : [10, 47, 100, 220, 470]
+  const unit = resistive ? 'kΩ' : inductive ? 'mH' : zener ? 'V' : part?.kind === 'electrolytic' ? 'µF' : 'nF'
+  const factor = resistive ? 1e3 : inductive ? 1e-3 : zener ? 1 : part?.kind === 'electrolytic' ? 1e-6 : 1e-9
+  const presets = resistive ? [1, 4.7, 10, 22, 100] : inductive ? [1, 4.7, 10, 47, 100] : zener ? [2.7, 3.3, 5.1, 6.8, 12] : part?.kind === 'electrolytic' ? [0.47, 1, 2.2, 4.7, 10] : [10, 47, 100, 220, 470]
   const updatePart = (patch: Partial<NonNullable<typeof part>>) => {
     if (part) onChange({ ...document, parts: document.parts.map(item => item.id === part.id ? { ...item, ...patch } : item) })
   }
@@ -45,16 +49,16 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
       {part && definition ? <>
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
-          <span className="eyebrow">{part.id} · {part.kind === 'opamp' ? 'GENERIC DUAL · DIP-8' : part.kind === 'electrolytic' ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
+          <span className="eyebrow">{part.id} · {part.kind === 'opamp' ? 'GENERIC DUAL · DIP-8' : transistor ? `GENERIC ${part.kind.toUpperCase()} · C / B / E` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
           <h2>{definition.label}</h2><p>{definition.description}</p>
         </div>
         <div className="inspector-section">
           <div className="section-overline">{part.kind === 'opamp' ? 'POWER & MODEL' : 'COMPONENT VALUE'}</div>
           {part.kind === 'switch' ? (
             <label className="switch-value"><input type="checkbox" checked={!!part.value} onChange={event => updatePart({ value: event.target.checked ? 1 : 0 })} />{part.value ? 'Closed (on)' : 'Open (off)'}</label>
-          ) : resistive || capacitive ? <>
+          ) : resistive || capacitive || inductive || zener ? <>
             <NumberField
-              key={part.id} label={resistive ? 'Resistance' : 'Capacitance'}
+              key={part.id} label={resistive ? 'Resistance' : inductive ? 'Inductance' : zener ? 'Zener voltage' : 'Capacitance'}
               value={Number((part.value / factor).toPrecision(10))}
               min={definition.min / factor} max={definition.max / factor} unit={unit}
               onCommit={value => updatePart({ value: value * factor })}
@@ -69,22 +73,23 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
             </div>}
           </> : part.kind === 'opamp' ? (
             <p className="muted-copy">Connect pin 8 to the positive supply and pin 4 to the negative supply. Both amplifiers share these rails.</p>
-          ) : <p className="muted-copy">Fixed generic {part.kind} model.</p>}
+          ) : <p className="muted-copy">Fixed generic {transistor ? `${part.kind.toUpperCase()} transistor` : definition.label.toLowerCase()} model.</p>}
         </div>
         <div className="inspector-section">
-          <div className="section-overline">{part.kind === 'opamp' ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
-          <div className={part.kind === 'opamp' ? 'ic-pin-list' : undefined}>
+          <div className="section-overline">{part.kind === 'opamp' || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
+          <div className={part.kind === 'opamp' || transistor ? 'ic-pin-list' : undefined}>
             {part.pins.map((pin, index) => (
               <div className="pin-row" key={index}>
-                <span><i />{part.kind === 'opamp' && <b>{index + 1}</b>}{definition.pinNames[index]}</span>
+                <span><i />{(part.kind === 'opamp' || transistor) && <b>{index + 1}</b>}{definition.pinNames[index]}</span>
                 <div className="pin-actions"><code>{pin.toUpperCase()}</code>{hasEditableLeads(part) && <button className="move-lead-button" aria-label={`Move ${part.id} lead ${definition.pinNames[index]}`} aria-pressed={editingLead?.partId === part.id && editingLead.pinIndex === index} onClick={() => onStartLeadEdit({ partId: part.id, pinIndex: index })}>Move</button>}</div>
               </div>
             ))}
           </div>
           <p className="micro-copy">{part.kind === 'opamp' ? 'The notch marks the pin 1 end. The package must straddle the center trench.' : 'Drag the component to move it. Jumper wires stay attached to their holes.'}</p>
+          {transistor && <p className="micro-copy">C = Collector, B = Base, E = Emitter. The three leads move together. This virtual pin order is C–B–E; physical transistor pinouts vary.</p>}
           {hasEditableLeads(part) && <p className="micro-copy">Move one lead to change its spacing. Choose holes 1–8 spacings apart; polarity stays with the lead.</p>}
           {editingLead?.partId === part.id && <button className="subtle-button cancel-lead-edit" onClick={onFinishLeadEdit}>Cancel lead move <kbd>esc</kbd></button>}
-          {(part.kind === 'electrolytic' || part.kind === 'diode' || part.kind === 'led') && (
+          {polarized && (
             <button className="subtle-button reverse-polarity" onClick={() => updatePart({ pins: [...part.pins].reverse() })}><RotateCcw size={12} />Reverse polarity</button>
           )}
         </div>

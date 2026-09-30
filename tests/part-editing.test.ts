@@ -14,6 +14,20 @@ test('moving either lead preserves pin identity, the other lead, and the source 
   assert.equal(leadPlacementError(fixture(diode), diode, 1, 'f8'), null)
 })
 
+test('new axial components retain independent leads and diode polarity when moved', () => {
+  for (const part of [
+    { id: 'L1', kind: 'inductor', value: 10e-3, pins: ['c5', 'c8'] },
+    { id: 'D1', kind: 'schottky', value: 1, pins: ['c5', 'c8'] },
+    { id: 'D2', kind: 'zener', value: 5.1, pins: ['c5', 'c8'] },
+  ] as Part[]) {
+    assert.equal(hasEditableLeads(part), true)
+    const pins = previewLeadPins(part, 1, 'd4')!
+    assert.deepEqual(pins, ['c5', 'd4'])
+    assert.equal(leadPlacementError(fixture(part), part, 1, 'd4'), null)
+    assert.deepEqual(validateDocument(fixture({ ...part, pins })).parts[0].pins, pins)
+  }
+})
+
 test('new spacing includes exact 1- and 8-pitch boundaries and measures diagonals geometrically', () => {
   assert.equal(leadPlacementError(fixture(), resistor, 1, 'c6'), null)
   assert.equal(leadPlacementError(fixture(), resistor, 1, 'c13'), null)
@@ -45,6 +59,8 @@ test('rigid packages and invalid pin indices never become editable two-lead part
   for (const part of [
     { id: 'P1', kind: 'potentiometer', value: 10_000, pins: ['a1', 'a2', 'a3'] },
     { id: 'U1', kind: 'opamp', value: 1, pins: ['e1', 'e2', 'e3', 'e4', 'f4', 'f3', 'f2', 'f1'] },
+    { id: 'Q1', kind: 'npn', value: 1, pins: ['a1', 'a2', 'a3'] },
+    { id: 'Q2', kind: 'pnp', value: 1, pins: ['a1', 'a2', 'a3'] },
   ] as Part[]) {
     assert.equal(hasEditableLeads(part), false)
     assert.equal(previewLeadPins(part, 0, 'a10'), null)

@@ -140,7 +140,7 @@ test('manual capture marks old results stale and Reset recovers the worker', asy
   await page.getByText('Auto update', { exact: true }).click()
   await expect(page.getByRole('checkbox', { name: 'Auto update' })).not.toBeChecked()
   await page.getByRole('button', { name: '470', exact: true }).click()
-  await expect(page.getByText('STALE', { exact: true })).toBeVisible()
+  await expect(page.getByText('NEEDS SIMULATION', { exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Listen', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Capture', exact: true }).click()
   await captured(page)

@@ -73,7 +73,7 @@ test('stale edits clear electrical readings and disable cursors until a new capt
   await page.getByText('Auto update', { exact: true }).click()
   await expect(page.getByRole('checkbox', { name: 'Auto update' })).not.toBeChecked()
   await page.getByRole('button', { name: '220', exact: true }).click()
-  await expect(page.getByText('STALE', { exact: true })).toBeVisible()
+  await expect(page.getByText('NEEDS SIMULATION', { exact: true })).toBeVisible()
 
   await expect(measurementCells(page, 'Capture mean')).toHaveText(['—', '—'])
   await expect(measurementCells(page, 'At cursor A')).toHaveText(['—', '—'])

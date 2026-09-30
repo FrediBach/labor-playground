@@ -20,7 +20,7 @@ test('the DC meter and component currents follow the solved circuit and clear on
   const resistance = page.getByRole('spinbutton', { name: 'Resistance', exact: true })
   await resistance.fill('20')
   await resistance.press('Tab')
-  await expect(page.getByText('STALE', { exact: true })).toBeVisible()
+  await expect(page.getByText('NEEDS SIMULATION', { exact: true })).toBeVisible()
   await expect(page.getByLabel('CH2 DC voltage', { exact: true })).toHaveText('—')
   await expect(page.getByLabel('DC component power', { exact: true })).toHaveCount(0)
   await page.getByRole('button', { name: 'Capture', exact: true }).click()

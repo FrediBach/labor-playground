@@ -22,6 +22,17 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
 }) {
   // Measurements and physical probe labels must refer to the same circuit.
   const capture = status === 'ready' ? suppliedCapture : null
+  const hasProbe = Boolean(probes.CH1 || probes.CH2)
+  const busy = status === 'loading' || status === 'calculating'
+  const emptyTitle = busy ? 'Simulating your circuit…'
+    : status === 'invalid' ? 'Check your circuit connections'
+      : status === 'error' ? 'Simulation needs attention'
+        : !hasProbe ? 'Attach a scope probe'
+          : 'Ready to simulate'
+  const emptyHint = busy ? 'The waveform will appear here when the simulation finishes.'
+    : status === 'invalid' || status === 'error' ? 'See Circuit status in the inspector for details.'
+      : !hasProbe ? 'Choose Attach for CH1 or CH2 below, select a terminal, then Simulate.'
+        : 'Select Simulate in the top bar to capture a waveform.'
   const canvas = useRef<HTMLCanvasElement>(null)
   const [timeScale, setTimeScale] = useState(defaultTimeScale ?? (stimulus === 'step' ? 10 : 2))
   const [scales, setScales] = useState({ CH1: defaultScale, CH2: defaultScale })
@@ -87,14 +98,14 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     context.clearRect(0, 0, width, height)
     const left = 34, right = width - 12, top = 12, bottom = height - 20
     const w = right - left, h = bottom - top, middle = top + h / 2
-    context.font = '9px monospace'
+    context.font = '11px monospace'
     context.lineWidth = 1
     for (let i = 0; i <= 10; i++) {
       const x = left + w * i / 10
       context.strokeStyle = '#343a38'
       context.beginPath(); context.moveTo(x, top); context.lineTo(x, bottom); context.stroke()
       if (i % 2 === 0) {
-        context.fillStyle = '#828a84'
+        context.fillStyle = '#a7b0a9'
         context.textAlign = i === 10 ? 'right' : i === 0 ? 'left' : 'center'
         const milliseconds = (windowStart + i / 10 * windowSeconds) * 1000
         context.fillText(`${Number(milliseconds.toFixed(2))}`, x, height - 5)
@@ -108,7 +119,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     }
     context.setLineDash([])
     context.textAlign = 'left'
-    context.fillStyle = '#8b948d'; context.fillText('0 V', 5, middle + 3); context.fillText('ms', 5, height - 5)
+    context.fillStyle = '#a7b0a9'; context.fillText('0 V', 5, middle + 3); context.fillText('ms', 5, height - 5)
     if (capture?.time.length) {
       context.save()
       context.beginPath(); context.rect(left, top, w, h); context.clip()
@@ -172,7 +183,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   function measurement(channel: Channel) {
     const values = capture?.channels[channel]
     if (!probes[channel]) return 'No probe attached'
-    if (status !== 'ready') return 'Awaiting current capture'
+    if (status !== 'ready') return busy ? 'Simulating…' : 'Simulate to update'
     if (!values?.length || !measurements[channel]) return 'No voltage available'
     if (cursor !== null && capture) {
       const target = windowStart + cursor * windowSeconds
@@ -210,8 +221,8 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       <div className="section-label"><Waves size={15} /><h2>OSCILLOSCOPE</h2><span className="tiny-tag">2 CHANNEL</span></div>
       <div className="scope-controls">
         <label>TIME <select aria-label="Time per division" value={timeScale} onChange={e => setTimeScale(Number(e.target.value))}>{[0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} ms/div</option>)}</select></label>
-        <button className="subtle-button" onClick={autoscale} title="Autoscale channels"><Maximize2 size={13} />Auto</button>
-        <span className={`capture-state ${status}`}>{status === 'ready' ? 'CAPTURED' : status.toUpperCase()}</span>
+        <button className="subtle-button" onClick={autoscale} title="Autoscale channels" disabled={!capture || !hasProbe}><Maximize2 size={14} />Auto</button>
+        <span className={`capture-state ${status}`}>{status === 'ready' ? 'CAPTURED' : status === 'stale' ? 'NEEDS SIMULATION' : status.toUpperCase()}</span>
       </div>
     </div>
     <details className="scope-trigger">
@@ -228,13 +239,13 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     </details>
     <div className="scope-screen">
       <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => { if (!measurementsOpen || !capture) return; const rect = e.currentTarget.getBoundingClientRect(); moveCursor(activeCursor, windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds) }} />
-      {!capture && <div className="scope-empty"><Waves size={25} /><span>{status === 'loading' || status === 'calculating' ? 'Preparing your first capture…' : 'Connect a circuit and capture a waveform.'}</span></div>}
+      {(!capture || !hasProbe) && <div className="scope-empty" role="status"><Waves size={26} /><div><strong>{emptyTitle}</strong><span>{emptyHint}</span></div></div>}
     </div>
     <ScopeResizer height={size.height} value={scopeHeight} onChange={setScopeHeight} />
     <div className="scope-channels">{(['CH1', 'CH2'] as const).map(channel => <div className="scope-channel" key={channel} style={{ '--channel-color': COLORS[channel] } as React.CSSProperties}>
       <button className="channel-toggle" aria-pressed={visible[channel]} onClick={() => setVisible({ ...visible, [channel]: !visible[channel] })}>{channel}</button>
       <button className="probe-location" onClick={() => probes[channel] && onHighlight ? onHighlight(channel) : onProbe(channel)} title={probes[channel] ? `Highlight ${channel} connection` : `Attach ${channel} probe`}>{probes[channel]?.toUpperCase() ?? 'Attach'}</button>
-      <button className="scope-probe-move" onClick={() => onProbe(channel)} aria-label={`Move ${channel} probe`} title={`Move ${channel} probe`}><Crosshair size={12} /></button>
+      <button className="scope-probe-move" onClick={() => onProbe(channel)} aria-label={`Move ${channel} probe`} title={`Move ${channel} probe`}><Crosshair size={15} /></button>
       <select aria-label={`${channel} volts per division`} value={scales[channel]} onChange={e => setScales({ ...scales, [channel]: Number(e.target.value) })}>{[0.1, 0.2, 0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} V/div</option>)}</select>
       <span className="measurement">{measurement(channel)}</span>
     </div>)}</div>

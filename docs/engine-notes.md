@@ -16,7 +16,7 @@ The operating-point plot is validated as a single real row with finite node volt
 
 The operating-point panel reads actual `.op` node voltages, independently of scope capture means and cursor values. For a square-wave RC input, `.op` uses the source's initial DC value even when the later waveform has a near-zero time-weighted mean. Every readout is hidden when its circuit revision becomes stale or invalid.
 
-Resistor and switch currents are calculated from these solved DC voltage differences and their exact compiled resistance. Potentiometers report both CCW-to-wiper and wiper-to-CW currents using the same 1 Ω endpoint floor as the electrical model. Diode and LED currents come directly from explicit `.save @D_device[id]` vectors in the `.op` netlist; their nonlinear current is never inferred from an assumed forward voltage. Power is the sum of branch voltage times branch current, in watts. Positive current follows the displayed pin direction.
+Resistor and switch currents are calculated from these solved DC voltage differences and their exact compiled resistance. Potentiometers report both CCW-to-wiper and wiper-to-CW currents using the same 1 Ω endpoint floor as the electrical model. Signal, Schottky, zener and LED currents come directly from explicit `.save @D_device[id]` vectors in the `.op` netlist; their nonlinear current is never inferred from an assumed forward voltage. Inductor current comes from `.save @L_device[i]`, including the voltage drop and dissipation of its 1 Ω winding resistance. Bipolar transistors save `@Q_device[ic]` and `@Q_device[ib]`; their power is `Vce × Ic + Vbe × Ib`. Negative PNP terminal currents retain their sign. Power is the sum of branch voltage times branch current, in watts. Positive current follows the displayed pin direction.
 
 Ideal capacitors have zero steady DC current and zero DC dissipated power; this is labelled as an ideal-model result and does not describe charging current. Generic op-amp current and dissipation are unavailable because its behavioral voltage model has no supply-consumption model. Missing requested pin voltages or saved diode currents fail the measurement instead of producing a zero. Unused holes have no invented DC voltage.
 
@@ -28,13 +28,21 @@ Ideal capacitors have zero steady DC current and zero DC dissipated power; this 
 - Initialization gets 30 seconds; the combined operating-point and transient job gets 8 seconds. On failure or timeout, the worker is terminated and the next Capture creates a new one. The circuit document is preserved.
 - Results above 50,000 samples, invalid timestamps/voltages, and captures that do not complete the requested 0–100 ms interval are rejected. The compiler additionally enforces the documented part/net envelope.
 - Each capture restarts from its defined operating point. Capacitor charge is not carried between captures or edits. There is no continuous physical timeline.
-- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The library includes the eight planned starter parts. The generic dual op-amp uses explicit supplies, finite gain, output resistance, and output limiting; the potentiometer uses a 1 Ω endpoint floor.
+- Device, stimulus, and numerical simplifications are described by `PARTS`, the generated netlist, and `hardware-spec.md`. The library includes thirteen component kinds. The generic dual op-amp uses explicit supplies, finite gain, output resistance, and output limiting; the potentiometer uses a 1 Ω endpoint floor.
 
 The displayed scope data remains unprocessed electrical voltage. Whenever a capture is not current, the scope hides its previous traces and measurements. Listen is unavailable until a current capture succeeds, so new probe labels never describe older electrical results.
 
 The worker distinguishes failed runs from a documented ngspice recovery sequence. Exact dynamic/true gmin-stepping failure warnings are accepted only when a later source-stepping-completed message exists and the current analysis has a validated, freshly completed result: one `.op` row or the full 0–100 ms transient. Other failures, singular matrices, aborted runs, and incomplete recovery remain errors. A narrow 50 ms monitor also detects irreversible abort/write failures when the upstream wrapper otherwise leaves its result promise pending. This monitor does not reject intermediate gmin warnings; the independent main-thread watchdog remains responsible for terminating a blocked worker.
 
 Polarized capacitors are checked against the simultaneous voltages on both physical leads throughout the capture. A negative differential beyond −50 mV produces a part-specific reverse-bias warning with the maximum measured magnitude. Missing or malformed vectors for an explicitly requested capacitor check fail the capture rather than silently skipping the diagnostic. These checks do not alter the ideal capacitance or model damage, and they are displayed only for the current revision.
+
+## Expanded discrete models
+
+Inductance is editable from 1 µH to 10 H, initially 10 mH. A native SPICE inductor is in series with a fixed 1 Ω resistor, avoiding ideal-source/inductor DC loops and making winding dissipation explicit. It provides a DC return; capacitors do not. Each capture resets to the operating-point current. There is no magnetic saturation, core loss, mutual coupling, or thermal model.
+
+The generic Schottky diode uses `Is=200 nA`, `N=1.05`, `Rs=0.2 Ω`, `Cjo=10 pF`, and `Eg=0.69 eV`. The generic zener uses `Is=1 pA`, `N=1`, `Rs=2 Ω`, `Cjo=50 pF`, and `IBV=1 mA`. Its editable `Part.value` is the nominal `BV` in volts (2.4–24 V, initially 5.1 V); each instance gets its own model. Actual terminal voltage varies with current and series resistance. Both diode variants preserve anode/cathode order and the visible cathode stripe.
+
+NPN and PNP use complementary Gummel–Poon models with `Is=10 fA`, `Bf=100`, `Br=1`, `Vaf=100 V`, `Cje=10 pF`, `Cjc=4 pF`, `Tf=0.5 ns`, and `Tr=10 ns`. Their rigid adjacent three-pin package always orders collector, base, emitter, including when rotated. This is an educational footprint, not a manufacturer pinout. Bias changes reproduce cutoff, active gain, and saturation; breakdown, thermal effects, and damage are not modeled. The [ngspice manual](https://ngspice.sourceforge.io/docs/ngspice-manual.pdf) documents diode breakdown parameters, transistor terminal order, and saved device-current parameters used by these models.
 
 ## Scope measurements
 
@@ -68,6 +76,8 @@ The monitor is a bounded preview, not a calibrated audio interface. It accepts o
 - Latest-request coalescing and termination/recreation of a stuck worker using a controlled worker fixture.
 
 `tests/components.test.ts` adds real potentiometer endpoints, capacitor charge/decay, dual op-amp follower/gain/clipping, rotated package equivalence, and supply-dependent clipping. `tests/measurements.test.ts` and `tests/polarity.test.ts` check adaptive statistics, stable frequency, cursor interpolation, differential voltage, measured reverse bias, and strict solver-recovery classification.
+
+`tests/expanded-components.test.ts` checks all five added kinds against the installed ngspice engine: RL step response and winding loss, lower Schottky forward voltage and reverse leakage, editable zener breakdown and forward conduction, and complementary BJT cutoff, active gain, saturation, signed terminal currents, and power. Schema ranges, rigid transistor footprints, DC connectivity, independent zener models, and SPICE-safe IDs are also covered.
 
 `tests/operating-point.test.ts` exercises the combined analysis pipeline against the installed engine: divider voltage/current/power, a square-driven RC operating point distinct from its transient mean, potentiometer endpoint currents, saved diode/LED currents, and supply-limited op-amp outputs. Invalid-row, missing-vector, stale-raw-file, explicit recovery, and pending-after-abort fixtures verify that a failed DC analysis cannot produce a successful combined capture.
 

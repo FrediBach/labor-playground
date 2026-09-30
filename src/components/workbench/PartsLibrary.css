@@ -1,0 +1,72 @@
+/* Boards and patch tools stay outside the independently scrolling catalogue. */
+.parts-tray.parts-library {
+  position: sticky;
+  top: var(--project-toolbar-height, 100px);
+  align-self: start;
+  height: calc(100dvh - var(--project-toolbar-height, 100px) - 80px);
+  min-height: 420px;
+  padding: 12px 12px 0;
+  overflow: hidden;
+}
+.parts-library > .panel-heading, .parts-library > .connection-tools, .parts-library > .library-filters, .parts-library > .tray-bottom { flex-shrink: 0; }
+.parts-library .panel-heading { margin-bottom: 8px; }
+.parts-library .connection-tools { display: grid; gap: 3px; margin: 0; padding: 0 0 12px; border: 0; border-bottom: 1px solid #444d46; }
+.parts-library .connection-item { min-height: 36px; padding: 6px 7px; font-size: 12px; gap: 7px; }
+.parts-library .connection-item > svg { flex-shrink: 0; }
+.parts-library .add-pico { margin: 0; background: #303a33; border-color: #4a5b4e; color: #d5e1d6; }
+.parts-library .add-pico:disabled { opacity: 1; cursor: default; color: #a7bba9; background: #29322c; }
+.parts-library .add-pico small { display: block; font-size: 10px; color: #a7bba9; margin-top: 2px; }
+.parts-library .wire-palette { flex-wrap: nowrap; justify-content: space-between; padding: 3px 8px 7px; gap: 6px; }
+.parts-library .wire-palette button { width: 22px; height: 22px; min-width: 22px; }
+.library-probes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+.library-probes .connection-item { border: 1px solid #49504b; gap: 5px; }
+.library-probes small { font-size: 10px; color: #b3bdb5; }
+.parts-library .parts-search { margin: 12px 0 6px; height: 38px; padding: 7px; gap: 6px; }
+.parts-library .parts-search > svg { flex-shrink: 0; }
+.parts-library .parts-search input { font-size: 12px; }
+.parts-library .parts-search .icon-button { width: 22px; height: 22px; }
+.library-category { display: flex; align-items: center; position: relative; gap: 5px; margin-bottom: 10px; }
+.library-category select { appearance: none; min-width: 0; flex: 1; font-size: 11px; color: #d3ddd4; background: #252827; padding: 8px 22px 8px 7px; border: 1px solid #454e47; border-radius: 4px; }
+.library-category > svg { position: absolute; right: 54px; pointer-events: none; color: #b5c1b7; }
+.library-category > span { width: 44px; text-align: right; font-size: 10px; color: #b5c1b7; }
+.parts-catalog { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; scrollbar-width: thin; scrollbar-color: #58655c transparent; margin-right: -8px; padding-right: 8px; }
+.parts-library .parts-category + .parts-category { margin-top: 15px; }
+.parts-library .tray-category { display: flex; text-transform: uppercase; font-size: 10px; font-weight: 400; margin: 5px 4px 6px; letter-spacing: .7px; }
+.parts-library .tray-category > span { font-size: 10px; }
+.parts-library .parts-list { display: flex; flex-direction: column; gap: 2px; overflow: visible; padding: 0; }
+.parts-library .part-item { width: 100%; min-height: 56px; padding: 6px 3px; gap: 7px; }
+.parts-library .part-thumbnail { width: 43px; height: 36px; }
+.parts-library .part-item strong { font-size: 12px; }
+.parts-library .part-item small { display: block; font-size: 10px; margin-top: 1px; }
+.parts-library .part-item > svg { width: 11px; }
+.parts-library .part-item.active { border-color: #90ae96; background: #37443a; }
+.parts-library .tray-bottom { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 3px; margin: 8px 0 0; padding: 7px 0; border-top: 1px solid #444d46; font-size: 10px; }
+.parts-library .tray-bottom .subtle-button { width: auto; margin: 0; min-height: 30px; font-size: 11px; padding: 3px 0; color: #c2cec4; }
+.parts-library :is(button, select, .parts-catalog):focus-visible { outline: 2px solid #b9dce3; outline-offset: -2px; }
+@media (max-width: 740px) {
+  .parts-tray.parts-library { position: static; height: auto; min-height: 0; padding: 10px 12px 0; }
+  .parts-library .panel-heading { margin: 0 0 6px; }
+  .parts-library .connection-tools { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 6px; padding-bottom: 10px; }
+  .parts-library .connection-tools .connection-item { width: 100%; }
+  .parts-library .add-pico { grid-column: 1; grid-row: 1; }
+  .parts-library .connection-tools > .connection-item:not(.add-pico) { grid-column: 2; grid-row: 1; }
+  .parts-library .wire-palette { grid-column: 2; grid-row: 2; padding: 5px 3px; gap: 5px; }
+  .parts-library .library-probes { grid-column: 1; grid-row: 2; gap: 4px; }
+  .parts-library .library-probes .connection-item { justify-content: center; gap: 4px; padding-inline: 3px; }
+  .parts-library .library-probes .connection-item > span { flex: 0; }
+  .parts-library .library-probes small { display: none; }
+  .library-filters { display: flex; align-items: center; gap: 8px; margin: 10px 0; }
+  .parts-library .parts-search { flex: 1; min-width: 0; margin: 0; }
+  .library-category { flex: 1; min-width: 0; margin: 0; }
+  .library-category select { min-height: 38px; }
+  .library-category > span { display: none; }
+  .library-category > svg { right: 7px; }
+  .parts-catalog { flex: none; display: flex; align-items: flex-start; max-height: 168px; overflow: auto; gap: 14px; padding: 0 0 7px; margin: 0; }
+  .parts-library .parts-category { flex-shrink: 0; }
+  .parts-library .parts-category + .parts-category { margin: 0; }
+  .parts-library .parts-list { display: grid; grid-auto-flow: column; grid-template-rows: repeat(2, auto); gap: 3px; }
+  .parts-library .part-item { width: 165px; min-height: 52px; }
+  .parts-library .part-thumbnail { width: 38px; }
+  .parts-library .part-item > svg { display: none; }
+  .parts-library .tray-bottom { margin-top: 0; padding-block: 3px; }
+}

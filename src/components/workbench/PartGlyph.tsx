@@ -67,6 +67,25 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       {leads.map((pin, index) => <text key={index} x={pin.x} y={-3} textAnchor="middle" fill="#576752" fontFamily="monospace" fontSize={6}>{['A', 'W', 'B'][index]}</text>)}
     </g>
   }
+  if (kind === 'npn' || kind === 'pnp') {
+    const leads = pins ?? [{ x: -24, y: 0 }, { x: 0, y: 0 }, { x: 24, y: 0 }]
+    const accent = kind === 'npn' ? '#adc9ad' : '#cbbbd2'
+    return <g>
+      {selected && <rect x={-half - 9} y={-47} width={span + 18} height={60} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
+      {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
+        <title>{index + 1}: {pinNames?.[index] ?? ['Collector', 'Base', 'Emitter'][index]}</title>
+        <path d={`M${pin.x} ${pin.y}V-6L${(index - 1) * 13}-16`} fill="none" stroke="#596057" strokeWidth={4} strokeLinecap="round" />
+        <path d={`M${pin.x - 0.7} ${pin.y}V-6L${(index - 1) * 13 - 0.7}-16`} fill="none" stroke="#c8c9bd" strokeWidth={1.5} strokeLinecap="round" />
+        <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
+      </g>)}
+      <path d="M-23-12V-26C-23-47 23-47 23-26V-12Z" fill="#2d3730" opacity={0.18} transform="translate(1 2)" />
+      <path d="M-23-14V-27C-23-48 23-48 23-27V-14Z" fill={kind === 'npn' ? '#3d4540' : '#46434a'} stroke="#242d27" strokeWidth={1.3} />
+      <path d="M-18-30C-15-41 15-41 18-30" fill="none" stroke="#737b70" strokeWidth={1.2} />
+      <path d="M-20-16H20" stroke="#202924" strokeWidth={2} />
+      <text x={0} y={-23} textAnchor="middle" fill={accent} fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={1}>{kind.toUpperCase()}</text>
+      {leads.map((pin, index) => <text key={index} x={pin.x} y={-5} textAnchor="middle" fill="#465743" stroke="#e8e7d7" strokeWidth={2.2} paintOrder="stroke" fontFamily="monospace" fontSize={7} fontWeight={700}>{['C', 'B', 'E'][index]}</text>)}
+    </g>
+  }
   return (
     <g>
       {selected && <rect x={-half - 9} y={-24} width={span + 18} height={48} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
@@ -78,6 +97,16 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
         {bands.map((color, index) => <path key={index} d={`M${-16 + index * 10.5}-10V8`} stroke={color} strokeWidth={4} />)}
         <path d="M16-9V7" stroke="#d9bd54" strokeWidth={3} />
         <path d="M-18-7H18" stroke="#fff8d3" strokeOpacity={0.35} strokeWidth={2} />
+      </g>}
+      {kind === 'inductor' && <g>
+        <rect x={-25} y={-10} width={50} height={24} rx={9} fill="#3e4a37" opacity={0.18} />
+        <rect x={-25} y={-12} width={50} height={24} rx={9} fill="#6e805e" stroke="#485d40" strokeWidth={1.3} />
+        <path d="M-20-8H20" stroke="#9eb087" strokeWidth={1.5} />
+        {[-16, -8, 0, 8, 16].map(x => <g key={x}>
+          <path d={`M${x - 2}-11C${x + 5}-10 ${x + 5}10 ${x - 2}11`} fill="none" stroke="#6f472b" strokeWidth={4.5} />
+          <path d={`M${x - 2}-11C${x + 5}-10 ${x + 5}10 ${x - 2}11`} fill="none" stroke="#c89454" strokeWidth={2.8} />
+          <path d={`M${x}-9Q${x + 2}-7 ${x + 2}-3`} fill="none" stroke="#edd0a2" strokeWidth={1.1} strokeLinecap="round" />
+        </g>)}
       </g>}
       {kind === 'capacitor' && <g>
         <rect x={-13} y={-18} width={26} height={34} rx={6} fill="#536266" opacity={0.18} transform="translate(1 2)" />
@@ -99,6 +128,21 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
         <rect x={-17} y={-8} width={34} height={16} rx={4} fill="#393e3b" stroke="#242a26" />
         <path d="M10-7V7" stroke="#c2c5bc" strokeWidth={5} />
         <path d="M-12-5H5" stroke="#7b837a" strokeWidth={1.5} />
+      </g>}
+      {kind === 'schottky' && <g>
+        <rect x={-20} y={-9} width={40} height={18} rx={4} fill="#344342" stroke="#223331" strokeWidth={1.2} />
+        <path d="M12-8V8" stroke="#c9d8cd" strokeWidth={5} />
+        <path d="M-16-6H6" stroke="#78928b" strokeWidth={1.4} />
+        <text x={-5} y={4} fill="#bed1c5" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700}>S</text>
+      </g>}
+      {kind === 'zener' && <g>
+        <rect x={-18} y={-8} width={36} height={18} rx={5} fill="#774b33" opacity={0.17} />
+        <rect x={-18} y={-10} width={36} height={18} rx={5} fill="#ca9266" stroke="#98613e" strokeWidth={1.2} />
+        <path d="M-17 0H-6M5 0H17" stroke="#e4cab2" strokeWidth={5} />
+        <rect x={-6} y={-4} width={11} height={7} rx={1} fill="#8f5e3d" />
+        <path d="M10-9V7" stroke="#483d36" strokeWidth={4} />
+        <path d="M-13-6H5" stroke="#ffe2b7" strokeOpacity={0.7} strokeWidth={1.8} strokeLinecap="round" />
+        <text x={-1} y={3} fill="#f6deba" textAnchor="middle" fontFamily="monospace" fontSize={6.5} fontWeight={700}>Z</text>
       </g>}
       {kind === 'led' && <g>
         <circle r={14} cy={1.5} fill="#4b3931" opacity={0.16} />

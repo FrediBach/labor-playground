@@ -1,1 +1,39 @@
-.pico-panel{background:#171e1c;border:1px solid #45554a;border-radius:8px;margin:16px 0;color:#d7e3d9;overflow:hidden}.pico-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:12px;padding:12px 16px;background:#23332b}.pico-toolbar strong{font-size:12px;letter-spacing:.08em}.pico-toolbar span,.pico-panel p,.pico-language{font-size:12px;color:#b4c5ba}.pico-panel p{padding:0 16px}.pico-panel button{cursor:pointer;border:1px solid #50675a;border-radius:4px;padding:5px 9px;font-size:12px;background:#2d4035;color:#e7f2ea}.pico-panel button:disabled{opacity:.45;cursor:default}.pico-editor{height:300px;min-height:180px;max-height:650px;resize:vertical;overflow:hidden}.pico-language{display:flex;justify-content:space-between;padding:8px 16px}.pico-console{max-height:160px;min-height:50px;overflow:auto;padding:12px 16px;font-size:12px;white-space:pre-wrap}.pico-error{color:#ffb9a3;padding:12px;white-space:pre-wrap}.pico-panel details{padding:8px 16px;font-size:12px}.pico-problem{display:block;text-align:left;margin:6px 0}.pico-stub{font-size:12px;padding:8px}
+.pico-panel {
+  background: #171e1c;
+  border: 1px solid #45554a;
+  border-radius: 8px;
+  margin: 18px 0;
+  color: #d7e3d9;
+  overflow: hidden;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.pico-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 16px; background: #23332b; }
+.pico-toolbar strong { font-size: 13px; letter-spacing: .06em; }
+.pico-toolbar span, .pico-panel p, .pico-language { font-size: 13px; color: #c0cfc5; }
+.pico-toolbar span[role=status] { flex: 1 1 220px; }
+.pico-panel p { margin: 10px 0; padding: 0 16px; line-height: 1.6; }
+.pico-panel button { cursor: pointer; border: 1px solid #50675a; border-radius: 5px; min-height: 36px; padding: 7px 11px; font-size: 13px; line-height: 1.4; background: #2d4035; color: #e7f2ea; }
+.pico-panel button:hover:not(:disabled) { background: #3c5042; border-color: #809487; }
+.pico-panel button:focus-visible, .pico-panel input:focus-visible, .pico-panel summary:focus-visible { outline: 2px solid #d5e6cb; outline-offset: 3px; }
+.pico-panel button:disabled { opacity: .45; cursor: default; }
+.pico-toolbar .pico-remove { margin-left: auto; background: transparent; color: #c0cfc5; }
+.pico-editor { height: 300px; min-height: 180px; max-height: 650px; resize: vertical; overflow: hidden; }
+.pico-language { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px 16px; border-top: 1px solid #34483a; }
+.pico-language label { display: flex; align-items: center; gap: 9px; }
+.pico-language input { width: 128px; min-height: 28px; accent-color: #adccb2; }
+.pico-language span { flex: 1 1 180px; text-align: center; }
+.pico-console { max-height: 180px; min-height: 64px; overflow: auto; margin: 0; padding: 14px 16px; border-top: 1px solid #344039; font-size: 13px; line-height: 1.65; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pico-error { color: #ffb9a3; padding: 12px 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.pico-error button { display: block; margin-top: 10px; }
+.pico-panel details { padding: 0 16px; font-size: 13px; }
+.pico-panel summary { padding: 10px 0; cursor: pointer; }
+.pico-problem { display: block; text-align: left; margin: 6px 0 10px; }
+.pico-stub { font-size: 13px; padding: 10px 16px; overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .pico-toolbar, .pico-language { padding: 12px; }
+  .pico-toolbar strong { flex-basis: 100%; }
+  .pico-toolbar .pico-remove { margin-left: 0; }
+  .pico-language span { flex-basis: 100%; order: 3; text-align: left; }
+  .pico-panel p { padding-inline: 12px; }
+}

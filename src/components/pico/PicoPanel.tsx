@@ -21,7 +21,7 @@ export default function PicoPanel(props: Props) {
     const model = monaco.editor.getModel(MAIN_URI) ?? monaco.editor.createModel(latest.current.source, 'python', MAIN_URI)
     appliedSourceSession.current = latest.current.sourceSession
     if (model.getValue() !== latest.current.source) model.setValue(latest.current.source)
-    const instance = monaco.editor.create(container.current!, { model, theme: 'vs-dark', fixedOverflowWidgets: true, editContext: false, automaticLayout: true, minimap: { enabled: false }, fontSize: 13, scrollBeyondLastLine: false, ariaLabel: 'Pico main.py editor' })
+    const instance = monaco.editor.create(container.current!, { model, theme: 'vs-dark', fixedOverflowWidgets: true, editContext: false, automaticLayout: true, minimap: { enabled: false }, fontSize: 14, lineHeight: 22, padding: { top: 10, bottom: 10 }, scrollBeyondLastLine: false, ariaLabel: 'Pico main.py editor' })
     editor.current = instance
     disposables.push(instance, model.onDidChangeContent(() => {
       const source = model.getValue()
@@ -49,9 +49,9 @@ export default function PicoPanel(props: Props) {
   const showLine = (line: number) => { if (!workspace) return; editor.current?.setModel(workspace.model); editor.current?.updateOptions({ readOnly: false }); setStub(null); setCollapsed(false); editor.current?.setPosition({ lineNumber: line, column: 1 }); editor.current?.revealLineInCenter(line); editor.current?.focus() }
   const tracebackLine = /File "main.py", line (\d+)/.exec(props.error ?? '')
   return <section className="pico-panel" aria-label="Pico programming" onKeyDown={event => event.stopPropagation()}>
-    <div className="pico-toolbar"><strong>RASPBERRY PI PICO</strong><span>main.py · MicroPython 1.20</span><button onClick={() => setCollapsed(value => !value)} aria-expanded={!collapsed}>{collapsed ? 'Expand editor' : 'Collapse editor'}</button><button onClick={props.onRemove}>Remove Pico</button></div>
-    <p>Capture the first 100 ms. Outputs only; connect a Pico GND to workbench GND. Edits require Run.</p>
-    <div style={{ display: collapsed ? 'none' : 'block' }}>
+    <div className="pico-toolbar"><strong>RASPBERRY PI PICO</strong><span>main.py · MicroPython 1.20</span><button onClick={() => setCollapsed(value => !value)} aria-expanded={!collapsed} aria-controls="pico-editor-content">{collapsed ? 'Expand editor' : 'Collapse editor'}</button><button className="pico-remove" onClick={props.onRemove}>Remove Pico</button></div>
+    <p>Connect a Pico GND to workbench GND. Simulate runs your code and captures the first 100 ms. GPIO outputs only.</p>
+    <div id="pico-editor-content" style={{ display: collapsed ? 'none' : 'block' }}>
       {stub && <div className="pico-stub">{stub} · read only <button onClick={() => showLine(1)}>Back to main.py</button></div>}
       <div className="pico-editor" style={{ height }} ref={container} />
       <div className="pico-language"><label>Editor size <input type="range" aria-label="Pico editor height" min={180} max={650} step={10} value={height} onChange={event => setHeight(Number(event.target.value))} /></label><span role="status">{language}</span><button onClick={() => void (workspace?.restart() ?? languageWorkspace(props.source).then(setWorkspace).catch(error => setLanguage(String(error))))}>Retry analysis</button></div>
@@ -59,6 +59,6 @@ export default function PicoPanel(props: Props) {
     <div className="pico-toolbar"><button onClick={props.onRun} disabled={props.busy}>Run · 100 ms</button><button onClick={props.onStop} disabled={!props.busy}>Stop</button><button onClick={props.onReset}>Reset</button><span role="status">{props.phase}</span></div>
     {props.error && <div className="pico-error" role="alert">{props.error}{tracebackLine && <button onClick={() => showLine(Number(tracebackLine[1]))}>Go to line {tracebackLine[1]}</button>}</div>}
     <details open={problems.length > 0}><summary>Problems ({problems.length})</summary>{problems.map((problem, index) => <button className="pico-problem" key={index} onClick={() => showLine(problem.startLineNumber)}>Line {problem.startLineNumber}: {problem.message}</button>)}</details>
-    <pre className="pico-console" aria-label="Pico serial console">{props.serial || 'Serial output appears after Run.'}</pre>
+    <pre className="pico-console" aria-label="Pico serial console">{props.serial || 'Use print() in your code, then Simulate to see serial output here.'}</pre>
   </section>
 }
