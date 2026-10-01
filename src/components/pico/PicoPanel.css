@@ -30,6 +30,10 @@
 .pico-panel summary { padding: 10px 0; cursor: pointer; }
 .pico-problem { display: block; text-align: left; margin: 6px 0 10px; }
 .pico-stub { font-size: 13px; padding: 10px 16px; overflow-wrap: anywhere; }
+.pico-scope-help { border-block: 1px solid #34483a; background: #202b25; }
+.pico-scope-help summary { color: #d3c2ed; }
+.pico-scope-help p { padding-inline: 0; font-size: 12px; }
+.pico-scope-help pre { margin: 10px 0; padding: 12px; border: 1px solid #415147; border-radius: 4px; color: #d5c6e9; background: #19221c; overflow-x: auto; font-size: 12px; }
 @media (max-width: 600px) {
   .pico-toolbar, .pico-language { padding: 12px; }
   .pico-toolbar strong { flex-basis: 100%; }

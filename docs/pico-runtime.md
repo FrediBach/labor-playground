@@ -32,6 +32,28 @@ The bridge is one way. Actual CPU bus reads of SIO GPIO input, GPIO status, and 
 
 Stop terminates the active worker phase, discards partial results and stops audio. Reset also clears the console. Neither clears source or wiring. Source/wiring edits immediately make a capture stale and cancel the Pico pipeline. All Pico messages and the analog result carry a run identity.
 
+## Log code values to the oscilloscope
+
+The simulator provides a `scope` helper in MicroPython. Import it and call `scope.log(name, value, unit="")` wherever a numeric value changes:
+
+```python
+import scope
+import time
+
+for duty in (20, 40, 60, 80):
+    scope.log("duty", duty, unit="%")
+    scope.log("target", 3.3 * duty / 100, unit="V")
+    time.sleep_ms(20)
+```
+
+Run the code, then open **Results**. Named log traces appear below CH1/CH2, sharing the scope's time window and recording cursor. Each trace has its own automatic numeric scale and optional unit. Click a trace to seek, or focus it and use arrow keys and Home/End. A value holds until that name is logged again; the interval before its first sample stays blank. Logging works without analog probes, and `print()` continues to write only to the serial console.
+
+**Show Pico logs** hides all code traces; each named trace button hides or restores one series. **Show automation events** independently hides or shows fired automation markers across the circuit waveforms and code traces. Select a named event to inspect its exact firing time. These display controls do not change the circuit, rerun code, or discard recorded samples. Editing source or wiring removes stale traces until the next successful simulation.
+
+Log values must be finite numbers; booleans become 0 or 1. Reuse each name with the same unit. A capture allows up to 16 names, 25,000 total log samples, and 1 MB of serialized log data, within the total runtime trace budget. Names accept up to 64 UTF-8 bytes and units up to 16, without control characters. Exceeding a limit fails the capture with a message; add sleeps or log less often. Samples use the emulator clock when the logging call commits, independent of USB serial buffering or console truncation. Logging executes Python instructions, so its execution time is included in the simulation.
+
+The helper and its editor completions are supplied by this simulator; `scope` is not a built-in module on a physical Pico. It records values your program supplies and does not enable circuit-fed GPIO or ADC reads.
+
 ## Limits
 
 - Capture duration: 100 ms, 500 ms, 1 s, 5 s, or 10 s. The analog solver bounds recordings to one million samples and twelve million numeric values.

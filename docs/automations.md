@@ -4,6 +4,8 @@ Automations operate the workbench controls during a simulation. Use them to repe
 
 Open the **Automations** tab, choose **Add automation**, and set its trigger and action. Give it a name that describes the experiment, such as “Release at 3 V,” then choose **Save automation**. Capture again with **Simulate** or **Capture** to see the result. The panel shows which automations ran and when; select a recorded event to open **Results** at that moment in the simulation recording.
 
+The **Results** oscilloscope marks actual firing times with dotted lines and numbered event labels. Its event buttons show the name, action, and time; select one to move the shared recording cursor. Markers also appear on Pico code log traces when present. Toggle **Show automation events** to hide these annotations without disabling the automations themselves. Only events that fired in the current capture appear.
+
 ## Choose when to start
 
 **Time** starts the action at a fixed time measured from the beginning of the capture. A start time of 10 ms means 10 ms of simulated circuit time, independent of playback speed or the time the calculation takes.

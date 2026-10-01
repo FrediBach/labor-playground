@@ -41,7 +41,7 @@ test('longer firmware capture keeps delayed output events and electrical endpoin
   assert.deepEqual([...transient.diagnostics, ...dc.diagnostics].filter(item => item.severity === 'error'), [])
   const engine = new Simulation(); await engine.start()
   const capture = await runCircuitCapture(engine, { type: 'run', revision: 1, durationSeconds: 0.5, netlist: transient.netlist, nodes: { CH1: nodes['b4'], CH2: nodes['b8'] }, operatingPoint: { netlist: dc.netlist, parts: operatingPointDescriptors(doc, nodes) }, picoChecks: [{ gpio: 0, node: nodes['b4'] }] })
-  assert.equal(capture.time.at(-1), 0.5)
+  assert.ok(Math.abs(capture.time.at(-1)! - 0.5) < 1e-12, 'the solver reaches the requested endpoint within floating-point precision')
   assert.ok(sampleRecording(capture, 0.1)!.parts.D1.currents[0].value < 1e-6, 'LED is off before the delayed output')
   assert.ok(sampleRecording(capture, 0.3)!.parts.D1.currents[0].value > 1e-3, 'LED is lit after the delayed output')
   for (const durationSeconds of [0, 0.2, 11, Infinity, NaN]) await assert.rejects(runPico({ ...assets, source: '', durationSeconds }), /duration/)

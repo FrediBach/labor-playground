@@ -1,5 +1,6 @@
 import { loadPicoAsset } from './assets'
 import { overlayMachineStub } from './stub-overlay'
+import { PICO_SCOPE_STUB } from './scope-log'
 import * as monaco from 'monaco-editor'
 import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
 import pyrightUrl from 'browser-basedpyright/dist/pyright.worker.js?url'
@@ -100,6 +101,7 @@ export function languageWorkspace(source: string) {
     const files: Record<string, string> = Object.fromEntries(Object.entries(stubs).map(([path, value]) => [path.replace('/stubs/', '/src/'), value]))
     files['/src/pyrightconfig.json'] = JSON.stringify({ typeCheckingMode: 'basic', reportArgumentType: 'error', reportCallIssue: 'error', pythonVersion: '3.9', typeshedPath: '/typeshed', reportMissingModuleSource: false, reportUnusedExpression: false, extraPaths: ['/src'], stubPath: '/src', useLibraryCodeForTypes: false })
     files['/src/machine.pyi'] = overlayMachineStub(files['/src/machine.pyi'])
+    files['/src/scope.pyi'] = PICO_SCOPE_STUB
     delete files['/src/__builtins__.pyi']
     const model = monaco.editor.getModel(MAIN_URI) ?? monaco.editor.createModel(source, 'python', MAIN_URI)
     for (const [path, text] of Object.entries(files)) if (path.endsWith('.pyi') && !monaco.editor.getModel(monaco.Uri.file(path))) monaco.editor.createModel(text, 'python', monaco.Uri.file(path))

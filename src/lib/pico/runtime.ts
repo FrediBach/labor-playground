@@ -1,10 +1,12 @@
 import { Simulator, USBCDC, ConsoleLogger, LogLevel } from 'rp2040js'
 import { PICO_CAPTURE_DURATIONS_MS } from './profile.ts'
+import { PicoScopeRecorder, PICO_SCOPE_PRELUDE } from './scope-log.ts'
+import type { PicoScopeChannel } from './scope-log.ts'
 
 export const PICO_LIMITS = { captureNs: 100_000_000, maxCaptureNs: 10_000_000_000, bootNs: 10_000_000_000, instructions: 1_500_000_000, wallMs: 60_000, events: 25_000, consoleBytes: 16_384, traceBytes: 4_000_000, sourceBytes: 32_768 } as const
 export interface PinState { gpio: number; state: number; function: number; enabled: boolean; pullUp: boolean; pullDown: boolean }
 export interface PinEvent extends PinState { ns: number }
-export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number }
+export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number; scopeLogs?: PicoScopeChannel[] }
 export interface RuntimeOptions { source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; durationSeconds?: number; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
 const MARKER = 0x20041ffc
 
@@ -35,6 +37,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   let zero: number | undefined
   let initial: PinState[] = []
   const events: PinEvent[] = []
+  const scope = new PicoScopeRecorder(captureNs)
   let consoleText = '', stderr = '', stream: 'stdout' | 'stderr' | 'done' = 'stdout', handshake = '', phase: 'boot' | 'raw' | 'submitted' = 'boot'
   let consoleBytes = 0, consoleTruncated = false, consoleDirty = false, lastConsoleUpdate = 0
   const displayConsole = () => consoleText + (consoleTruncated ? '\n[Console truncated]' : '')
@@ -72,7 +75,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
     else if (phase === 'raw' && handshake.includes('raw REPL; CTRL-B to exit\r\n>')) {
       phase = 'submitted'; handshake = ''
       // Compilation is excluded; capture starts at the marker write immediately before exec.
-      queue(`import machine\n_labor_code = compile(${JSON.stringify(options.source)}, 'main.py', 'exec')\nmachine.mem32[${MARKER}] = 0x4c41424f\nexec(_labor_code)\n\x04`)
+      queue(`import machine\nexec(compile(${JSON.stringify(PICO_SCOPE_PRELUDE)}, 'scope.py', 'exec'), {})\n_labor_code = compile(${JSON.stringify(options.source)}, 'main.py', 'exec')\nmachine.mem32[${MARKER}] = 0x4c41424f\nexec(_labor_code)\n\x04`)
     }
     else if (phase === 'submitted' && handshake.endsWith(String.fromCharCode(4) + '>')) throw new Error(handshake.split(String.fromCharCode(4)).join(''))
   }
@@ -87,7 +90,10 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   // writeUint32. Guard every bus width, normalizing signed bitwise addresses.
   for (const width of ['writeUint8', 'writeUint16'] as const) {
     const original = mcu[width].bind(mcu)
-    mcu[width] = (address, value) => { guardWrite(address, value); original(address, value) }
+    mcu[width] = (address, value) => {
+      if (zero !== undefined && scope.write(address, value, width === 'writeUint8' ? 8 : 16, sim.clock.nanos - zero)) return
+      guardWrite(address, value); original(address, value)
+    }
   }
   const write = mcu.writeUint32.bind(mcu)
   mcu.writeUint32 = (address, value) => {
@@ -97,6 +103,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
       options.onPhase?.('running')
       return
     }
+    if (zero !== undefined && scope.write(address, value, 32, sim.clock.nanos - zero)) return
     guardWrite(address, value)
     write(address, value)
   }
@@ -150,6 +157,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   }
   flushConsole(true)
   if (stderr.trim()) throw new Error(stderr.replace(/  File "<stdin>", line \d+, in <module>\r?\n/g, ''))
-  if (encoder.encode(JSON.stringify({ initial, events })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event density.')
-  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started }
+  const scopeLogs = scope.channels
+  if (encoder.encode(JSON.stringify({ initial, events, scopeLogs })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event or logging density.')
+  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started, scopeLogs }
 }
