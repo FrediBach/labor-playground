@@ -23,6 +23,8 @@ import { ControlCarrier } from '@/components/workbench/ControlCarrier'
 import { AutomationsPanel } from '@/components/workbench/AutomationsPanel'
 import { RecordedAutomationValue } from '@/components/workbench/AutomationPlayback'
 import { WorkspaceTabs, type WorkspaceTab } from '@/components/workbench/WorkspaceTabs'
+import { HelpDialog } from '@/components/workbench/HelpDialog'
+import { useDirectorySync } from '@/lib/use-directory-sync'
 import './LaborHardware.css'
 import './WorkbenchUX.css'
 
@@ -32,6 +34,7 @@ const WIRE_COLORS = ['#de8564', '#e5bd68', '#91bfad', '#86a8d7', '#b899ce', '#d2
 
 export default function App() {
   const { document, sourceSession, change, replace, changeSource, undo, redo, canUndo, canRedo, saved } = useDocument()
+  const folder = useDirectorySync(document, replace)
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(document.pico ? 'code' : 'circuit')
   const workspaceTab = activeTab === 'code' && !document.pico ? 'circuit' : activeTab
   const workspaceHeader = useRef<HTMLDivElement>(null)
@@ -71,8 +74,6 @@ export default function App() {
     return () => observer.disconnect()
   }, [])
   const fileInput = useRef<HTMLInputElement>(null)
-  const guideDialog = useRef<HTMLDialogElement>(null)
-  useEffect(() => { if (helpOpen) guideDialog.current?.showModal(); else guideDialog.current?.close() }, [helpOpen])
   const viewport = useRef<BoardViewportHandle>(null)
   const [analogDuration, setAnalogDuration] = useState(0.1)
   const durationSeconds = document.pico ? document.pico.captureMs / 1000 : analogDuration
@@ -111,7 +112,7 @@ export default function App() {
   }, [change, document, selectedId])
   useEffect(() => {
     const simulateKey = (e: KeyboardEvent) => {
-      if (helpOpen || (e.target instanceof HTMLElement && e.target.closest('.automation-dialog')) || !(e.metaKey || e.ctrlKey) || e.key !== 'Enter') return
+      if (helpOpen || window.document.querySelector('dialog[open]') || (e.target instanceof HTMLElement && e.target.closest('.automation-dialog')) || !(e.metaKey || e.ctrlKey) || e.key !== 'Enter') return
       e.preventDefault()
       e.stopPropagation()
       if (!simulationBusy && !simulationBlocked && !e.repeat) {
@@ -125,8 +126,25 @@ export default function App() {
   }, [captureNow, helpOpen, simulationBusy, simulationBlocked])
   useEffect(() => {
     const key = (e: KeyboardEvent) => {
-      if (helpOpen) return
-      if (e.target instanceof HTMLElement && (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable || e.target.closest('.pico-panel'))) return
+      if (e.defaultPrevented || e.isComposing || helpOpen || window.document.querySelector('dialog[open]')) return
+      const editable = e.target instanceof HTMLElement && (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable || !!e.target.closest('.pico-panel'))
+      if ((e.metaKey || e.ctrlKey) && !e.altKey && ['s', 'o'].includes(e.key.toLowerCase())) {
+        e.preventDefault()
+        e.stopPropagation()
+        if (!e.repeat) {
+          if (e.key.toLowerCase() === 'o') fileInput.current?.click()
+          else if (folder.name) void folder.sync()
+          else exportDocument()
+        }
+        return
+      }
+      if (editable) return
+      if (e.key === '?' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setHelpOpen(true); return }
+      if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-5]$/.test(e.code)) {
+        const tab = (['circuit', 'code', 'automations', 'results', 'overview'] as const)[Number(e.code.slice(-1)) - 1]
+        if (tab !== 'code' || document.pico) { e.preventDefault(); openTab(tab) }
+        return
+      }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'z') { e.preventDefault(); if (e.shiftKey) redo(); else undo(); return }
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return }
       if (e.metaKey || e.ctrlKey || e.altKey || workspaceTab !== 'circuit' || (e.target instanceof HTMLElement && e.target.closest('[role="tablist"]'))) return
@@ -136,9 +154,18 @@ export default function App() {
       if (e.key.toLowerCase() === 'r') setRotation(v => (v + (isDipTool(tool) ? 180 : 90)) % 360)
       if (e.key.toLowerCase() === 'w') setTool('wire')
       if (e.key.toLowerCase() === 'v') setTool('select')
+      if (e.key.toLowerCase() === 'h') { setTool('select'); setPanEnabled(true) }
+      if (e.key === '1' || e.key === '2') setTool(e.key === '1' ? 'probe1' : 'probe2')
+      if (e.key === '+' || e.key === '=') { e.preventDefault(); viewport.current?.zoomTo(zoom + 0.15) }
+      if (e.key === '-') { e.preventDefault(); viewport.current?.zoomTo(zoom - 0.15) }
+      if (e.key === '0') viewport.current?.fit('breadboard')
+      if (e.key.toLowerCase() === 'f') viewport.current?.fit('workbench')
+      if (!e.repeat && e.key.toLowerCase() === 'c') setShowConnections(value => !value)
+      if (!e.repeat && e.key === '[') setPartsOpen(value => !value)
+      if (!e.repeat && e.key === ']') setInspectorOpen(value => !value)
     }
-    window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key)
-  }, [deleteSelection, helpOpen, redo, tool, undo, setTool, workspaceTab])
+    window.addEventListener('keydown', key, true); return () => window.removeEventListener('keydown', key, true)
+  })
 
   function inspectComponent(id: string) {
     setSelectedId(id)
@@ -178,13 +205,13 @@ export default function App() {
   const toolHint = editingLead ? `${editingLead.partId}: choose a free hole for lead ${editingLead.pinIndex + 1}. Escape cancels.` : panEnabled ? 'Drag the board to pan. Press Escape to return to selecting parts.' : tool === 'wire' ? 'Click a terminal to start a wire, then click its destination.' : tool === 'probe1' || tool === 'probe2' ? `Click a terminal to attach ${tool === 'probe1' ? 'CH1' : 'CH2'}.` : tool === 'select' ? 'Select a part to inspect it. Drag a part to move it.' : isDipTool(tool) ? 'Place pin 1 on row E at the trench. Press R for a 180° turn to row F.' : `Click a hole to place a ${PARTS[tool].label.toLowerCase()}. Press R to rotate.`
 
   return <RecordingProvider capture={simulation.status === 'ready' ? simulation.capture : null}><div className="app-shell dark">
-    <header className="app-header"><div className="header-branding"><a className="brand" href="#" onClick={e => e.preventDefault()} aria-label="Pico Labor home"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></a></div><div className="header-right"><span className="local-indicator"><span />LOCAL WORKBENCH</span><button className="icon-button" title="Workbench guide" aria-label="Workbench guide" onClick={() => setHelpOpen(true)}><CircleHelp size={19} /></button><a className="about-link" href="https://www.ericasynths.lv/edu-diy-labor/" target="_blank" rel="noreferrer">Inspired by LABOR ↗</a></div></header>
+    <header className="app-header"><div className="header-branding"><a className="brand" href="#" onClick={e => e.preventDefault()} aria-label="Pico Labor home"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></a></div><div className="header-right"><span className="local-indicator"><span />LOCAL WORKBENCH</span><button className="icon-button" title="Workbench guide · ?" aria-label="Workbench guide" onClick={() => setHelpOpen(true)}><CircleHelp size={19} /></button><a className="about-link" href="https://www.ericasynths.lv/edu-diy-labor/" target="_blank" rel="noreferrer">Inspired by LABOR ↗</a></div></header>
     <div ref={projectToolbar} className="project-toolbar" aria-label="Project controls">
       <div className="project-title"><CircuitBoard size={20} /><div><strong>{document.title}</strong></div></div>
       <div className="project-actions">
         <div className="history-actions"><button className="icon-button" aria-label="Undo" title="Undo · ⌘Z / Ctrl+Z" disabled={!canUndo} onClick={undo}><Undo2 size={18} /></button><button className="icon-button" aria-label="Redo" title="Redo · ⇧⌘Z / Ctrl+Shift+Z" disabled={!canRedo} onClick={redo}><Redo2 size={18} /></button></div>
         <label className="example-select"><span>Examples</span><select aria-label="Load example" value={exampleId} onChange={e => loadExample(e.target.value)}>{!exampleId && <option value="">Custom circuit</option>}{(['Basic', 'Intermediate', 'Advanced'] as const).map(level => <optgroup key={level} label={level}>{examples.filter(example => example.level === level).map(example => <option key={example.id} value={example.id}>{example.name}</option>)}</optgroup>)}</select><ChevronDown size={14} /></label>
-        <button className="subtle-button import-button" aria-label="Import circuit" title="Import circuit" onClick={() => fileInput.current?.click()}><ArrowUpFromLine size={16} /><span>Import</span></button>
+        <button className="subtle-button import-button" aria-label="Import circuit" title="Import circuit · ⌘O / Ctrl+O" onClick={() => fileInput.current?.click()}><ArrowUpFromLine size={16} /><span>Import</span></button>
         <Button variant="outline" className="export-button" aria-label="Export circuit" title="Export circuit" onClick={exportDocument}><ArrowDownToLine size={16} /><span>Export circuit</span></Button>
         <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => void importDocument(e.target.files?.[0])} />
       </div>
@@ -198,6 +225,11 @@ export default function App() {
         </Button>
       </div>
     </div>
+    <div className="folder-toolbar" aria-label="Local folder sync">
+      <div><strong>{folder.name ? `Folder: ${folder.name}` : 'Local project folder'}</strong><span role="status">{folder.status || (folder.supported ? 'Keep a project in sync with circuit.json on your computer.' : 'Folder access is unavailable in this browser. Use Import and Export, or desktop Chrome / Edge.')}{folder.name && folder.dirty && !folder.conflict ? ' Workbench changes pending.' : ''}</span></div>
+      <div className="folder-actions">{folder.name ? <><button className="subtle-button" disabled={folder.busy || folder.conflict} onClick={() => void folder.sync()}>{folder.busy ? 'Syncing…' : 'Sync now'}</button><button className="subtle-button" disabled={folder.busy} onClick={folder.disconnect}>Disconnect</button></> : <button className="subtle-button" disabled={!folder.supported || folder.busy} onClick={() => void folder.connect()}>Connect folder</button>}</div>
+      {folder.conflict && <div className="folder-conflict" role="alert"><span>Choose a version for circuit.json. Keeping the workbench overwrites the folder file; loading the folder replaces the workbench and can be undone.</span><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('local')}>Keep workbench</button><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('disk')}>Load folder version</button></div>}
+    </div>
     <main className={`workbench-layout ${!partsOpen ? 'parts-collapsed' : ''} ${!inspectorOpen ? 'inspector-collapsed' : ''}`}>
       {partsOpen && <PartsLibrary tool={tool} onToolChange={setTool} onPlace={kind => { setTool(kind); setRotation(0) }} hasPico={!!document.pico} onAddPico={() => { change({ ...document, schemaVersion: 2, pico: createPico() }); openTab('code') }} wireColor={wireColor} wireColors={WIRE_COLORS} onWireColorChange={setWireColor} partCount={document.parts.length} onCollapse={() => setPartsOpen(false)} onClear={() => { change({ ...createEmptyDocument(), ...(document.pico ? { schemaVersion: 2 as const, pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }} />}
       <div className="workspace">
@@ -205,10 +237,10 @@ export default function App() {
         <div className="workspace-header" ref={workspaceHeader}>
           <h1 className="sr-only">Circuit workspace</h1>
           <WorkspaceTabs active={workspaceTab} onChange={openTab} hasPico={!!document.pico} automationCount={document.automations?.filter(item => item.enabled).length ?? 0} issueCount={circuitIssues.length} />
-          <div className="workspace-actions">{!partsOpen && <button className="icon-button" title="Open parts library" aria-label="Open parts library" onClick={() => setPartsOpen(true)}><PanelLeftOpen size={17} /></button>}<button className={`icon-button ${inspectorOpen ? 'is-on' : ''}`} title="Toggle inspector" aria-label="Toggle inspector" aria-pressed={inspectorOpen} onClick={() => setInspectorOpen(!inspectorOpen)}><SlidersHorizontal size={17} /></button></div>
+          <div className="workspace-actions">{!partsOpen && <button className="icon-button" title="Open parts library" aria-label="Open parts library" onClick={() => setPartsOpen(true)}><PanelLeftOpen size={17} /></button>}<button className={`icon-button ${inspectorOpen ? 'is-on' : ''}`} title="Toggle inspector · ]" aria-label="Toggle inspector" aria-pressed={inspectorOpen} onClick={() => setInspectorOpen(!inspectorOpen)}><SlidersHorizontal size={17} /></button></div>
         </div>
         <div className="workspace-panel" id="workspace-panel-circuit" role="tabpanel" aria-labelledby="workspace-tab-circuit" hidden={workspaceTab !== 'circuit'}>
-        <section className="bench-section" aria-label="Circuit workbench"><div className="board-toolbar"><div className="tool-group"><button className={`icon-button ${tool === 'select' && !panEnabled ? 'active' : ''}`} title="Select · V" aria-label="Select tool" aria-pressed={tool === 'select' && !panEnabled} onClick={() => setTool('select')}><MousePointer2 size={16} /></button><button className={`icon-button ${tool === 'wire' ? 'active' : ''}`} title="Wire · W" aria-label="Wire tool" aria-pressed={tool === 'wire'} onClick={() => setTool('wire')}><Cable size={16} /></button><button className="icon-button" title="Rotate placement · R" aria-label="Rotate placement" onClick={() => setRotation((rotation + (isDipTool(tool) ? 180 : 90)) % 360)}><RotateCw size={15} /></button><button className={`icon-button ${panEnabled ? 'active' : ''}`} title="Pan board · Space-drag" aria-label="Pan tool" aria-pressed={panEnabled} onClick={() => { if (panEnabled) setPanEnabled(false); else { setTool('select'); setPanEnabled(true) } }}><Hand size={15} /></button><span className="toolbar-divider" /><label className="connections-toggle"><input type="checkbox" aria-label="Show connections" checked={showConnections} onChange={e => setShowConnections(e.target.checked)} /><span>Connections</span></label></div><div className="zoom-controls"><button className="icon-button" aria-label="Zoom out" onClick={() => viewport.current?.zoomTo(zoom - 0.15)}><Minus size={14} /></button><span>{Math.round(zoom * 100)}%</span><button className="icon-button" aria-label="Zoom in" onClick={() => viewport.current?.zoomTo(zoom + 0.15)}><Plus size={14} /></button><button className="icon-button" aria-label="Fit breadboard" title="Fit breadboard" onClick={() => viewport.current?.fit('breadboard')}><Maximize2 size={14} /></button><button className="fit-workbench" aria-label="Fit workbench" title="Fit the breadboard and source terminals" onClick={() => viewport.current?.fit('workbench')}>Fit all</button></div></div>
+        <section className="bench-section" aria-label="Circuit workbench"><div className="board-toolbar"><div className="tool-group"><button className={`icon-button ${tool === 'select' && !panEnabled ? 'active' : ''}`} title="Select · V" aria-label="Select tool" aria-pressed={tool === 'select' && !panEnabled} onClick={() => setTool('select')}><MousePointer2 size={16} /></button><button className={`icon-button ${tool === 'wire' ? 'active' : ''}`} title="Wire · W" aria-label="Wire tool" aria-pressed={tool === 'wire'} onClick={() => setTool('wire')}><Cable size={16} /></button><button className="icon-button" title="Rotate placement · R" aria-label="Rotate placement" onClick={() => setRotation((rotation + (isDipTool(tool) ? 180 : 90)) % 360)}><RotateCw size={15} /></button><button className={`icon-button ${panEnabled ? 'active' : ''}`} title="Pan board · H / Space-drag" aria-label="Pan tool" aria-pressed={panEnabled} onClick={() => { if (panEnabled) setPanEnabled(false); else { setTool('select'); setPanEnabled(true) } }}><Hand size={15} /></button><span className="toolbar-divider" /><label className="connections-toggle"><input type="checkbox" aria-label="Show connections" checked={showConnections} onChange={e => setShowConnections(e.target.checked)} /><span>Connections</span></label></div><div className="zoom-controls"><button className="icon-button" aria-label="Zoom out" onClick={() => viewport.current?.zoomTo(zoom - 0.15)}><Minus size={14} /></button><span>{Math.round(zoom * 100)}%</span><button className="icon-button" aria-label="Zoom in" onClick={() => viewport.current?.zoomTo(zoom + 0.15)}><Plus size={14} /></button><button className="icon-button" aria-label="Fit breadboard" title="Fit breadboard · 0" onClick={() => viewport.current?.fit('breadboard')}><Maximize2 size={14} /></button><button className="fit-workbench" aria-label="Fit workbench" title="Fit the breadboard and source terminals · F" onClick={() => viewport.current?.fit('workbench')}>Fit all</button></div></div>
           <div className="labor-case">
             <div className="chassis-brand"><div className="labor-wordmark"><strong>PICO LABOR</strong><span>EDU / VIRTUAL WORKBENCH</span></div><span className="chassis-revision">WORKBENCH / 01</span></div>
             <div className="instrument-panel">
@@ -256,6 +288,6 @@ export default function App() {
     </main>
     <footer className="app-footer"><span><span className={`small-status-dot ${saved ? '' : 'unsaved'}`} />{saved ? 'Browser recovery copy saved' : 'Browser recovery unavailable'}<span className="footer-separator">·</span>Export a file to keep a separate copy.</span><span className="copyright">© 2026 <a href="https://fredibach.com">Fredi Bach</a></span><span>Simulation runs locally.</span></footer>
     {notice && <div className="toast" role="status" aria-label="Workbench notification"><Info size={16} /><span>{notice}</span><button className="icon-button" aria-label="Dismiss notification" onClick={() => setNotice('')}><X size={14} /></button></div>}
-    <dialog ref={guideDialog} className="guide-dialog" aria-labelledby="guide-title" onClose={() => setHelpOpen(false)}><button className="icon-button modal-close" aria-label="Close guide" autoFocus onClick={() => setHelpOpen(false)}><X size={18} /></button><h2 id="guide-title">Workbench guide</h2><p>{document.pico ? 'Edit main.py, then select Simulate. The selected duration of GPIO output drives your circuit; the scope and serial console show the results.' : exampleId === examples[0].id ? 'Start with the filter: select C1 and change its capacitance. CH1 measures the input; CH2 shows what makes it through.' : 'Load an example, or build your own. Overview contains circuit checks, example instructions, and the parts list. Connect a source and ground, attach a probe, and select Simulate to see the result.'}</p><ol><li><strong>Build.</strong> Choose a part, then click a hole. Rotate with R. Drag existing parts to move them. Select a two-lead part and use Move beside a lead to adjust its spacing.</li><li><strong>Connect.</strong> Choose the wire tool and click two terminals. The five holes in each vertical strip connect internally. The center trench and the rail breaks stay separate.</li><li><strong>Measure.</strong> Choose a CH1 or CH2 probe, then a terminal. Simulate in the top bar runs the circuit from its initial state. Use ⌘Enter or Ctrl+Enter from anywhere, including the Pico editor. The Results tab contains the full oscilloscope and recording; Capture there repeats the same simulation. Open Measurements under the scope for cursors and waveform statistics. Choose a recording duration up to 10 seconds. Scrub the recording timeline or play it in a loop; component readings and LEDs follow its selected time. Slow playback to see fast changes. Use Trigger to frame a crossing and DC operating point to inspect the initial state. Click a channel label to highlight its connection. Drag the grip beneath the trace to resize the scope. Choose Steady loop in Audio / Power to listen to a settled periodic signal; edits stop playback.</li><li><strong>Automate.</strong> Open Automations to schedule a knob ramp, switch change, or gate press at a time or a voltage crossing. Each enabled action runs once per capture. Click a fired event to inspect its moment in the recording; playback values appear beside automated controls. Export includes your automations.</li><li><strong>Keep it.</strong> Export your circuit as JSON. Import it anytime; undo also works after loading or clearing a board.</li></ol><div className="guide-note"><Info size={17} /><p>This first build uses a documented virtual breadboard and simplified instrument sources. It is inspired by LABOR, and is not an exact hardware replica. The TL072-style dual op-amp requires visible supply connections. The control board operates potentiometers and switches placed on the breadboard. The EG terminal provides a held gate, a short trigger, or a decay envelope; Fire starts a fresh capture. The recording loop replays the whole capture; the audio monitor loops only verified settled cycles. Calibrated hardware models and live audio simulation remain future work.</p></div><Button onClick={() => setHelpOpen(false)}>Close guide <ChevronDown size={14} /></Button></dialog>
+    <HelpDialog open={helpOpen} onClose={() => setHelpOpen(false)} />
   </div></RecordingProvider>
 }

@@ -36,7 +36,13 @@ Use **Place** on the lower **Multipurpose Control Board** to add a potentiometer
 
 Use **Pan**, Space-drag, or the middle mouse button to move a zoomed board. **Fit breadboard** frames the holes; **Fit all / Fit workbench** includes the source terminals. Ordinary trackpad scrolling works inside the zoomed view. Drag the grip below the scope trace to resize it, or focus the grip and use Up/Down; Enter restores its default height. These view changes do not alter the circuit or undo history.
 
-Board shortcuts apply in **Circuit**. Keyboard: **Ctrl/Cmd+Enter** simulate (including from the Pico editor or a numeric field), **W** wire, **V** select, **R** rotate placement, **Escape** cancel, **Delete/Backspace** remove selection, **Ctrl/Cmd+Z** undo, **Ctrl/Cmd+Shift+Z** or **Ctrl+Y** redo. Breadboard holes also support arrow navigation and Enter/Space activation.
+Board shortcuts apply in **Circuit**. Keyboard: **Ctrl/Cmd+Enter** simulate (including from the Pico editor or a numeric field), **W** wire, **V** select, **R** rotate placement, **Escape** cancel, **Delete/Backspace** remove selection, **Ctrl/Cmd+Z** undo, **Ctrl/Cmd+Shift+Z** or **Ctrl+Y** redo. Breadboard holes also support arrow navigation and Enter/Space activation. Additional shortcuts: **H** pan, **1/2** place probes, **+/−** zoom, **0** fit breadboard, **F** fit workbench, **C** connections, and **[/]** toggle the library/inspector. **Alt+1–5** opens Circuit, Code (when available), Automations, Results, and Overview. Text fields and editor shortcuts keep their normal behavior. Press **?** outside a text field for the searchable guide and complete shortcut reference.
+
+### Local folder sync
+
+Choose **Connect folder**, then **Sync now** or **Ctrl/Cmd+S** to synchronize `circuit.json` in a dedicated project folder. The file contains the circuit, instruments, automations, and embedded Pico source. Connecting does not write files. Sync loads external-only changes and saves workbench-only changes; concurrent changes require choosing **Keep workbench** or **Load folder version**. An existing different project also requires this choice. Folder loads are undoable, errors leave the workbench intact, and other folder files are untouched.
+
+Sync is manual and the folder must be reconnected after a page reload. Folder access uses the [File System Access API](https://developer.chrome.com/docs/capabilities/web-apis/file-system-access) and requires a supported secure browser context (such as desktop Chrome/Edge on HTTPS or localhost). Import/Export remain available elsewhere. **Ctrl/Cmd+S** exports when no folder is connected; **Ctrl/Cmd+O** imports. Disconnecting preserves the files.
 
 ## Included in this build
 
