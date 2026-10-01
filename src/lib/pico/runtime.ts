@@ -1,10 +1,11 @@
 import { Simulator, USBCDC, ConsoleLogger, LogLevel } from 'rp2040js'
+import { PICO_CAPTURE_DURATIONS_MS } from './profile.ts'
 
-export const PICO_LIMITS = { captureNs: 100_000_000, bootNs: 10_000_000_000, instructions: 200_000_000, wallMs: 60_000, events: 20_000, consoleBytes: 16_384, traceBytes: 2_000_000, sourceBytes: 32_768 } as const
+export const PICO_LIMITS = { captureNs: 100_000_000, maxCaptureNs: 10_000_000_000, bootNs: 10_000_000_000, instructions: 1_500_000_000, wallMs: 60_000, events: 25_000, consoleBytes: 16_384, traceBytes: 4_000_000, sourceBytes: 32_768 } as const
 export interface PinState { gpio: number; state: number; function: number; enabled: boolean; pullUp: boolean; pullDown: boolean }
 export interface PinEvent extends PinState { ns: number }
 export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number }
-export interface RuntimeOptions { source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
+export interface RuntimeOptions { source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; durationSeconds?: number; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
 const MARKER = 0x20041ffc
 
 /** Strict UF2 loader: only the bundled profile's flash payload is accepted. */
@@ -20,6 +21,9 @@ export function loadFirmware(simulator: Simulator, buffer: ArrayBuffer) {
 }
 
 export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
+  const durationSeconds = options.durationSeconds ?? PICO_LIMITS.captureNs / 1e9
+  if (!PICO_CAPTURE_DURATIONS_MS.some(ms => ms === durationSeconds * 1000)) throw new Error('Pico capture duration must be 100 ms, 500 ms, 1 s, 5 s, or 10 s.')
+  const captureNs = durationSeconds * 1e9
   if (new TextEncoder().encode(options.source).length > PICO_LIMITS.sourceBytes) throw new Error('main.py exceeds 32 KiB.')
   const sim = new Simulator()
   const mcu = sim.rp2040
@@ -32,7 +36,14 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   let initial: PinState[] = []
   const events: PinEvent[] = []
   let consoleText = '', stderr = '', stream: 'stdout' | 'stderr' | 'done' = 'stdout', handshake = '', phase: 'boot' | 'raw' | 'submitted' = 'boot'
-  let consoleBytes = 0, consoleTruncated = false
+  let consoleBytes = 0, consoleTruncated = false, consoleDirty = false, lastConsoleUpdate = 0
+  const displayConsole = () => consoleText + (consoleTruncated ? '\n[Console truncated]' : '')
+  const flushConsole = (force = false) => {
+    if (!consoleDirty || (!force && performance.now() - lastConsoleUpdate < 50)) return
+    options.onConsole?.(displayConsole())
+    consoleDirty = false
+    lastConsoleUpdate = performance.now()
+  }
   const encoder = new TextEncoder()
   let pending = new Uint8Array(), sent = 0, instructions = 0
   const snapshot = (gpio: number): PinState => {
@@ -49,11 +60,11 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
         if (character === String.fromCharCode(4)) { stream = stream === 'stdout' ? 'stderr' : 'done'; continue }
         if (stream === 'stdout') {
           const bytes = encoder.encode(character).length
-          if (consoleBytes + bytes <= PICO_LIMITS.consoleBytes) { consoleText += character; consoleBytes += bytes } else consoleTruncated = true
+          if (consoleBytes + bytes <= PICO_LIMITS.consoleBytes) { consoleText += character; consoleBytes += bytes; consoleDirty = true } else if (!consoleTruncated) { consoleTruncated = true; consoleDirty = true }
         }
         if (stream === 'stderr' && stderr.length < PICO_LIMITS.consoleBytes) stderr += character
       }
-      options.onConsole?.(consoleText + (consoleTruncated ? '\n[Console truncated]' : ''))
+      flushConsole()
       return
     }
     handshake = (handshake + text).slice(-2048)
@@ -99,38 +110,46 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   }
   for (const pin of mcu.gpio) {
     const update = pin.checkForUpdates.bind(pin)
-    let previous = JSON.stringify(snapshot(pin.index))
+    // Register writes often leave the output unchanged. Compare packed values
+    // before allocating a trace object instead of serializing every check.
+    const stateKey = () => pin.value | pin.functionSelect << 3 | Number(pin.outputEnable) << 8 | Number(pin.pullupEnabled) << 9 | Number(pin.pulldownEnabled) << 10
+    let previous = stateKey()
     pin.checkForUpdates = () => {
       update()
-      const state = snapshot(pin.index)
-      const key = JSON.stringify(state)
+      const key = stateKey()
       if (key === previous) return
       previous = key
       if (zero === undefined) return
       const ns = sim.clock.nanos - zero
-      if (ns >= PICO_LIMITS.captureNs) return
-      if (events.length >= PICO_LIMITS.events) throw new Error('Pico event limit exceeded. Reduce PWM frequency or the number of active outputs.')
+      if (ns >= captureNs) return
+      if (events.length >= PICO_LIMITS.events) throw new Error('Pico event limit exceeded. Shorten the capture, reduce PWM frequency, or use fewer active outputs.')
       if (![4, 5, 31].includes(pin.functionSelect)) throw new Error(`GP${pin.index}: unsupported output function ${pin.functionSelect}.`)
-      events.push({ ...state, ns })
+      events.push({ ...snapshot(pin.index), ns })
     }
   }
   mcu.addClockListener(clock => { if (zero !== undefined && clock !== 125_000_000) throw new Error('Changing the Pico CPU frequency is unsupported in this capture profile.') })
   mcu.core.PC = 0x10000000
   options.onPhase?.('preparing')
-  while (zero === undefined || sim.clock.nanos - zero < PICO_LIMITS.captureNs) {
+  let lastYield = performance.now()
+  while (zero === undefined || sim.clock.nanos - zero < captureNs) {
     options.signal?.throwIfAborted()
-    if (performance.now() - started > PICO_LIMITS.wallMs || instructions > PICO_LIMITS.instructions) throw new Error('Pico execution resource limit exceeded.')
+    if (performance.now() - started > PICO_LIMITS.wallMs || instructions > PICO_LIMITS.instructions) throw new Error('Pico execution resource limit exceeded. Shorten the capture or add sleeps to busy loops.')
     if (zero === undefined && sim.clock.nanos > PICO_LIMITS.bootNs) throw new Error(`Pico REPL startup timed out. ${handshake}`)
     for (let batch = 0; batch < (options.batchSize ?? 50_000); batch++) {
       while (sent < pending.length && !cdc.txFIFO.full) cdc.sendSerialByte(pending[sent++])
-      const remaining = zero === undefined ? Infinity : PICO_LIMITS.captureNs - (sim.clock.nanos - zero)
+      const remaining = zero === undefined ? Infinity : captureNs - (sim.clock.nanos - zero)
       if (remaining <= 0) break
       if (mcu.core.waiting) sim.clock.tick(Math.min(sim.clock.nanosToNextAlarm, remaining))
       else { const cycles = mcu.core.executeInstruction(); sim.clock.tick(Math.min(cycles * 8, remaining)); instructions++ }
     }
-    await new Promise(resolve => setTimeout(resolve, 0))
+    if (performance.now() - lastYield >= 16) {
+      flushConsole()
+      await new Promise(resolve => setTimeout(resolve, 0))
+      lastYield = performance.now()
+    }
   }
+  flushConsole(true)
   if (stderr.trim()) throw new Error(stderr.replace(/  File "<stdin>", line \d+, in <module>\r?\n/g, ''))
   if (encoder.encode(JSON.stringify({ initial, events })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event density.')
-  return { initial, events, durationNs: PICO_LIMITS.captureNs, console: consoleText.split(String.fromCharCode(4)).join('') + (consoleTruncated ? '\n[Console truncated]' : ''), instructions, elapsedMs: performance.now() - started }
+  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started }
 }

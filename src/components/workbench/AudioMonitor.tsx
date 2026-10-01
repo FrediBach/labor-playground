@@ -5,7 +5,24 @@ import type { Capture, Channel } from '@/lib/simulation-types'
 import { RotaryControl } from './ParameterControls'
 import './AudioMonitor.css'
 
-export function AudioMonitor({ capture, onMessage }: { capture: Capture | null; onMessage: (message: string) => void }) {
+export function AudioMonitor({ capture: recording, onMessage }: { capture: Capture | null; onMessage: (message: string) => void }) {
+  // Audio DSP has its own bounded preview; the electrical recording stays intact.
+  const capture = useMemo(() => {
+    if (!recording) return null
+    let end = Math.min(recording.time.length, 100_000)
+    if (recording.time[end - 1] - recording.time[0] > 1) {
+      let low = 0, high = end
+      while (low < high) {
+        const middle = (low + high) >>> 1
+        if (recording.time[middle] - recording.time[0] <= 1) low = middle + 1
+        else high = middle
+      }
+      end = low
+    }
+    if (end === recording.time.length) return recording
+    const time = recording.time.slice(0, end)
+    return { ...recording, time, duration: time.at(-1)! - time[0], channels: { CH1: recording.channels.CH1.slice(0, end), CH2: recording.channels.CH2.slice(0, end) } }
+  }, [recording])
   const [channel, setChannel] = useState<Channel>('CH2')
   const [mode, setMode] = useState<'once' | 'loop'>('once')
   const [volume, setVolume] = useState(70)
@@ -70,6 +87,6 @@ export function AudioMonitor({ capture, onMessage }: { capture: Capture | null; 
       </div>
       <button className="monitor-mute icon-button" aria-label="Mute audio" title="Mute audio" onClick={mute}><VolumeX size={12} /><span>MUTE</span></button>
     </div>
-    <p className="monitor-note" aria-label="Loop availability">{!capture ? 'Capture a signal to listen.' : loop?.available ? `${mode === 'loop' ? 'Loops' : 'Loop available:'} ${loop.region.cycles} settled cycles · ${loop.region.frequency.toFixed(1)} Hz. Edits stop playback.` : loop && !loop.available ? loop.reason : 'No settled loop available.'}</p>
+    <p className="monitor-note" aria-label="Loop availability">{capture && capture !== recording && `Audio preview: first ${(capture.duration * 1000).toFixed(0)} ms. `}{!capture ? 'Capture a signal to listen.' : loop?.available ? `${mode === 'loop' ? 'Loops' : 'Loop available:'} ${loop.region.cycles} settled cycles · ${loop.region.frequency.toFixed(1)} Hz. Edits stop playback.` : loop && !loop.available ? loop.reason : 'No settled loop available.'}</p>
   </div>
 }

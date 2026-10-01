@@ -1,7 +1,7 @@
 import { useId, useMemo } from 'react'
 import type { CircuitDocument } from '@/lib/circuit'
 import type { Capture, Channel, SimulationStatus } from '@/lib/simulation'
-import { interpolateVoltage } from '@/lib/measurements'
+import { createVoltageSampler } from '@/lib/measurements'
 import './ScopeModule.css'
 
 const CHANNELS = ['CH1', 'CH2'] as const
@@ -16,7 +16,7 @@ const STATUS_LABELS: Record<SimulationStatus, string> = {
 const WIDTH = 144
 const HEIGHT = 80
 
-function scopeTrace(capture: Capture, channel: Channel, voltsPerDivision: number, duration: number) {
+function scopeTrace(capture: Capture, channel: Channel, voltsPerDivision: number, duration: number, endVoltage: number | null) {
   const values = capture.channels[channel]
   const start = capture.time[0]
   const end = start + duration
@@ -46,7 +46,6 @@ function scopeTrace(capture: Capture, channel: Channel, voltsPerDivision: number
       points.push(`${points.length ? 'L' : 'M'}${x.toFixed(2)},${y.toFixed(2)}`)
     }
   }
-  const endVoltage = interpolateVoltage(capture.time, values, end)
   if (points.length && endVoltage !== null) points.push(`L${WIDTH},${(HEIGHT / 2 - endVoltage / voltsPerDivision * HEIGHT / 6).toFixed(2)}`)
   return points.join(' ')
 }
@@ -60,30 +59,33 @@ export function ScopeModule({ capture: suppliedCapture, status, probes, onProbe,
 }) {
   const clipId = useId()
   const capture = status === 'ready' && suppliedCapture?.time.length ? suppliedCapture : null
+  const { CH1: probe1, CH2: probe2 } = probes
   const display = useMemo(() => {
     if (!capture) return null
+    const attached = { CH1: probe1, CH2: probe2 }
     const captureDuration = capture.time.at(-1)! - capture.time[0]
     const duration = windowSeconds && Number.isFinite(windowSeconds) && windowSeconds > 0 ? Math.min(captureDuration, windowSeconds) : captureDuration
     const end = capture.time[0] + duration
+    const endVoltages = Object.fromEntries(CHANNELS.map(channel => [channel, attached[channel] ? createVoltageSampler(capture.time, capture.channels[channel])?.(end) ?? null : null])) as Record<Channel, number | null>
     let peak = 0
     for (const channel of CHANNELS) {
-      if (!probes[channel]) continue
+      if (!attached[channel]) continue
       const values = capture.channels[channel]
       for (let index = 0; index < Math.min(capture.time.length, values.length); index++) {
         if (capture.time[index] > end) break
         const value = values[index]
         if (Number.isFinite(value)) peak = Math.max(peak, Math.abs(value))
       }
-      const endVoltage = interpolateVoltage(capture.time, values, end)
+      const endVoltage = endVoltages[channel]
       if (endVoltage !== null) peak = Math.max(peak, Math.abs(endVoltage))
     }
     const voltsPerDivision = [0.1, 0.2, 0.5, 1, 2, 5, 10, 20].find(value => value * 2.7 >= peak) ?? Math.ceil(peak / 2.7)
     return {
       voltsPerDivision,
       millisecondsPerDivision: duration * 1000 / 8,
-      traces: CHANNELS.map(channel => ({ channel, path: probes[channel] ? scopeTrace(capture, channel, voltsPerDivision, duration) : '' })),
+      traces: CHANNELS.map(channel => ({ channel, path: attached[channel] ? scopeTrace(capture, channel, voltsPerDivision, duration, endVoltages[channel]) : '' })),
     }
-  }, [capture, probes, windowSeconds])
+  }, [capture, probe1, probe2, windowSeconds])
   const hasProbe = Boolean(probes.CH1 || probes.CH2)
 
   return <section className="scope-module" aria-label="Integrated EDU oscilloscope">

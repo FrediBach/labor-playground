@@ -23,10 +23,10 @@ export class SimulationClient {
 
   get isReady() { return this.ready }
 
-  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest, picoChecks?: PicoElectricalCheck[]): Promise<Capture> {
+  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest, picoChecks?: PicoElectricalCheck[], durationSeconds = 0.1): Promise<Capture> {
     this.discardQueued()
     return new Promise((resolve, reject) => {
-      this.pending = { request: { type: 'run', netlist, nodes, revision, voltageChecks, operatingPoint, picoChecks }, resolve, reject, phase }
+      this.pending = { request: { type: 'run', netlist, nodes, revision, voltageChecks, operatingPoint, picoChecks, durationSeconds }, resolve, reject, phase }
       phase?.(this.ready ? 'calculating' : 'loading')
       if (!this.worker) this.initialize()
       this.pump()
@@ -89,7 +89,8 @@ export class SimulationClient {
     this.active = this.pending
     this.pending = null
     this.active.phase?.('calculating')
-    this.timeout = setTimeout(() => this.fail('The simulation exceeded 8 seconds and was stopped. Your circuit is preserved. Check the wiring, then press Capture.'), SIMULATION_LIMITS.runTimeoutMs)
+    const timeoutMs = (this.active.request.durationSeconds ?? 0.1) > 0.1 ? SIMULATION_LIMITS.longRunTimeoutMs : SIMULATION_LIMITS.runTimeoutMs
+    this.timeout = setTimeout(() => this.fail(`The simulation exceeded ${timeoutMs / 1000} seconds and was stopped. Your circuit is preserved. Shorten the recording or simplify the circuit, then press Capture.`), timeoutMs)
     this.worker.postMessage(this.active.request)
   }
 

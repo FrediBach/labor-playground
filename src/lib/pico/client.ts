@@ -3,7 +3,7 @@ export class PicoClient {
   private worker: Worker | null = null
   private reject: ((error: Error) => void) | undefined
   stop() { this.worker?.terminate(); this.worker = null; this.reject?.(new Error('Pico capture cancelled.')); this.reject = undefined }
-  run(source: string, runId: number, onProgress: (phase: string, console?: string) => void): Promise<PicoTrace> {
+  run(source: string, runId: number, onProgress: (phase: string, console?: string) => void, durationSeconds = 0.1): Promise<PicoTrace> {
     this.stop()
     return new Promise((resolve, reject) => {
       const worker = new Worker(new URL('./pico.worker.ts', import.meta.url), { type: 'module' })
@@ -20,7 +20,7 @@ export class PicoClient {
       }
       worker.onerror = () => finish(new Error('Pico worker failed. Reset and try again.'))
       worker.onmessageerror = () => finish(new Error('Pico worker message failed. Reset and try again.'))
-      worker.postMessage({ type: 'run', source, runId })
+      worker.postMessage({ type: 'run', source, runId, durationSeconds })
     })
   }
 }

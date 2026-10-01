@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { differentialVoltage, estimateFrequency, interpolateVoltage, measureTrace } from '../src/lib/measurements.ts'
+import { createVoltageSampler, differentialVoltage, estimateFrequency, interpolateVoltage, measureTrace } from '../src/lib/measurements.ts'
 
 function close(actual: number | null | undefined, expected: number, tolerance = 1e-9) {
   assert.ok(actual !== null && actual !== undefined && Math.abs(actual - expected) < tolerance, `Expected ${actual} to be within ${tolerance} of ${expected}`)
@@ -52,6 +52,25 @@ test('duplicate-time step edges use the later voltage at the exact cursor positi
   close(interpolateVoltage(time, voltage, 0.499), 0)
   close(interpolateVoltage(time, voltage, 0.5), 4)
   close(measureTrace(time, voltage)!.mean, 2)
+})
+
+test('prepared sampling validates once and supports repeated logarithmic lookups', () => {
+  const count = 100_000
+  let reads = 0
+  const time = new Proxy(Array.from({ length: count }, (_, index) => index / 1000), {
+    get(target, property, receiver) {
+      if (typeof property === 'string' && /^\d+$/.test(property)) reads++
+      return Reflect.get(target, property, receiver)
+    },
+  })
+  const sample = createVoltageSampler(time, Array.from({ length: count }, (_, index) => index / 500))!
+  reads = 0
+  for (let index = 0; index < 100; index++) close(sample(index + 0.0005), index * 2 + 0.001)
+  assert.ok(reads < 3000, `Repeated lookups read ${reads} timestamps instead of searching logarithmically`)
+  assert.equal(createVoltageSampler([0, 1], [0, NaN]), null)
+  const step = createVoltageSampler([0, 0.5, 0.5, 1], [0, 0, 4, 4])!
+  close(step(0.5), 4)
+  assert.equal(step(2), null)
 })
 
 test('differential meter subtracts interpolated voltages or their time-weighted capture means', () => {

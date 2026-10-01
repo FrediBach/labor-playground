@@ -1,6 +1,6 @@
 # Pico runtime profile
 
-LABOR's first Pico profile is `rp2-pico-1.20.0-v1`. Select a Pico example or add **Raspberry Pi Pico** from the parts tray. Connect a Pico GND to workbench GND, edit `main.py`, and press **Run · 100 ms**. Loading, importing, recovering, and editing a program never run it automatically. The existing analog-only Auto update workflow is unchanged.
+LABOR's first Pico profile is `rp2-pico-1.20.0-v1`. Select a Pico example or add **Raspberry Pi Pico** from the parts tray. Connect a Pico GND to workbench GND, edit `main.py`, choose a capture duration, and press **Run**. Loading, importing, recovering, and editing a program never run it automatically. The existing analog-only Auto update workflow is unchanged.
 
 The dock represents the original, non-wireless RP2040 Pico. Its 40 numbered header positions follow the [official board layout](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#non-wireless-board-layout). GP25 is the onboard LED and has no header terminal. GND and AGND join inside the board; neither connects to breadboard ground without a jumper. Unsupported power/control terminals are labeled but cannot be wired. No additional Pico instance is accepted.
 
@@ -26,7 +26,7 @@ Language configuration explicitly supplies the standard-library typeshed. Board 
 
 Each Run freezes source and wiring under one revision, boots a fresh emulator, waits for the friendly/raw REPL handshakes, compiles `main.py`, and submits it through USB CDC. A reserved adapter marker write immediately before `exec` defines capture zero. Compilation and boot are excluded; the short interpreter dispatch into `main.py` is included. Tracebacks use `main.py` line numbers, and wrapper frames are removed.
 
-Virtual time advances in instruction order at the profile's 125 MHz timing. Worker batch size does not define timestamps. Changing CPU frequency, PIO and multicore execution are rejected. GPIO changes include direction, peripheral function, pulls and output levels, including mode changes with no logic-level transition. Events at exactly 100 ms are outside the half-open capture interval. If the script returns early, its final output state and hardware PWM continue through 100 ms. Python exceptions fail the capture; partial electrical results are never published.
+Virtual time advances in instruction order at the profile's 125 MHz timing. Worker batch size does not define timestamps. Changing CPU frequency, PIO and multicore execution are rejected. GPIO changes include direction, peripheral function, pulls and output levels, including mode changes with no logic-level transition. Events at exactly the selected end time are outside the half-open capture interval. If the script returns early, its final output state and hardware PWM continue through that end time. Python exceptions fail the capture; partial electrical results are never published.
 
 The bridge is one way. Actual CPU bus reads of SIO GPIO input, GPIO status, and ADC registers, including indirect Python calls, fail the experiment. GPIO interrupt enabling also fails. This strict contract rejects output-pin reads too, because they observe the pin input path. PWM configuration getters, timing, and output-latch operations such as `Pin.toggle()` remain available. Digital input, ADC feedback, external buses, PIO, and multicore are not first-release capabilities.
 
@@ -34,12 +34,12 @@ Stop terminates the active worker phase, discards partial results and stops audi
 
 ## Limits
 
-- Capture duration: 100 ms; 50,000 solved samples.
+- Capture duration: 100 ms, 500 ms, 1 s, 5 s, or 10 s. The analog solver bounds recordings to one million samples and twelve million numeric values.
 - Source: 32 KiB UTF-8; whole project: 200,000 UTF-8 bytes.
-- Boot: at most 10 simulated seconds; whole emulator work: 200 million instructions and 60 wall-clock seconds. The main-thread worker watchdog is 65 seconds. The existing ngspice timeout remains independent.
-- Runtime trace: 20,000 state events and 2 MB serialized trace; electrical compilation: at most 2,000 events.
+- Boot: at most 10 simulated seconds; whole emulator work: 1.5 billion instructions and 60 wall-clock seconds. The main-thread worker watchdog is 65 seconds. The ngspice timeout remains independent. Resource-heavy programs can reach these bounds before a long capture finishes.
+- Runtime trace and electrical compilation: 25,000 state events and 4 MB serialized trace. This accommodates a single 1 kHz PWM output for 10 seconds.
 - Console: 16 KiB UTF-8, visibly truncated. Logs, traces and emulator memory are not saved.
-- Driver edges: 1 µs. Changes to the same driver or pull control less than 1 µs apart are rejected; independent driver and pull transitions can overlap during pin initialization. Output repetition is capped at 5 kHz per connected GPIO, with a shared 2,000-event budget. The 1 kHz examples and a 5 kHz RC fixture are tested; excessive frequency/density fails explicitly instead of silently dropping edges.
+- Driver edges: 1 µs. Changes to the same driver or pull control less than 1 µs apart are rejected; independent driver and pull transitions can overlap during pin initialization. Output repetition is capped at 5 kHz per connected GPIO, with a shared 25,000-event budget. The 1 kHz examples and a 5 kHz RC fixture are tested; excessive frequency/density fails explicitly instead of silently dropping edges. Higher frequencies or multiple outputs may require a shorter capture.
 
 See [hardware-spec.md](hardware-spec.md) for the educational driver constants and supported electrical envelope. Actual solved node voltages feed scope and audio. Every analog experiment starts from the initial GPIO operating point; capacitor charge does not survive runs.
 
@@ -75,3 +75,18 @@ Production Vite test build on macOS ARM64, Node 25.5.0, Playwright Chromium 153.
 | Language foreground / background live JS heaps | 88.6 / 138.4 MiB |
 
 Memory is a CDP `Runtime.getHeapUsage` snapshot after the experiment: it excludes process overhead and the already-terminated emulator/ngspice workers. The analyzer is the dominant resident cost; the editor is lazy-loaded only for Pico projects. The automated measurement test also records backing storage, allocated heap, and cancellation latency. Resource limits are enforced independently of these observed timings.
+
+## Longer-capture performance (2026-10-01)
+
+The runtime now compares packed GPIO state before creating event objects, batches worker yields by elapsed time, and limits serial updates to 20 per second. All actual GPIO changes remain recorded with their original emulated timestamps. Before/after Node measurements on the same macOS ARM64 workspace, using real firmware with one 1 kHz PWM output and a `sleep_ms(1)` loop:
+
+| Capture | Emulator wall time | Instructions | State events |
+| --- | --- | --- | --- |
+| 100 ms, before | 486 ms | 7,540,666 | 197 |
+| 100 ms, after | 302 ms | 7,540,666 | 197 |
+| 1 s, after | 2.26 s | 65,095,376 | 1,997 |
+| 10 s, after | 21.74 s | 640,640,164 | 19,997 |
+
+These are single-run emulator-only observations; they exclude ngspice, rendering, and language analysis. The 100 ms fixture retained identical instruction and event counts with approximately 38% lower wall time. A longer capture still executes firmware instructions, so its cost depends on the program and host device.
+
+A separate full 10-second run of the supplied Pico PWM-to-RC example took 19.77 seconds in the emulator and 16.41 seconds in ngspice with the final adaptive-solver tolerance. The recording completed at exactly 10 seconds with 339,972 adaptive samples and 2,379,804 retained voltage/current values. Its final filtered voltage was 1.641 V, close to the expected 1.65 V average. The sample, trace, and time budgets all remained within their bounds.

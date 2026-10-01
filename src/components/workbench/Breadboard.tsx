@@ -7,6 +7,7 @@ import {
 import type { CircuitDocument, Part, ComponentKind } from '@/lib/circuit'
 import { hasEditableLeads, leadPlacementError, previewLeadPins, type LeadEdit } from '@/lib/part-editing'
 import { PartGlyph } from './PartGlyph'
+import { RecordedLed, RecordedPicoLed, RecordedTerminalVoltage } from './Recording'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 type Point = { x: number; y: number }
@@ -371,7 +372,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       <title>{label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
       <g transform={`rotate(${angle})`}>
         <rect {...bounds} fill="transparent" />
-        <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />
+        {part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />}
       </g>
       {!preview && <g pointerEvents="none">
         <rect x={labelX - labelWidth / 2} y={labelY} width={labelWidth} height={17} rx={4} fill="#eeeee3" fillOpacity={0.95} />
@@ -480,6 +481,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     {document.pico && <g aria-label="Original Raspberry Pi Pico dock" pointerEvents="none">
       <rect x={PICO_DOCK_CENTER_X - 83} y={52} width={166} height={453} rx={7} fill="#24664b" stroke="#9bbca0" strokeWidth={2} />
       <rect x={PICO_DOCK_CENTER_X - 21} y={43} width={42} height={32} rx={3} fill="#afbab3" stroke="#293d31" />
+      <RecordedPicoLed x={PICO_DOCK_CENTER_X - 28} y={95} />
       <rect x={PICO_DOCK_CENTER_X - 22} y={240} width={43} height={43} fill="#1d2924" transform={`rotate(45 ${PICO_DOCK_CENTER_X} 261)`} />
       <text x={PICO_DOCK_CENTER_X} y={325} fill="#e7efe4" textAnchor="middle" fontSize={10} transform={`rotate(-90 ${PICO_DOCK_CENTER_X} 325)`}>RASPBERRY PI PICO</text>
       <text x={PICO_DOCK_CENTER_X} y={525} fill="#b9cbbf" textAnchor="middle" fontSize={9}>USB POWER · 3.3 V · OUTPUTS ONLY</text>
@@ -573,6 +575,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       {previewPins.map((id, index) => { const terminal = terminalById[id]; return terminal && <circle key={`${id}-${index}`} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
       {renderPart({ ...(leadPart ?? (move?.dragging ? move.part : { kind: previewKind, value: PARTS[previewKind].defaultValue })), id: 'preview', pins: previewPins }, true)}
     </g>}
+    {highlightSource && <RecordedTerminalVoltage node={graph.nodeByTerminal[highlightSource]} x={770} y={546} />}
     {isPart(tool) && hover && !previewPins && <circle cx={hover.x} cy={hover.y} r={10} fill="#df7662" fillOpacity={0.24} stroke="#c04e3e" strokeWidth={1.8} pointerEvents="none" />}
 
     <g pointerEvents="none" aria-hidden="true">

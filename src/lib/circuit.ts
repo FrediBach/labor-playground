@@ -7,6 +7,7 @@ import { activeExamples } from './active-examples.ts'
 import { icExamples } from './ic-examples.ts'
 import { timer555Lines } from './timer555.ts'
 import { lm13700Lines } from './lm13700.ts'
+import { SIMULATION_LIMITS } from './simulation-types.ts'
 
 export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700'
 
@@ -428,13 +429,20 @@ export function resolveTopology(doc: CircuitDocument) {
   return { nodeByTerminal, nets }
 }
 
-export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace): CompiledCircuit {
+export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace, durationSeconds = 0.1): CompiledCircuit {
   const diagnostics: Diagnostic[] = []
   let doc: CircuitDocument
   try { doc = validateDocument(document) } catch (error) {
     return { netlist: '', diagnostics: [{ severity: 'error', message: error instanceof Error ? error.message : 'Invalid circuit document.' }], nodeByTerminal: {}, nets: {} }
   }
   const { nodeByTerminal, nets } = resolveTopology(doc)
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0.001 || durationSeconds > SIMULATION_LIMITS.maxDurationSeconds) {
+    diagnostics.push({ severity: 'error', message: `Choose a simulation duration between 1 ms and ${SIMULATION_LIMITS.maxDurationSeconds} s.` })
+    return { netlist: '', diagnostics, nodeByTerminal, nets }
+  }
+  if (picoTrace && Math.abs(picoTrace.durationNs / 1e9 - durationSeconds) > 1e-9) {
+    diagnostics.push({ severity: 'error', message: 'The Pico recording and circuit simulation must have the same duration. Run the simulation again.' })
+  }
   const usedTerminals = [...doc.parts.flatMap((part) => part.pins), ...doc.wires.flatMap((wire) => [wire.from, wire.to]), ...Object.values(doc.probes).filter((probe): probe is string => probe !== null)]
   const activeNodes = new Set(usedTerminals.map((terminal) => nodeByTerminal[terminal]))
   if (activeNodes.size > 60) diagnostics.push({ severity: 'error', message: 'This workbench supports up to 60 connected circuit nodes. Simplify the circuit before capturing.' })
@@ -662,8 +670,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       : `PULSE(${spiceNumber(-amplitude)} ${spiceNumber(amplitude)} 0 ${spiceNumber(period / 2)} ${spiceNumber(period / 2)} 0 ${spiceNumber(period)})`
   const lines = [
     '* Pico Labor virtual-1; local educational circuit',
-    'VOSC osc_internal 0 ' + stimulus,
-    `ROSC osc_internal ${nodeByTerminal.osc} 100`,
+    ...(activeNodes.has(nodeByTerminal.osc) ? ['VOSC osc_internal 0 ' + stimulus, `ROSC osc_internal ${nodeByTerminal.osc} 100`] : []),
     `VCV ${nodeByTerminal.cv} 0 ${spiceNumber(cv)}`,
     `VPLUS ${nodeByTerminal.vplus} 0 12`,
     `VMINUS ${nodeByTerminal.vminus} 0 -12`,
@@ -678,18 +685,20 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     catch (error) { diagnostics.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid Pico trace.' }) }
   }
   const envelope = envelopeSettings(doc)
-  if (envelope.mode === 'gate') {
-    lines.push(`VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
-  } else if (envelope.mode === 'trigger') {
-    // A finite PWL pulse keeps exact edge breakpoints without a second periodic
-    // clock competing with the oscillator's square/triangle source.
-    lines.push('VEG eg_internal 0 PWL(0 0 0.001 0 0.001001 5 0.002 5 0.002001 0 0.1 0)')
-  } else {
-    // Native EXP avoids interacting timing-source breakpoints when OSC is square.
-    // A 0.1 µs rise constant reaches 99.995% of 5 V by the 1 µs decay onset.
-    lines.push(`VEG eg_internal 0 EXP(0 5 0.001 1e-7 0.001001 ${spiceNumber(envelope.decayMs / 1000)})`)
+  if (activeNodes.has(nodeByTerminal.eg)) {
+    if (envelope.mode === 'gate') {
+      lines.push(`VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
+    } else if (envelope.mode === 'trigger') {
+      // A finite PWL pulse keeps exact edge breakpoints without a second periodic
+      // clock competing with the oscillator's square/triangle source.
+      lines.push('VEG eg_internal 0 PWL(0 0 0.001 0 0.001001 5 0.002 5 0.002001 0)')
+    } else {
+      // Native EXP avoids interacting timing-source breakpoints when OSC is square.
+      // A 0.1 µs rise constant reaches 99.995% of 5 V by the 1 µs decay onset.
+      lines.push(`VEG eg_internal 0 EXP(0 5 0.001 1e-7 0.001001 ${spiceNumber(envelope.decayMs / 1000)})`)
+    }
+    lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
   }
-  lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
   // Fixed templates emit at most 23 devices / 4 internal nodes per part
   // (LM13700); the 30-part limit bounds expansion to 690 devices / 120 nodes.
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
@@ -739,17 +748,50 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       }
     }
   }
-  const step = spiceNumber(Math.min(doc.pico ? 5e-6 : 1e-5, period / 80))
-  const savedCurrents = analysis === 'operating-point'
-    ? [...doc.parts].sort((a, b) => a.id.localeCompare(b.id)).flatMap((part) => {
-      const safeId = spiceDeviceId(part)
-      if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
-      if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
-      if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
-      return []
-    })
-    : []
-  lines.push('.options reltol=0.001 abstol=1e-12 vntol=1e-6', ['.save all', ...savedCurrents].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} 0.1 0 ${step}`, '.end')
+  // Bound the interpolation error of periodic inputs; otherwise let ngspice's
+  // local-error control and source breakpoints refine a modest baseline grid.
+  // Unconnected instruments must not force tiny steps for a slow/DC circuit.
+  const timers = doc.parts.filter(part => part.kind === 'timer555')
+  let timerStep = Infinity
+  for (const timer of timers) {
+    const timingNodes = new Set([1, 5, 6].map(index => nodeByTerminal[timer.pins[index]]))
+    const capacitors = doc.parts.filter(part => (part.kind === 'capacitor' || part.kind === 'electrolytic') && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
+    const resistors = doc.parts.filter(part => part.kind === 'resistor' && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
+    // Behavioral latch thresholds need explicit resolution as well as LTE
+    // control. Slow blinkers can still take proportionally larger steps.
+    timerStep = Math.min(timerStep, capacitors.length && resistors.length
+      ? Math.min(...capacitors.map(part => part.value)) * Math.min(...resistors.map(part => part.value)) / 50
+      : 1e-5)
+  }
+  const maximumStep = Math.min(durationSeconds / (activeNodes.has(nodeByTerminal.osc) && doc.stimulus === 'step' ? 10000 : 1000), activeNodes.has(nodeByTerminal.osc) && amplitude > 0 && doc.stimulus !== 'step' ? period / 80 : Infinity,
+    activeNodes.has(nodeByTerminal.eg) && envelope.mode === 'envelope' ? envelope.decayMs / 200_000 : Infinity, timerStep)
+  const step = spiceNumber(maximumStep)
+  const savedCurrents = [...doc.parts].sort((a, b) => a.id.localeCompare(b.id)).flatMap((part) => {
+    const safeId = spiceDeviceId(part)
+    if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
+    if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
+    if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
+    if (analysis === 'transient' && (part.kind === 'capacitor' || part.kind === 'electrolytic')) return [`@C_${safeId}[i]`]
+    return []
+  })
+  const savedNodes = new Set([...activeNodes].filter(node => node !== '0' && referenced.has(node)))
+  // Fixed supplies remain inspectable, including a circuit with no components.
+  for (const source of ['cv', 'vplus', 'vminus']) savedNodes.add(nodeByTerminal[source])
+  if (doc.pico) {
+    savedNodes.add(nodeByTerminal['pico:36'])
+    for (const pin of PICO_PINS.filter(pin => pin.gpio !== null && activeNodes.has(nodeByTerminal[pin.id]))) {
+      savedNodes.add(`pico_${pin.gpio}_high`)
+      savedNodes.add(`pico_${pin.gpio}_low`)
+    }
+  }
+  const savedVectors = [...[...savedNodes].sort().map(node => `v(${node})`), ...savedCurrents]
+  const minimumSamples = Math.ceil(durationSeconds / maximumStep) + 1
+  if (analysis === 'transient' && (minimumSamples > SIMULATION_LIMITS.maxSamples || minimumSamples * (savedVectors.length + 1) > SIMULATION_LIMITS.maxRecordedValues)) {
+    diagnostics.push({ severity: 'error', message: 'This duration and oscillator frequency exceed the recording memory limit. Choose a shorter duration or lower the oscillator frequency.' })
+  }
+  // Tighter truncation-error control retains useful interpolation accuracy at
+  // fast RC transitions even when the baseline grid spans a long recording.
+  lines.push(`.options reltol=0.001 abstol=1e-12 vntol=1e-6 trtol=${timers.length ? 7 : 0.01}`, ['.save', ...savedVectors].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} ${durationSeconds} 0 ${step}`, '.end')
   return { netlist: lines.join('\n') + '\n', diagnostics, nodeByTerminal, nets }
 }
 

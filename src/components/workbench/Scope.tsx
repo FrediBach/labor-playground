@@ -2,14 +2,15 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import { Crosshair, Maximize2, Waves } from 'lucide-react'
 import type { Capture } from '@/lib/simulation'
-import { differentialVoltage, interpolateVoltage, measureTrace } from '@/lib/measurements'
+import { measureTrace } from '@/lib/measurements'
+import { createScopeTrace, followCaptureFrame } from '@/lib/scopeTrace'
 import { findTriggerCrossing, frameCapture, type TriggerEdge } from '@/lib/trigger'
 import { ScopeResizer } from './ScopeResizer'
 import './Scope.css'
 
 type Channel = 'CH1' | 'CH2'
 const COLORS = { CH1: '#aee3d5', CH2: '#f2c46d' }
-export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale, audioControls }: {
+export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale, audioControls, playbackTime, onSeek }: {
   capture: Capture | null
   status: string
   probes: Record<Channel, string | null>
@@ -19,6 +20,8 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   defaultScale?: number
   defaultTimeScale?: number
   audioControls?: ReactNode
+  playbackTime?: number
+  onSeek?: (seconds: number) => void
 }) {
   // Measurements and physical probe labels must refer to the same circuit.
   const capture = status === 'ready' ? suppliedCapture : null
@@ -51,32 +54,49 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   const requestedWindow = timeScale * 10 / 1000
   const captureStart = capture?.time[0] ?? 0
   const captureEnd = capture?.time.at(-1) ?? 0.1
-  const triggerTime = useMemo(() => capture && triggerSource !== 'off' && probes[triggerSource]
+  const triggerProbe = triggerSource !== 'off' ? probes[triggerSource] : null
+  const triggerTime = useMemo(() => capture && triggerSource !== 'off' && triggerProbe
     ? findTriggerCrossing(capture.time, capture.channels[triggerSource], { edge: triggerEdge, level: triggerLevel }) : null,
-  [capture, triggerSource, triggerEdge, triggerLevel, probes])
-  const frame = useMemo(() => capture ? frameCapture(capture.time, requestedWindow, triggerTime) : null, [capture, requestedWindow, triggerTime])
+  [capture, triggerSource, triggerEdge, triggerLevel, triggerProbe])
+  const initialFrame = useMemo(() => capture ? frameCapture(capture.time, requestedWindow, triggerTime) : null, [capture, requestedWindow, triggerTime])
+  const [view, setView] = useState({ initialFrame, playbackTime, triggerTime, frame: initialFrame })
+  // A trigger/timebase change deliberately reframes the trace. Subsequent
+  // transport movement follows it only when the playhead leaves the view.
+  let frame = view.frame
+  if (view.initialFrame !== initialFrame) {
+    frame = initialFrame && playbackTime !== undefined && view.triggerTime === triggerTime
+      ? followCaptureFrame(initialFrame, captureStart, captureEnd, playbackTime) : initialFrame
+    setView({ initialFrame, playbackTime, triggerTime, frame })
+  } else if (view.playbackTime !== playbackTime) {
+    frame = frame && playbackTime !== undefined ? followCaptureFrame(frame, captureStart, captureEnd, playbackTime) : frame
+    setView({ initialFrame, playbackTime, triggerTime, frame })
+  }
   const windowStart = frame?.start ?? 0
   const windowSeconds = frame?.duration ?? requestedWindow
   const windowEnd = frame?.end ?? windowStart + windowSeconds
   const cursorA = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.A))
   const cursorB = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.B))
+  const traces = useMemo(() => ({
+    CH1: capture && probes.CH1 ? createScopeTrace(capture.time, capture.channels.CH1) : null,
+    CH2: capture && probes.CH2 ? createScopeTrace(capture.time, capture.channels.CH2) : null,
+  }), [capture, probes.CH1, probes.CH2])
   const measurements = useMemo(() => ({
     CH1: capture && probes.CH1 ? measureTrace(capture.time, capture.channels.CH1, stimulus) : null,
     CH2: capture && probes.CH2 ? measureTrace(capture.time, capture.channels.CH2, stimulus) : null,
   }), [capture, probes.CH1, probes.CH2, stimulus])
   const cursorVoltages = useMemo(() => ({
     CH1: {
-      A: capture && probes.CH1 ? interpolateVoltage(capture.time, capture.channels.CH1, cursorA) : null,
-      B: capture && probes.CH1 ? interpolateVoltage(capture.time, capture.channels.CH1, cursorB) : null,
+      A: traces.CH1?.sampleAt(cursorA) ?? null,
+      B: traces.CH1?.sampleAt(cursorB) ?? null,
     },
     CH2: {
-      A: capture && probes.CH2 ? interpolateVoltage(capture.time, capture.channels.CH2, cursorA) : null,
-      B: capture && probes.CH2 ? interpolateVoltage(capture.time, capture.channels.CH2, cursorB) : null,
+      A: traces.CH2?.sampleAt(cursorA) ?? null,
+      B: traces.CH2?.sampleAt(cursorB) ?? null,
     },
-  }), [capture, probes.CH1, probes.CH2, cursorA, cursorB])
-  const differential = useMemo(() => capture && probes.CH1 && probes.CH2
-    ? differentialVoltage(capture.time, capture.channels.CH1, capture.channels.CH2, meterPosition === 'mean' ? undefined : meterPosition === 'A' ? cursorA : cursorB)
-    : null, [capture, probes.CH1, probes.CH2, meterPosition, cursorA, cursorB])
+  }), [traces, cursorA, cursorB])
+  const firstVoltage = meterPosition === 'mean' ? measurements.CH1?.mean : cursorVoltages.CH1[meterPosition]
+  const secondVoltage = meterPosition === 'mean' ? measurements.CH2?.mean : cursorVoltages.CH2[meterPosition]
+  const differential = firstVoltage == null || secondVoltage == null ? null : firstVoltage - secondVoltage
 
   useEffect(() => {
     if (!canvas.current) return
@@ -124,32 +144,26 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       context.save()
       context.beginPath(); context.rect(left, top, w, h); context.clip()
       for (const channel of ['CH1', 'CH2'] as const) {
-        if (!visible[channel] || !probes[channel]) continue
-        const values = capture.channels[channel]
-        if (!values?.length) continue
-        context.globalAlpha = status === 'ready' ? 1 : 0.4
+        const trace = traces[channel]
+        if (!visible[channel] || !trace) continue
         context.strokeStyle = COLORS[channel]
         context.lineWidth = 1.65
         context.beginPath()
         // Preserve each screen column's extrema, including narrow solver pulses.
-        let index = 0, started = false
-        while (index < capture.time.length && capture.time[index] < windowStart) index++
-        const startVoltage = interpolateVoltage(capture.time, values, windowStart)
+        let started = false
+        const startVoltage = trace.sampleAt(windowStart)
         if (startVoltage !== null) { context.moveTo(left, middle - startVoltage / scales[channel] * h / 6); started = true }
-        for (let pixel = 0; pixel < Math.ceil(w); pixel++) {
-          let min = Infinity, max = -Infinity
-          const end = Math.min(windowEnd, windowStart + (pixel + 1) / w * windowSeconds)
-          while (index < capture.time.length && capture.time[index] <= end) {
-            min = Math.min(min, values[index]); max = Math.max(max, values[index]); index++
-          }
-          if (!Number.isFinite(min)) continue
+        const envelope = trace.envelope(windowStart, windowEnd, w)
+        for (let pixel = 0; pixel < envelope.length; pixel++) {
+          const extrema = envelope[pixel]
+          if (!extrema) continue
           const x = left + pixel
-          const y1 = middle - min / scales[channel] * h / 6
-          const y2 = middle - max / scales[channel] * h / 6
+          const y1 = middle - extrema.min / scales[channel] * h / 6
+          const y2 = middle - extrema.max / scales[channel] * h / 6
           if (!started) { context.moveTo(x, y1); started = true } else context.lineTo(x, y1)
           context.lineTo(x, y2)
         }
-        const endVoltage = interpolateVoltage(capture.time, values, windowEnd)
+        const endVoltage = trace.sampleAt(windowEnd)
         if (endVoltage !== null) context.lineTo(right, middle - endVoltage / scales[channel] * h / 6)
         context.stroke()
       }
@@ -161,33 +175,16 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       context.beginPath(); context.moveTo(x, top); context.lineTo(x, bottom); context.stroke()
       context.setLineDash([]); context.fillStyle = '#b9cee6'; context.fillText('T', Math.min(right - 8, x + 4), top + 10)
     }
-    if (cursor !== null) {
-      context.strokeStyle = '#e8e8dc'; context.setLineDash([3, 4])
-      context.beginPath(); context.moveTo(left + cursor * w, top); context.lineTo(left + cursor * w, bottom); context.stroke()
-      context.setLineDash([])
-    }
-    if (measurementsOpen && capture) {
-      for (const [label, time] of [['A', cursorA], ['B', cursorB]] as const) {
-        if (time < windowStart || time > windowEnd) continue
-        const x = left + (time - windowStart) / windowSeconds * w
-        context.strokeStyle = label === activeCursor ? '#f2f1e4' : '#98a88d'
-        context.setLineDash(label === 'A' ? [5, 3] : [2, 3])
-        context.beginPath(); context.moveTo(x, top); context.lineTo(x, bottom); context.stroke()
-        context.setLineDash([])
-        context.fillStyle = context.strokeStyle
-        context.fillText(label, Math.min(right - 8, x + 4), top + 10)
-      }
-    }
-  }, [capture, cursor, probes, scales, size, status, visible, windowStart, windowSeconds, windowEnd, triggerTime, measurementsOpen, cursorA, cursorB, activeCursor])
+  }, [capture, traces, scales, size, visible, windowStart, windowSeconds, windowEnd, triggerTime])
 
   function measurement(channel: Channel) {
     const values = capture?.channels[channel]
     if (!probes[channel]) return 'No probe attached'
     if (status !== 'ready') return busy ? 'Simulating…' : 'Simulate to update'
     if (!values?.length || !measurements[channel]) return 'No voltage available'
-    if (cursor !== null && capture) {
-      const target = windowStart + cursor * windowSeconds
-      const voltage = interpolateVoltage(capture.time, values, target)
+    if ((cursor !== null || playbackTime !== undefined) && capture) {
+      const target = cursor !== null ? windowStart + cursor * windowSeconds : playbackTime!
+      const voltage = traces[channel]?.sampleAt(target) ?? null
       if (voltage === null) return 'Outside capture'
       return `${(target * 1000).toFixed(2)} ms  ·  ${voltage.toFixed(3)} V`
     }
@@ -200,10 +197,11 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   }
 
   const voltageText = (value: number | null | undefined) => value === null || value === undefined ? '—' : `${(Math.abs(value) < 0.0005 ? 0 : value).toFixed(3)} V`
+  const frameStatus = windowStart > captureStart ? 'following recording position.' : 'showing capture start.'
   const triggerStatus = !capture ? 'Awaiting current capture.'
-    : triggerSource === 'off' ? 'Trigger off · showing capture start.'
+    : triggerSource === 'off' ? `Trigger off · ${frameStatus}`
       : !probes[triggerSource] ? `Attach ${triggerSource} to find a crossing.`
-        : triggerTime === null ? 'No crossing found · showing capture start.'
+        : triggerTime === null ? `No crossing found · ${frameStatus}`
           : `${triggerEdge === 'rising' ? 'Rising' : 'Falling'} ${triggerSource} crossing at ${(triggerTime * 1000).toFixed(3)} ms.`
 
   function autoscale() {
@@ -220,7 +218,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     <div className="scope-heading">
       <div className="section-label"><Waves size={15} /><h2>OSCILLOSCOPE</h2><span className="tiny-tag">2 CHANNEL</span></div>
       <div className="scope-controls">
-        <label>TIME <select aria-label="Time per division" value={timeScale} onChange={e => setTimeScale(Number(e.target.value))}>{[0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} ms/div</option>)}</select></label>
+        <label>TIME <select aria-label="Time per division" value={timeScale} onChange={e => setTimeScale(Number(e.target.value))}>{[0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].map(v => <option key={v} value={v}>{v >= 1000 ? `${v / 1000} s` : `${v} ms`}/div</option>)}</select></label>
         <button className="subtle-button" onClick={autoscale} title="Autoscale channels" disabled={!capture || !hasProbe}><Maximize2 size={14} />Auto</button>
         <span className={`capture-state ${status}`}>{status === 'ready' ? 'CAPTURED' : status === 'stale' ? 'NEEDS SIMULATION' : status.toUpperCase()}</span>
       </div>
@@ -238,7 +236,19 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       </div>
     </details>
     <div className="scope-screen">
-      <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => { if (!measurementsOpen || !capture) return; const rect = e.currentTarget.getBoundingClientRect(); moveCursor(activeCursor, windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds) }} />
+      <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.${onSeek ? ' Click to inspect the recording at that time.' : ''}`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => {
+        if (!capture) return
+        const rect = e.currentTarget.getBoundingClientRect()
+        const seconds = windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds
+        if (measurementsOpen) moveCursor(activeCursor, seconds)
+        onSeek?.(seconds)
+      }} />
+      <div className="scope-trace-overlay" aria-hidden="true">
+        {cursor !== null && <span className="scope-trace-cursor hover" style={{ left: `${cursor * 100}%` }} />}
+        {measurementsOpen && capture && ([['A', cursorA], ['B', cursorB]] as const).map(([label, seconds]) => seconds >= windowStart && seconds <= windowEnd && <span key={label} className={`scope-trace-cursor measurement-cursor ${label === activeCursor ? 'active' : ''} cursor-${label.toLowerCase()}`} style={{ left: `${(seconds - windowStart) / windowSeconds * 100}%` }}><b>{label}</b></span>)}
+        {capture && playbackTime !== undefined && playbackTime >= windowStart && playbackTime <= windowEnd && <span className="scope-trace-cursor playhead" data-testid="scope-playhead" data-time={playbackTime} style={{ left: `${(playbackTime - windowStart) / windowSeconds * 100}%` }} />}
+      </div>
+      {capture && playbackTime !== undefined && <output className="scope-playhead-time" aria-label="Scope playback time">{(playbackTime * 1000).toFixed(2)} ms</output>}
       {(!capture || !hasProbe) && <div className="scope-empty" role="status"><Waves size={26} /><div><strong>{emptyTitle}</strong><span>{emptyHint}</span></div></div>}
     </div>
     <ScopeResizer height={size.height} value={scopeHeight} onChange={setScopeHeight} />

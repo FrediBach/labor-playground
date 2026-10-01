@@ -2,6 +2,8 @@ import { checkPicoEnvelope } from './pico/checks.ts'
 import type { Simulation } from 'eecircuit-engine'
 import type { Capture, SimulationRequest } from './simulation-types.ts'
 import { extractCapture, extractOperatingPoint, fatalSimulationMessages, requireAnalysisCompletion, requireCompleteCapture } from './simulation-results.ts'
+import { SIMULATION_LIMITS } from './simulation-types.ts'
+import { extractRecording } from './recording.ts'
 
 type Engine = Pick<Simulation, 'setNetList' | 'runSim' | 'getError' | 'getInfo'>
 
@@ -31,6 +33,8 @@ async function executeAnalysis(engine: Engine, netlist: string) {
 /** Both analyses belong to one worker request, timeout, and circuit revision. */
 export async function runCircuitCapture(engine: Engine, request: SimulationRequest): Promise<Capture> {
   const started = performance.now()
+  const durationSeconds = request.durationSeconds ?? 0.1
+  if (!Number.isFinite(durationSeconds) || durationSeconds < 0.001 || durationSeconds > SIMULATION_LIMITS.maxDurationSeconds) throw new Error('The requested recording duration is outside the supported 1 ms to 10 s range.')
   let operatingPoint: Capture['operatingPoint']
   if (request.operatingPoint) {
     const result = await executeAnalysis(engine, request.operatingPoint.netlist)
@@ -44,9 +48,10 @@ export async function runCircuitCapture(engine: Engine, request: SimulationReque
   const result = await executeAnalysis(engine, request.netlist)
   if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
   const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started, request.voltageChecks)
-  requireCompleteCapture(capture)
+  requireCompleteCapture(capture, durationSeconds)
   requireAnalysisCompletion(result, engine.getInfo(), 'transient')
-  const errors = fatalSimulationMessages(engine.getError(), capture)
+  const errors = fatalSimulationMessages(engine.getError(), capture, durationSeconds)
   if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
-  return { ...capture, ...(operatingPoint ? { operatingPoint } : {}) }
+  const recording = extractRecording(result, request.operatingPoint?.parts ?? [])
+  return { ...capture, recording, elapsedMs: performance.now() - started, ...(operatingPoint ? { operatingPoint } : {}) }
 }

@@ -26,7 +26,8 @@ test('all bundled examples validate and compile without structural errors', () =
     const compilation = compileCircuit(doc)
     assert.deepEqual(compilation.diagnostics, [], example.name)
     assert.match(compilation.netlist, /\.tran .* 0\.1 0 /)
-    assert.match(compilation.netlist, /\.save all/)
+    assert.match(compilation.netlist, /\.save v\(/)
+    assert.doesNotMatch(compilation.netlist, /\.save all/)
   }
 })
 

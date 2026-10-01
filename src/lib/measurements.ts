@@ -33,6 +33,11 @@ export function interpolateVoltage(time: readonly number[], values: readonly num
   return validSeries(time, values) ? interpolateValid(time, values, seconds) : null
 }
 
+/** Validate an immutable capture once, then look up arbitrary moments in O(log N). */
+export function createVoltageSampler(time: readonly number[], values: readonly number[]): ((seconds: number) => number | null) | null {
+  return validSeries(time, values) ? (seconds) => interpolateValid(time, values, seconds) : null
+}
+
 function integratedMean(time: readonly number[], values: readonly number[]): number {
   let integral = 0
   for (let index = 1; index < time.length; index++) {

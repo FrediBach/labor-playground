@@ -108,7 +108,7 @@ test('new netlists preserve encoded IDs and independent zener voltages', () => {
   assert.deepEqual(compiled.diagnostics, [])
   assert.match(compiled.netlist, /\.model DZ_D_2da_5fb .*Bv=5\.100000000e\+0/)
   assert.match(compiled.netlist, /\.model DZ_D_5fa_2db .*Bv=8\.200000000e\+0/)
-  assert.match(compiled.netlist, /\.save all @D_D_5fa_2db\[id\] @D_D_2da_5fb\[id\]/)
+  assert.match(compiled.netlist, /\.save .* @D_D_5fa_2db\[id\] @D_D_2da_5fb\[id\]/)
   const reordered = structuredClone(document)
   reordered.parts.reverse()
   reordered.wires.reverse()

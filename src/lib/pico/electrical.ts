@@ -1,6 +1,33 @@
 import { PICO_PINS, picoGround } from './profile.ts'
-import type { PicoTrace, PinState } from './runtime.ts'
-export const PICO_MODEL = { volts: 3.3, outputOhms: 50, pullOhms: 50_000, leakageOhms: 1e9, edgeSeconds: 1e-6, maxEvents: 2000, maxPwmHz: 5000, maxCurrent: 0.02, minVoltage: -0.3, maxVoltage: 3.6 } as const
+import type { PicoTrace, PinEvent, PinState } from './runtime.ts'
+export const PICO_MODEL = { volts: 3.3, outputOhms: 50, pullOhms: 50_000, leakageOhms: 1e9, edgeSeconds: 1e-6, maxEvents: 25_000, maxPwmHz: 5000, maxCurrent: 0.02, minVoltage: -0.3, maxVoltage: 3.6 } as const
+const indexedTraces = new WeakMap<PicoTrace, { initial: Map<number, PinState>; events: Map<number, PinEvent[]> }>()
+
+/** GPIO records are discrete states: use the final event at or before a moment,
+ * including simultaneous register changes. Index once, then seek in O(log n). */
+export function samplePicoPin(trace: PicoTrace | undefined, gpio: number, seconds: number): PinState | undefined {
+  if (!trace || !Number.isFinite(seconds)) return undefined
+  let index = indexedTraces.get(trace)
+  if (!index) {
+    index = { initial: new Map(trace.initial.map(state => [state.gpio, state])), events: new Map() }
+    for (const event of trace.events) {
+      const events = index.events.get(event.gpio)
+      if (events) events.push(event)
+      else index.events.set(event.gpio, [event])
+    }
+    indexedTraces.set(trace, index)
+  }
+  const events = index.events.get(gpio) ?? []
+  const ns = Math.min(trace.durationNs, Math.max(0, seconds * 1e9))
+  let low = 0, high = events.length
+  while (low < high) {
+    const middle = (low + high) >>> 1
+    if (events[middle].ns <= ns) low = middle + 1
+    else high = middle
+  }
+  return low ? events[low - 1] : index.initial.get(gpio)
+}
+
 const n = (value: number) => Number(value.toPrecision(12)).toString()
 function conductance(state: PinState) {
   if (state.enabled && ![4, 5].includes(state.function)) throw new Error(`GP${state.gpio}: unsupported peripheral function.`)
@@ -14,8 +41,9 @@ function conductance(state: PinState) {
 }
 export function picoDriverLines(nodes: Record<string, string>, used: Set<string>, trace?: PicoTrace, dc = false): string[] {
   const ground = nodes[picoGround]
+  const durationSeconds = (trace?.durationNs ?? 100_000_000) / 1e9
   const lines = [`VPICO_SUPPLY pico_supply ${ground} 3.3`, `RPICO_SUPPLY pico_supply ${nodes['pico:36']} 1`]
-  if (trace && trace.events.length > PICO_MODEL.maxEvents) throw new Error('Pico edge density exceeds the 50,000-sample capture budget. Reduce PWM frequency or active outputs.')
+  if (trace && trace.events.length > PICO_MODEL.maxEvents) throw new Error('Pico edge density exceeds the 25,000-event capture budget. Shorten the capture, reduce PWM frequency, or use fewer active outputs.')
   for (const pin of PICO_PINS.filter(pin => pin.gpio !== null && used.has(nodes[pin.id]))) {
     const initial = trace?.initial.find(state => state.gpio === pin.gpio) ?? { gpio: pin.gpio!, state: 4, function: 31, enabled: false, pullUp: false, pullDown: true }
     const start = conductance(initial)
@@ -40,10 +68,10 @@ export function picoDriverLines(nodes: Record<string, string>, used: Set<string>
         const time = event.ns / 1e9
         if (time < end) throw new Error(`GP${pin.gpio}: edges are less than 1 µs apart. Reduce the frequency or pulse density.`)
         if (time > end) points.push([time, last])
-        end = Math.min(time + PICO_MODEL.edgeSeconds, 0.1)
+        end = Math.min(time + PICO_MODEL.edgeSeconds, durationSeconds)
         points.push([end, value]); last = value
       }
-      if (end < 0.1) points.push([0.1, last])
+      if (end < durationSeconds) points.push([durationSeconds, last])
       const control = `pico_${pin.gpio}_${side}_control`
       lines.push(`V${control} ${control} 0 ${dc ? n(start[side]) : `PWL(${points.map(([time, value]) => `${n(time)} ${n(value)}`).join(' ')})`}`)
     }

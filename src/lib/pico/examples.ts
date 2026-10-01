@@ -10,7 +10,7 @@ function circuit(title: string, source: string, kind: 'console' | 'led' | 'pulse
   return document
 }
 const pwm = createPico().source
-const lesson = { whatToChange: 'Change the timing or duty cycle in main.py, then Run.', whatToObserve: 'Compare serial output and the solved CH1/CH2 voltages during the first 100 ms.', why: 'The emulator records output events before ngspice calculates the loaded circuit.', hardware: 'Original Pico, virtually USB-powered. Explicit common ground; no circuit-fed inputs.' }
+const lesson = { whatToChange: 'Change the timing or duty cycle in main.py, choose a capture duration, then Run.', whatToObserve: 'Compare serial output and the solved CH1/CH2 voltages. Scrub the recording to inspect the circuit at a moment in time.', why: 'The emulator records output events before ngspice calculates the loaded circuit.', hardware: 'Original Pico, virtually USB-powered. Explicit common ground; no circuit-fed inputs.' }
 export const picoExamples: CircuitExample[] = [
   { ...lesson, id: 'pico-console', name: 'Pico · onboard LED & console', level: 'Basic', description: 'Run a 100 ms experiment. GP25 is the onboard LED, not a header pin.', document: circuit('Pico onboard LED and console', 'from machine import Pin\nimport time\nled = Pin(25, Pin.OUT)\nfor count in range(5):\n    led.toggle()\n    print("LED", count)\n    time.sleep_ms(10)\n', 'console') },
   { ...lesson, id: 'pico-led', name: 'Pico · external LED', level: 'Basic', description: 'GP0 drives a red LED through 330 Ω. Run to calculate the loaded pin voltage.', document: circuit('Pico external LED', 'from machine import Pin\nled = Pin(0, Pin.OUT)\nled.value(1)\nprint("External LED on")\n', 'led') },

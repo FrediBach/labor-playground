@@ -9,7 +9,9 @@ export function extractCapture(result: ResultType, nodes: ProbeNodes, revision: 
   }
   const time = result.data.find((vector) => vector.type === 'time')?.values
   if (!time || time.length < 2) throw new Error('The simulation produced no time capture. Check for floating or disconnected components.')
-  if (time.length > SIMULATION_LIMITS.maxSamples) throw new Error('The capture exceeded the 50,000-sample limit. Simplify the circuit or reduce the oscillator frequency.')
+  if (time.length > SIMULATION_LIMITS.maxSamples || result.data.reduce((sum, vector) => sum + vector.values.length, 0) > SIMULATION_LIMITS.maxRecordedValues) {
+    throw new Error('The capture exceeded the recording memory limit (1,000,000 samples or 12,000,000 electrical values). Shorten the duration, reduce the oscillator frequency, or simplify the circuit.')
+  }
   if (time.some((value, index) => !Number.isFinite(value) || (index > 0 && value < time[index - 1]))) {
     throw new Error('The simulation returned invalid timestamps.')
   }
@@ -58,10 +60,10 @@ export function extractCapture(result: ResultType, nodes: ProbeNodes, revision: 
 }
 
 /** ngspice can recover an operating point through source stepping after gmin attempts fail. */
-export function fatalSimulationMessages(lines: string[], evidence: Pick<Capture, 'time'> | { analysis: 'operating-point'; complete: boolean }): string[] {
+export function fatalSimulationMessages(lines: string[], evidence: Pick<Capture, 'time'> | { analysis: 'operating-point'; complete: boolean }, durationSeconds = 0.1): string[] {
   const recovery = lines.findLastIndex(line => /^Note: Source stepping completed\s*$/i.test(line.trim()))
   const complete = 'time' in evidence
-    ? (evidence.time.at(-1) ?? 0) >= 0.1 - 1e-9 && (evidence.time[0] ?? 1) <= 1e-9
+    ? (evidence.time.at(-1) ?? 0) >= durationSeconds - 1e-9 && (evidence.time[0] ?? 1) <= 1e-9
     : evidence.complete
   return lines.filter((line, index) => {
     const recoveredGminWarning = /^Warning: (?:Dynamic|True) gmin stepping failed\s*$/i.test(line.trim())
@@ -122,8 +124,8 @@ export function extractOperatingPoint(result: ResultType, descriptors: Operating
 }
 
 /** Production captures must cover the complete interval requested by the compiler. */
-export function requireCompleteCapture(capture: Pick<Capture, 'time'>): void {
-  if (Math.abs(capture.time[0] ?? 1) > 1e-9 || Math.abs((capture.time.at(-1) ?? 0) - 0.1) > 1e-9) {
-    throw new Error('ngspice returned an incomplete capture. The circuit must finish the full 100 ms simulation; inspect its wiring and capture again.')
+export function requireCompleteCapture(capture: Pick<Capture, 'time'>, durationSeconds = 0.1): void {
+  if (Math.abs(capture.time[0] ?? 1) > 1e-9 || Math.abs((capture.time.at(-1) ?? 0) - durationSeconds) > 1e-9) {
+    throw new Error(`ngspice returned an incomplete capture. The circuit must finish the full ${durationSeconds < 1 ? `${durationSeconds * 1000} ms` : `${durationSeconds} s`} simulation; inspect its wiring and capture again.`)
   }
 }

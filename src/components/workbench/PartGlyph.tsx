@@ -6,13 +6,14 @@ interface PartGlyphProps {
   selected?: boolean
   value?: number
   position?: number
+  ledLevel?: number
   /** Lead coordinates relative to the center, before the parent rotates the part. */
   pins?: { x: number; y: number }[]
   pinNames?: string[]
 }
 
 /** Original SVG component artwork, oriented from the first lead toward the last lead in its row. */
-export function PartGlyph({ kind, span = 72, selected = false, value = 0, position = 0.5, pins, pinNames }: PartGlyphProps) {
+export function PartGlyph({ kind, span = 72, selected = false, value = 0, position = 0.5, pins, pinNames, ledLevel }: PartGlyphProps) {
   const half = span / 2
   const resistance = value > 0 ? value : 10000
   let multiplier = Math.floor(Math.log10(resistance)) - 1
@@ -149,9 +150,11 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
         <text x={-1} y={3} fill="#f6deba" textAnchor="middle" fontFamily="monospace" fontSize={6.5} fontWeight={700}>Z</text>
       </g>}
       {kind === 'led' && <g>
+        {ledLevel !== undefined && ledLevel > 0.01 && <circle r={22} fill="#ff6244" opacity={ledLevel * 0.4} />}
         <circle r={14} cy={1.5} fill="#4b3931" opacity={0.16} />
-        <circle r={13} fill="#ce594a" stroke="#974537" strokeWidth={1.4} />
-        <circle r={8} fill="#ed8068" />
+        <circle r={13} fill={ledLevel === undefined ? '#ce594a' : '#743b35'} stroke="#974537" strokeWidth={1.4} />
+        <circle r={8} fill={ledLevel === undefined ? '#ed8068' : '#994c3f'} />
+        {ledLevel !== undefined && <circle r={11} fill="#ffae7d" opacity={ledLevel} />}
         <path d="M-6-5Q-2-9 3-6" stroke="#ffcab6" strokeWidth={2.5} fill="none" strokeLinecap="round" />
         <path d="M9-8V8" stroke="#aa4038" strokeWidth={2} />
       </g>}

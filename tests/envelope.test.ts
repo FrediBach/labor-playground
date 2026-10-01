@@ -86,7 +86,7 @@ test('operating-point compilation preserves graph and devices while changing onl
   assert.deepEqual(operatingPoint.nodeByTerminal, transient.nodeByTerminal)
   assert.match(operatingPoint.netlist, /\n\.op\n/)
   assert.doesNotMatch(operatingPoint.netlist, /\.tran/)
-  assert.match(operatingPoint.netlist, /\.save all @D_D1\[id\] @D_D2\[id\]/)
+  assert.match(operatingPoint.netlist, /\.save .* @D_D1\[id\] @D_D2\[id\]/)
   const devices = (netlist: string) => netlist.split('\n').filter((line) => line && !line.startsWith('.'))
   assert.deepEqual(devices(operatingPoint.netlist), devices(transient.netlist))
 })

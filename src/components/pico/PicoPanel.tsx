@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { languageWorkspace, listenLanguage, monaco, MAIN_URI } from '@/lib/pico/language'
 import { PROJECT_LIMITS } from '@/lib/pico/profile'
 import './PicoPanel.css'
-interface Props { sourceSession: number; source: string; onChange: (source: string) => void; onRun: () => void; onStop: () => void; onReset: () => void; onRemove: () => void; serial: string; phase: string; error: string | null; busy: boolean }
+interface Props { sourceSession: number; source: string; durationSeconds?: number; onChange: (source: string) => void; onRun: () => void; onStop: () => void; onReset: () => void; onRemove: () => void; serial: string; phase: string; error: string | null; busy: boolean }
 export default function PicoPanel(props: Props) {
   const appliedSourceSession = useRef<number | null>(null)
   const container = useRef<HTMLDivElement>(null)
@@ -48,15 +48,17 @@ export default function PicoPanel(props: Props) {
   }, [props.source, props.sourceSession, workspace])
   const showLine = (line: number) => { if (!workspace) return; editor.current?.setModel(workspace.model); editor.current?.updateOptions({ readOnly: false }); setStub(null); setCollapsed(false); editor.current?.setPosition({ lineNumber: line, column: 1 }); editor.current?.revealLineInCenter(line); editor.current?.focus() }
   const tracebackLine = /File "main.py", line (\d+)/.exec(props.error ?? '')
+  const duration = props.durationSeconds ?? 0.1
+  const durationLabel = duration < 1 ? `${duration * 1000} ms` : `${duration} s`
   return <section className="pico-panel" aria-label="Pico programming" onKeyDown={event => event.stopPropagation()}>
     <div className="pico-toolbar"><strong>RASPBERRY PI PICO</strong><span>main.py · MicroPython 1.20</span><button onClick={() => setCollapsed(value => !value)} aria-expanded={!collapsed} aria-controls="pico-editor-content">{collapsed ? 'Expand editor' : 'Collapse editor'}</button><button className="pico-remove" onClick={props.onRemove}>Remove Pico</button></div>
-    <p>Connect a Pico GND to workbench GND. Simulate runs your code and captures the first 100 ms. GPIO outputs only.</p>
+    <p>Connect a Pico GND to workbench GND. Simulate runs your code and captures the first {durationLabel}. GPIO outputs only.</p>
     <div id="pico-editor-content" style={{ display: collapsed ? 'none' : 'block' }}>
       {stub && <div className="pico-stub">{stub} · read only <button onClick={() => showLine(1)}>Back to main.py</button></div>}
       <div className="pico-editor" style={{ height }} ref={container} />
       <div className="pico-language"><label>Editor size <input type="range" aria-label="Pico editor height" min={180} max={650} step={10} value={height} onChange={event => setHeight(Number(event.target.value))} /></label><span role="status">{language}</span><button onClick={() => void (workspace?.restart() ?? languageWorkspace(props.source).then(setWorkspace).catch(error => setLanguage(String(error))))}>Retry analysis</button></div>
     </div>
-    <div className="pico-toolbar"><button onClick={props.onRun} disabled={props.busy}>Run · 100 ms</button><button onClick={props.onStop} disabled={!props.busy}>Stop</button><button onClick={props.onReset}>Reset</button><span role="status">{props.phase}</span></div>
+    <div className="pico-toolbar"><button onClick={props.onRun} disabled={props.busy}>Run · {durationLabel}</button><button onClick={props.onStop} disabled={!props.busy}>Stop</button><button onClick={props.onReset}>Reset</button><span role="status">{props.phase}</span></div>
     {props.error && <div className="pico-error" role="alert">{props.error}{tracebackLine && <button onClick={() => showLine(Number(tracebackLine[1]))}>Go to line {tracebackLine[1]}</button>}</div>}
     <details open={problems.length > 0}><summary>Problems ({problems.length})</summary>{problems.map((problem, index) => <button className="pico-problem" key={index} onClick={() => showLine(problem.startLineNumber)}>Line {problem.startLineNumber}: {problem.message}</button>)}</details>
     <pre className="pico-console" aria-label="Pico serial console">{props.serial || 'Use print() in your code, then Simulate to see serial output here.'}</pre>

@@ -2,11 +2,13 @@
 export const PICO_DOCK_CENTER_X = (917 + 1110) / 2
 export const PICO_PROFILE = 'rp2-pico-1.20.0-v1'
 export const PROJECT_LIMITS = { bytes: 200_000, sourceBytes: 32_768 } as const
-export interface PicoConfiguration { board: 'pico'; profile: typeof PICO_PROFILE; source: string; captureMs: 100 }
+export const PICO_CAPTURE_DURATIONS_MS = [100, 500, 1000, 5000, 10000] as const
+export type PicoCaptureMs = typeof PICO_CAPTURE_DURATIONS_MS[number]
+export interface PicoConfiguration { board: 'pico'; profile: typeof PICO_PROFILE; source: string; captureMs: PicoCaptureMs }
 export const DEFAULT_PICO_SOURCE = `from machine import Pin, PWM
 import time
 
-# Capture the first 100 ms. Connect GP0 and a Pico GND.
+# Select a capture duration. Connect GP0 and a Pico GND.
 pwm = PWM(Pin(0))
 pwm.freq(1000)
 pwm.duty_u16(32768)  # Half of 65535 = 50% duty
@@ -28,7 +30,7 @@ export function validatePico(raw: unknown): PicoConfiguration {
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) throw new Error('Invalid Pico configuration.')
   const config = raw as Record<string, unknown>
   if (config.board !== 'pico' || config.profile !== PICO_PROFILE) throw new Error('Unsupported Pico board or runtime profile. This project requires an incompatible firmware profile.')
-  if (config.captureMs !== 100) throw new Error('Pico captures must be 100 ms.')
+  if (!PICO_CAPTURE_DURATIONS_MS.includes(config.captureMs as PicoCaptureMs)) throw new Error('Pico capture duration must be 100 ms, 500 ms, 1 s, 5 s, or 10 s.')
   if (typeof config.source !== 'string' || new TextEncoder().encode(config.source).length > PROJECT_LIMITS.sourceBytes) throw new Error('main.py must fit within 32 KiB.')
-  return { board: 'pico', profile: PICO_PROFILE, source: config.source, captureMs: 100 }
+  return { board: 'pico', profile: PICO_PROFILE, source: config.source, captureMs: config.captureMs as PicoCaptureMs }
 }

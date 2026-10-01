@@ -180,3 +180,20 @@ test('a stuck worker is terminated and the next capture creates a new one', asyn
   replacement.send({ type: 'result', revision: 2, capture: fakeCapture(2) })
   assert.equal((await next).revision, 2)
 })
+
+test('long recordings pass their duration to the worker and receive a longer watchdog', async (context) => {
+  installFakeWorker(context)
+  context.mock.timers.enable({ apis: ['setTimeout'] })
+  const client = new SimulationClient()
+  context.after(() => client.dispose())
+  const pending = client.run('long', { CH1: null, CH2: null }, 1, undefined, [], undefined, undefined, 10)
+  const worker = FakeWorker.instances.at(-1)!
+  worker.send({ type: 'ready' })
+  assert.equal(worker.sent[0].durationSeconds, 10)
+  context.mock.timers.tick(8_000)
+  assert.equal(worker.terminated, false)
+  const rejected = assert.rejects(pending, /exceeded 60 seconds/)
+  context.mock.timers.tick(52_000)
+  await rejected
+  assert.equal(worker.terminated, true)
+})

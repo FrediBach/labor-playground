@@ -1,4 +1,4 @@
-export function formatElectrical(value: number | null | undefined, unit: 'V' | 'A' | 'W'): string {
+export function formatElectrical(value: number | null | undefined, unit: 'V' | 'A' | 'W' | 'J'): string {
   if (value == null || !Number.isFinite(value)) return '—'
   if (Math.abs(value) < 1e-12) return `0.000 ${unit}`
   const magnitude = Math.abs(value)

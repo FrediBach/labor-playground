@@ -7,6 +7,9 @@ import { picoExamples } from '../src/lib/pico/examples.ts'
 import { compileCircuit, validateDocument, createEmptyDocument, resolveTopology } from '../src/lib/circuit.ts'
 import { runCircuitCapture } from '../src/lib/simulation-analysis.ts'
 import { operatingPointDescriptors } from '../src/lib/simulation-descriptors.ts'
+import { PICO_CAPTURE_DURATIONS_MS, validatePico } from '../src/lib/pico/profile.ts'
+import { picoDriverLines, samplePicoPin } from '../src/lib/pico/electrical.ts'
+import { sampleRecording } from '../src/lib/recording.ts'
 const buffer = (name: string) => { const bytes = readFileSync(new URL(`../public/pico/${name}`, import.meta.url)); return bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) }
 const assets = { bootrom: buffer('bootrom.bin'), firmware: buffer('micropython.uf2') }
 test('Pico project validation and legacy topology', () => {
@@ -18,6 +21,49 @@ test('Pico project validation and legacy topology', () => {
   assert.throws(() => validateDocument({ ...doc, pico: { ...doc.pico, profile: 'unknown' } }), /incompatible/)
   doc.wires[0].from = 'pico:40'
   assert.throws(() => validateDocument(doc), /Unknown terminal/)
+  for (const captureMs of PICO_CAPTURE_DURATIONS_MS) assert.equal(validatePico({ ...doc.pico, captureMs }).captureMs, captureMs)
+  for (const captureMs of [0, 50, 20000, NaN]) assert.throws(() => validatePico({ ...doc.pico, captureMs }), /duration/)
+})
+
+test('longer firmware capture keeps delayed output events and electrical endpoints', async () => {
+  const trace = await runPico({ ...assets, durationSeconds: 0.5, source: 'from machine import Pin\nimport time\np = Pin(0, Pin.OUT, value=0)\ntime.sleep_ms(250)\np.on()\nprint("late output")' })
+  assert.equal(trace.durationNs, 500_000_000)
+  assert.match(trace.console, /late output/)
+  assert.ok(trace.events.some(event => event.gpio === 0 && event.state === 1 && event.ns > 250_000_000))
+  assert.ok(trace.events.every(event => event.ns < trace.durationNs))
+  const doc = picoExamples[1].document
+  const nodes = resolveTopology(doc).nodeByTerminal
+  const lines = picoDriverLines(nodes, new Set([nodes['pico:1']]), trace)
+  assert.ok(lines.filter(line => line.includes('PWL(')).every(line => / 0\.5 [\d.e-]+\)$/.test(line)), 'every driver holds its final state through the requested duration')
+  const tenSecondTrace = { ...trace, durationNs: 10_000_000_000 }
+  assert.ok(picoDriverLines(nodes, new Set([nodes['pico:1']]), tenSecondTrace).filter(line => line.includes('PWL(')).every(line => / 10 [\d.e-]+\)$/.test(line)))
+  const transient = compileCircuit(doc, 'transient', trace, 0.5), dc = compileCircuit(doc, 'operating-point', trace, 0.5)
+  assert.deepEqual([...transient.diagnostics, ...dc.diagnostics].filter(item => item.severity === 'error'), [])
+  const engine = new Simulation(); await engine.start()
+  const capture = await runCircuitCapture(engine, { type: 'run', revision: 1, durationSeconds: 0.5, netlist: transient.netlist, nodes: { CH1: nodes['b4'], CH2: nodes['b8'] }, operatingPoint: { netlist: dc.netlist, parts: operatingPointDescriptors(doc, nodes) }, picoChecks: [{ gpio: 0, node: nodes['b4'] }] })
+  assert.equal(capture.time.at(-1), 0.5)
+  assert.ok(sampleRecording(capture, 0.1)!.parts.D1.currents[0].value < 1e-6, 'LED is off before the delayed output')
+  assert.ok(sampleRecording(capture, 0.3)!.parts.D1.currents[0].value > 1e-3, 'LED is lit after the delayed output')
+  for (const durationSeconds of [0, 0.2, 11, Infinity, NaN]) await assert.rejects(runPico({ ...assets, source: '', durationSeconds }), /duration/)
+})
+
+test('recorded GPIO state seeks through discrete changes and release without stale state', () => {
+  const initial = { gpio: 25, state: 0, function: 5, enabled: true, pullUp: false, pullDown: false }
+  const high = { ...initial, state: 1, ns: 10_000_000 }
+  const released = { ...high, state: 2, enabled: false, ns: 20_000_000 }
+  const final = { ...initial, ns: 30_000_000 }
+  const trace = { initial: [initial], events: [{ ...high, gpio: 0, ns: 5_000_000 }, high, { ...high, pullUp: true, ns: 20_000_000 }, released, final], durationNs: 100_000_000, console: '', instructions: 0, elapsedMs: 0 }
+  assert.equal(samplePicoPin(trace, 25, 0), initial)
+  assert.equal(samplePicoPin(trace, 25, 0.009), initial)
+  assert.equal(samplePicoPin(trace, 25, 0.01), high)
+  assert.equal(samplePicoPin(trace, 25, 0.02), released, 'the final register event at the same time wins')
+  assert.equal(samplePicoPin(trace, 25, 0.029)?.enabled, false, 'a released pin must not retain its previous high output')
+  assert.equal(samplePicoPin(trace, 25, 1), final, 'seeking past the capture clamps to its final state')
+  assert.equal(samplePicoPin(trace, 25, -1), initial)
+  assert.equal(samplePicoPin(undefined, 25, 0.01), undefined, 'stale or unavailable captures expose no GPIO state')
+  assert.equal(samplePicoPin(trace, 24, 0.01), undefined)
+  assert.equal(samplePicoPin(trace, 25, NaN), undefined)
+  assert.equal(samplePicoPin({ ...trace, initial: [{ ...initial, state: 1 }], events: [] }, 25, 0)?.state, 1, 'a new recording owns a fresh state index')
 })
 test('real firmware deterministic PWM across scheduling chunks and indirect feedback rejection', async () => {
   const source = picoExamples[3].document.pico!.source

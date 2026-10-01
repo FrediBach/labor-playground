@@ -1,10 +1,11 @@
 import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2, Zap } from 'lucide-react'
-import { PARTS, formatValue, type CircuitDocument, type CircuitExample, type Diagnostic } from '@/lib/circuit'
+import { PARTS, formatValue, type CircuitDocument, type CircuitExample, type Diagnostic, type Part } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
 import { formatElectrical } from '@/lib/format-electrical'
 import { hasEditableLeads, type LeadEdit } from '@/lib/part-editing'
+import { useRecording } from '@/lib/recording-context'
 
 interface InspectorProps {
   document: CircuitDocument
@@ -20,12 +21,13 @@ interface InspectorProps {
   diagnostics: Diagnostic[]
   netlist: string
   operatingPoint?: OperatingPoint
+  nodeByTerminal?: Record<string, string>
   editingLead?: LeadEdit | null
   onStartLeadEdit: (edit: LeadEdit) => void
   onFinishLeadEdit: () => void
 }
 
-export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
+export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
@@ -94,6 +96,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
             <button className="subtle-button reverse-polarity" onClick={() => updatePart({ pins: [...part.pins].reverse() })}><RotateCcw size={12} />Reverse polarity</button>
           )}
         </div>
+        <RecordedMeasurements part={part} nodeByTerminal={nodeByTerminal} />
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
           {integratedCircuit ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{part.kind === 'timer555' && ' DC voltages show the initial 1 µs reset state; use the scope to inspect timing.'}</p> : dc ? <>
@@ -109,6 +112,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
       </> : wire ? <>
         <div className="selected-part-summary"><Cable size={42} style={{ color: wire.color }} /><h2>Jumper wire</h2><p>A direct electrical connection between two terminals.</p></div>
         <div className="inspector-section"><div className="section-overline">ENDPOINTS</div><div className="pin-row"><span>From</span><code>{wire.from.toUpperCase()}</code></div><div className="pin-row"><span>To</span><code>{wire.to.toUpperCase()}</code></div></div>
+        <RecordedWireVoltage terminal={wire.from} nodeByTerminal={nodeByTerminal} />
         <div className="inspector-section"><div className="section-overline">WIRE COLOR</div><div className="wire-palette">{colors.map(color => (
           <button key={color} style={{ backgroundColor: color }} aria-label={`Change wire color to ${color}`} onClick={() => onChange({ ...document, wires: document.wires.map(item => item.id === wire.id ? { ...item, color } : item) })}>{wire.color === color && <Check size={12} />}</button>
         ))}</div></div>
@@ -148,4 +152,38 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
       </div>
     </aside>
   )
+}
+
+function RecordedMeasurements({ part, nodeByTerminal }: { part: Part; nodeByTerminal: Record<string, string> }) {
+  const { point, seconds } = useRecording()
+  const measured = point?.parts[part.id]
+  const voltage = (index: number) => point?.nodeVoltages[nodeByTerminal[part.pins[index]]]
+  const a = voltage(0), b = voltage(1)
+  const difference = a === undefined || b === undefined ? undefined : a - b
+  const current = measured?.currents[0]?.value
+  const storedEnergy = part.kind === 'capacitor' || part.kind === 'electrolytic'
+    ? difference === undefined ? undefined : 0.5 * part.value * difference ** 2
+    : part.kind === 'inductor' && current !== undefined ? 0.5 * part.value * current ** 2 : undefined
+  const state = !point ? undefined : part.kind === 'led' && current !== undefined ? current > 1e-6 ? 'On' : 'Off'
+    : part.kind === 'switch' ? part.value ? 'Closed' : 'Open'
+    : part.kind === 'timer555' && voltage(2) !== undefined && a !== undefined && voltage(7) !== undefined
+      ? voltage(2)! > (a + voltage(7)!) / 2 ? 'Output high' : 'Output low' : undefined
+  return <div className="inspector-section recorded-component" aria-label="Component recorded measurements">
+    <div className="section-overline">AT RECORDING TIME</div>
+    {point ? <>
+      <div className="recorded-at">{(seconds * 1000).toFixed(3)} ms · voltages relative to GND</div>
+      {state && <div className="dc-part-row"><span>State</span><output aria-label="Recorded component state">{state}</output></div>}
+      {part.pins.map((pin, index) => <div className="dc-part-row" key={pin}><span>{PARTS[part.kind].pinNames[index]}</span><output aria-label={`Recorded pin ${index + 1} voltage`}>{formatElectrical(voltage(index), 'V')}</output></div>)}
+      {part.pins.length === 2 && <div className="dc-part-row"><span>Voltage · 1 − 2</span><output aria-label="Recorded component voltage">{formatElectrical(difference, 'V')}</output></div>}
+      {measured?.currents.map(item => <div className="dc-part-row" key={item.label}><span>{item.label}</span><output aria-label={`Recorded current ${item.label}`}>{formatElectrical(item.value, 'A')}</output></div>)}
+      {measured?.power != null && <div className="dc-part-row"><span>Power absorbed</span><output aria-label="Recorded component power">{formatElectrical(measured.power, 'W')}</output></div>}
+      {storedEnergy !== undefined && <div className="dc-part-row"><span>Stored energy</span><output aria-label="Recorded stored energy">{formatElectrical(storedEnergy, 'J')}</output></div>}
+      <p className="micro-copy">{PARTS[part.kind].package ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p>
+    </> : <p className="micro-copy">Simulate the current circuit to inspect its recording.</p>}
+  </div>
+}
+
+function RecordedWireVoltage({ terminal, nodeByTerminal }: { terminal: string; nodeByTerminal: Record<string, string> }) {
+  const { point, seconds } = useRecording()
+  return <div className="inspector-section recorded-component"><div className="section-overline">AT RECORDING TIME</div><div className="dc-part-row"><span>{point ? `${(seconds * 1000).toFixed(3)} ms` : 'Voltage to GND'}</span><output aria-label="Recorded wire voltage">{formatElectrical(point?.nodeVoltages[nodeByTerminal[terminal]], 'V')}</output></div></div>
 }

@@ -19,16 +19,17 @@ interface SimulationState {
   netlist?: string
 }
 
-export function useSimulation(document: CircuitDocument, requestedAutoUpdate: boolean) {
+export function useSimulation(document: CircuitDocument, requestedAutoUpdate: boolean, durationSeconds = 0.1) {
   const autoUpdate = requestedAutoUpdate && !document.pico
   const [picoState, setPicoState] = useState({ phase: '', console: '', key: '' })
   const picoClient = useRef<PicoClient | null>(null)
-  const key = useMemo(() => JSON.stringify(document), [document])
+  const documentKey = useMemo(() => JSON.stringify(document), [document])
+  const key = `${documentKey}:${durationSeconds}`
   // Scheduling follows saved document contents. Equivalent object replacements
   // must not cancel an in-flight manual capture while Auto update is disabled.
-  const snapshot = useMemo(() => JSON.parse(key) as CircuitDocument, [key])
-  const compiled = useMemo(() => compileCircuit(snapshot), [snapshot])
-  const dcCompiled = useMemo(() => compileCircuit(snapshot, 'operating-point'), [snapshot])
+  const snapshot = useMemo(() => JSON.parse(documentKey) as CircuitDocument, [documentKey])
+  const compiled = useMemo(() => compileCircuit(snapshot, 'transient', undefined, durationSeconds), [snapshot, durationSeconds])
+  const dcCompiled = useMemo(() => compileCircuit(snapshot, 'operating-point', undefined, durationSeconds), [snapshot, durationSeconds])
   const [state, setState] = useState<SimulationState>({ status: 'loading', capture: null, error: null, key: '', captureKey: '', requestKey: '' })
   const [trigger, setTrigger] = useState(0)
   const requestKey = `${key}:${autoUpdate}:${trigger}`
@@ -63,14 +64,16 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
       const execute = async () => {
         if (currentRevision !== revision.current) throw new SupersededSimulation()
         let transient = compiled, operating = dcCompiled
+        let picoTrace: Capture['picoTrace']
         if (snapshot.pico) {
           setPicoState({ phase: 'Preparing Pico…', console: '', key })
           const trace = await picoClient.current!.run(snapshot.pico.source, currentRevision, (phase, text) => {
-            if (!cancelled && revision.current === currentRevision) setPicoState(previous => ({ phase: phase === 'preparing' ? 'Preparing Pico…' : 'Running first 100 ms…', console: text ?? previous.console, key }))
-          })
+            if (!cancelled && revision.current === currentRevision) setPicoState(previous => ({ phase: phase === 'preparing' ? 'Preparing Pico…' : `Recording ${durationSeconds} s…`, console: text ?? previous.console, key }))
+          }, durationSeconds)
+          picoTrace = trace
           if (cancelled) throw new SupersededSimulation()
-          transient = compileCircuit(snapshot, 'transient', trace)
-          operating = compileCircuit(snapshot, 'operating-point', trace)
+          transient = compileCircuit(snapshot, 'transient', trace, durationSeconds)
+          operating = compileCircuit(snapshot, 'operating-point', trace, durationSeconds)
           const failure = transient.diagnostics.find(item => item.severity === 'error')
           if (failure) throw new Error(failure.message)
           setPicoState({ phase: 'Calculating circuit…', console: trace.console, key })
@@ -84,9 +87,10 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
         }))
         const used = new Set([...snapshot.wires.flatMap(w => [transient.nodeByTerminal[w.from], transient.nodeByTerminal[w.to]]), ...Object.values(snapshot.probes).filter(Boolean).map(pin => transient.nodeByTerminal[pin!])])
         const picoChecks = snapshot.pico ? PICO_PINS.filter(pin => pin.gpio !== null && used.has(transient.nodeByTerminal[pin.id])).map(pin => ({ gpio: pin.gpio!, node: transient.nodeByTerminal[pin.id] })) : undefined
-        return instance.run(transient.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
+        const capture = await instance.run(transient.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
           if (!cancelled && currentRevision === revision.current) setState((previous) => ({ ...previous, key, requestKey, status, error: null }))
-        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks)
+        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks, durationSeconds)
+        return picoTrace ? { ...capture, picoTrace } : capture
       }
       void execute().then((capture) => {
         if (!cancelled && capture.revision === revision.current) {
@@ -101,7 +105,7 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
       })
     }, manuallyRequested ? 0 : SIMULATION_LIMITS.debounceMs)
     return () => { cancelled = true; clearTimeout(timer); if (snapshot.pico) { picoClient.current?.stop(); instance.dispose() } }
-  }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger])
+  }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger, durationSeconds])
 
   const captureNow = useCallback(() => {
     stopAllAudio()

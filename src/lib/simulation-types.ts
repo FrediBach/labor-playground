@@ -1,4 +1,5 @@
 import type { PicoElectricalCheck } from './pico/checks.ts'
+import type { PicoTrace } from './pico/runtime.ts'
 import type { Diagnostic } from './circuit'
 
 export type Channel = 'CH1' | 'CH2'
@@ -17,12 +18,12 @@ export type OperatingPointBranch = {
 } & (
   | { kind: 'resistance'; resistance: number }
   | { kind: 'saved-current'; vector: string }
-  | { kind: 'ideal-capacitor' }
+  | { kind: 'ideal-capacitor'; vector?: string }
 )
 
 export interface OperatingPointPartDescriptor {
   partId: string
-  /** Every component pin must exist in the solved DC plot. */
+  /** Every component pin must exist in the solved plot. */
   nodes: string[]
   branches: OperatingPointBranch[]
 }
@@ -47,6 +48,13 @@ export interface Capture {
   diagnostics?: Diagnostic[]
   /** Absent only for legacy test fixtures; production captures include a real .op analysis. */
   operatingPoint?: OperatingPoint
+  /** Aligned to time, retaining solver samples without downsampling. */
+  recording?: {
+    nodeVoltages: Record<string, number[]>
+    currents: Record<string, number[]>
+    parts: OperatingPointPartDescriptor[]
+  }
+  picoTrace?: PicoTrace
 }
 
 export type SimulationStatus = 'loading' | 'calculating' | 'ready' | 'stale' | 'invalid' | 'error'
@@ -59,6 +67,7 @@ export interface SimulationRequest {
   voltageChecks?: VoltageCheck[]
   picoChecks?: PicoElectricalCheck[]
   operatingPoint?: OperatingPointRequest
+  durationSeconds?: number
 }
 
 export type SimulationResponse =
@@ -70,5 +79,9 @@ export const SIMULATION_LIMITS = {
   debounceMs: 160,
   startupTimeoutMs: 30_000,
   runTimeoutMs: 8_000,
-  maxSamples: 50_000,
+  longRunTimeoutMs: 60_000,
+  maxDurationSeconds: 10,
+  maxSamples: 1_000_000,
+  /** Numeric payload only; the engine also needs working memory. */
+  maxRecordedValues: 12_000_000,
 } as const
