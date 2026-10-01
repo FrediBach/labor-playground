@@ -1,0 +1,52 @@
+.inspector .inspector-signals { min-width: 0; padding: 13px 11px 10px; margin: 0 0 18px; border: 1px solid #46544b; border-radius: 8px; background: #252e29; box-shadow: 0 3px 12px #00000012; align-self: start; }
+.inspector-signals-heading { display: flex; align-items: center; justify-content: space-between; gap: 6px; margin-bottom: 13px; }
+.inspector-signals-heading h3 { display: flex; align-items: center; gap: 6px; margin: 0; color: #e0e9df; font-size: 12px; font-weight: 600; }
+.inspector-signals-heading h3 svg { color: #9bdec8; flex-shrink: 0; }
+.signal-status { border: 1px solid #526057; padding: 3px 4px; border-radius: 3px; font: 8px monospace; letter-spacing: .4px; color: #b4c1b7; white-space: nowrap; }
+.signal-status.ready { color: #b5d8bb; background: #334539; border-color: #4c6551; }
+.signal-scope-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 5px; margin-bottom: 8px; font-size: 10px; color: #d1dbd3; }
+.signal-reference { color: #a4b4a9; }
+.signal-scope-toolbar label { display: flex; align-items: center; gap: 5px; color: #a4b4a9; }
+.signal-scope-toolbar select { min-width: 0; max-width: 100px; min-height: 27px; padding: 3px; border: 1px solid #45574b; border-radius: 4px; background: #1d2722; color: #d6e1d7; font-size: 10px; }
+.signal-plot { background: #18231f; border: 1px solid #3b4a40; border-radius: 5px; cursor: crosshair; touch-action: none; user-select: none; overflow: hidden; }
+.signal-plot svg { display: block; width: 100%; height: auto; overflow: visible; }
+.signal-grid line { stroke: #314139; stroke-width: .6; }
+.signal-zero { stroke: #66806e; stroke-width: .8; stroke-dasharray: 2 3; }
+.signal-axis { fill: #a3b9ab; font: 12px monospace; }
+.signal-trace { fill: none; stroke-width: 1.35; stroke-linejoin: round; stroke-linecap: round; }
+.signal-cursor { stroke: #e7ede0; stroke-width: 1; stroke-dasharray: 3 3; }
+.signal-cursor-cap { fill: #e7ede0; }
+.signal-chart-hint { fill: #c2d1c4; font-size: 11px; }
+.signal-position { display: flex; align-items: center; gap: 7px; padding-top: 9px; font-size: 10px; color: #b1c3b5; }
+.signal-position button { display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 1px solid #536a59; border-radius: 4px; color: #d0e5c9; background: #344839; }
+.signal-position button:hover { background: #455e49; }
+.signal-position output { margin-left: auto; color: #ebf0e5; font: 12px monospace; font-variant-numeric: tabular-nums; }
+.signal-position output span { color: #a9bcab; font-size: 10px; }
+.signal-interaction-hint { margin: 7px 0 10px; font-size: 9px; line-height: 1.6; color: #a4b7a9; }
+.signal-readings { border-top: 1px solid #435147; }
+.signal-reading { display: flex; align-items: center; gap: 4px; border-bottom: 1px solid #39463d; padding: 3px 0; }
+.signal-reading.differential { border-top: 1px dashed #607365; margin-top: 6px; padding-top: 6px; }
+.signal-reading button { flex: 1; min-width: 0; display: flex; align-items: center; gap: 7px; padding: 5px 0; border: 0; background: transparent; color: #b8c7bc; text-align: left; border-radius: 3px; }
+.signal-reading button:hover:not(:disabled) { background: #35443a; }
+.signal-reading button:disabled { cursor: default; }
+.signal-swatch { flex: 0 0 7px; height: 7px; border: 1px solid var(--signal-color); border-radius: 50%; opacity: .7; }
+.signal-reading.visible .signal-swatch { background: var(--signal-color); opacity: 1; box-shadow: 0 0 5px color-mix(in srgb, var(--signal-color) 25%, transparent); }
+.signal-reading.differential .signal-swatch { border-radius: 1px; }
+.signal-name { min-width: 0; font-size: 11px; line-height: 1.4; }
+.signal-reading.visible .signal-name { color: var(--signal-color); }
+.signal-name small { display: block; color: #a2b4a7; font: 10px monospace; line-height: 1.7; overflow-wrap: anywhere; }
+.signal-reading output { flex-shrink: 0; color: #e1eadf; font: 11px monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.signal-metrics { display: grid; gap: 10px; padding: 13px 0 3px; }
+.signal-metrics > div { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.signal-metrics > div > span { color: #b7c4b9; font-size: 10px; }
+.signal-metrics small { display: block; font-size: 9px; color: #a5b7aa; margin-top: 2px; }
+.signal-metrics output { color: #e1eadf; font: 11px monospace; white-space: nowrap; }
+.signal-notes { border-top: 1px solid #435147; margin-top: 12px; padding-top: 9px; color: #b5c6b8; }
+.signal-notes summary { font-size: 10px; cursor: pointer; }
+.signal-notes p { font-size: 11px; line-height: 1.7; margin: 8px 0 0; }
+.signal-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: 20px 8px; border: 1px dashed #4a5e4f; border-radius: 5px; background: #1d2821; color: #97b59e; }
+.signal-empty strong { font-size: 12px; font-weight: 500; color: #d4e1d2; margin-top: 10px; }
+.signal-empty p { margin: 6px 0 0; font-size: 11px; line-height: 1.65; color: #aec2b2; }
+.signal-plot:focus-visible, .signal-reading button:focus-visible, .signal-position button:focus-visible, .signal-scope-toolbar select:focus-visible { outline: 2px solid #b5dec0; outline-offset: 3px; }
+@media (max-width: 1050px) and (min-width: 741px) { .inspector .inspector-signals { grid-row: span 2; margin-bottom: 0; } }
+@media (max-width: 740px) { .inspector .inspector-signals { width: 100%; margin-bottom: 0; padding: 15px; } .inspector-signals-heading h3 { font-size: 14px; } .signal-name, .signal-reading output, .signal-metrics output { font-size: 12px; } .signal-reading button { min-height: 44px; } .signal-position button { width: 32px; height: 32px; } .signal-scope-toolbar select { min-height: 32px; } .signal-interaction-hint { font-size: 10px; } }

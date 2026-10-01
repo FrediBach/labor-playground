@@ -18,10 +18,6 @@
 .recording-readings p { color: #a7b3a4; font-size: 10px; margin: 0; flex: 1 1 230px; }
 .recording-duration { display: flex; align-items: center; gap: 7px; font-size: 11px; color: #bec6b6; }
 .recording-duration select { background: #29312a; color: #e5ebda; border: 1px solid #56604c; padding: 6px; border-radius: 4px; }
-.recorded-component { border-top: 1px solid #46523b; background: #2b3427; }
-.recorded-component .recorded-at { font-size: 10px; color: #bacb9f; margin-bottom: 8px; }
-.recorded-component .dc-part-row { gap: 8px; }
-.recorded-component .dc-part-row > span { min-width: 0; }
 .recording-gpio { margin-top: 12px; color: #bac8ad; font-size: 11px; }
 .recording-gpio summary { cursor: pointer; }
 .recording-gpio > div { display: flex; flex-wrap: wrap; gap: 8px 20px; padding-top: 10px; }
