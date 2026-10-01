@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 async function captured(page: Page) {
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
 }
 

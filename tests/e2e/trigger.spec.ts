@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 async function captured(page: Page) {
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
 }
 
@@ -91,11 +92,15 @@ test('scope terminal labels highlight connections and a separate control moves t
   const scope = page.getByRole('region', { name: 'Oscilloscope' })
   const document = await recovery(page)
   await scope.getByRole('button', { name: 'D6', exact: true }).click()
+  await expect(page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Circuit', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('.breadboard-svg path[stroke="#bfd77d"]')).toHaveCount(1)
   await expect(page.getByRole('button', { name: 'Select tool', exact: true })).toHaveAttribute('aria-pressed', 'true')
   expect(await recovery(page)).toBe(document)
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await scope.getByRole('button', { name: 'Move CH1 probe', exact: true }).click()
+  await expect(page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Circuit', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.getByRole('button', { name: 'D9, available', exact: true }).click()
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(scope.getByRole('button', { name: 'D9', exact: true })).toBeVisible()
   await expect.poll(async () => JSON.parse((await recovery(page))!).probes.CH1).toBe('d9')
   await page.getByRole('button', { name: 'Undo', exact: true }).click()

@@ -107,6 +107,8 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
 
   useEffect(() => {
     const keyDown = (event: globalThis.KeyboardEvent) => {
+      const element = viewport.current
+      if (!element?.clientWidth || !element.clientHeight) return
       if (heldSpace.current && event.code !== 'Space') spaceActivation.current = null
       const target = event.target instanceof Element ? event.target : null
       const inside = !!target && !!viewport.current?.contains(target)
@@ -133,12 +135,14 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
     }
     const keyUp = (event: globalThis.KeyboardEvent) => {
       if (event.code !== 'Space' || !heldSpace.current) return
-      event.preventDefault()
-      event.stopPropagation()
       heldSpace.current = false
       setSpaceHeld(false)
       const activation = spaceActivation.current
       spaceActivation.current = null
+      const element = viewport.current
+      if (!element?.clientWidth || !element.clientHeight) return
+      event.preventDefault()
+      event.stopPropagation()
       if (spaceGestureUsed.current || !activation?.isConnected || document.activeElement !== activation) return
       if (activation instanceof HTMLElement) activation.click()
       else {
@@ -214,7 +218,10 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
     }}
     onAuxClickCapture={event => { if (event.button === 1) { event.preventDefault(); event.stopPropagation() } }}
     onKeyDownCapture={keyboard}
-    onScroll={event => { scroll.current = { x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop } }}
+    onScroll={event => {
+      if (!event.currentTarget.clientWidth || !event.currentTarget.clientHeight) return
+      scroll.current = { x: event.currentTarget.scrollLeft, y: event.currentTarget.scrollTop }
+    }}
   >
     <div className="board-viewport-space" style={{ width: layout.contentWidth, height: layout.contentHeight }}>
       <div className="board-viewport-stage" data-testid="board-stage" style={{ width: layout.stageWidth, height: layout.stageHeight, left: layout.left, top: layout.top }}>

@@ -8,7 +8,7 @@ async function recovered(page: Page) {
 }
 async function ready(page: Page) {
   await page.goto('/')
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 async function viewGeometry(page: Page) {
   return viewport(page).evaluate(element => {

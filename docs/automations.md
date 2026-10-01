@@ -2,7 +2,7 @@
 
 Automations operate the workbench controls during a simulation. Use them to repeat a knob movement, press or release a gate, switch a connection, or react to a measured voltage. They are saved with the circuit, so an example or exported project can include a complete experiment.
 
-Open **Automations** from the toolbar, choose **Add automation**, and set its trigger and action. Give it a name that describes the experiment, such as “Release at 3 V,” then choose **Save automation**. Capture again with **Simulate** or **Capture** to see the result. The panel shows which automations ran and when; select a recorded event to inspect that moment in the simulation recording.
+Open the **Automations** tab, choose **Add automation**, and set its trigger and action. Give it a name that describes the experiment, such as “Release at 3 V,” then choose **Save automation**. Capture again with **Simulate** or **Capture** to see the result. The panel shows which automations ran and when; select a recorded event to open **Results** at that moment in the simulation recording.
 
 ## Choose when to start
 

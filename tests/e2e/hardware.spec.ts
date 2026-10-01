@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 
 test('hardware modules remain accessible without page overflow across screen sizes', async ({ page }, testInfo) => {
   await page.goto('/')
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
   for (const width of [320, 390, 768, 1024, 1280, 1440]) {
     await page.setViewportSize({ width, height: 1000 })
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
@@ -102,12 +102,16 @@ test('the integrated scope patches the chosen channel and measures the correspon
   await terminal(page, 'gnd').click()
   await expect(ch1).toHaveAttribute('title', 'CH1: GND · click to patch')
   await expect(ch2).toHaveAttribute('title', 'CH2: CV · click to patch')
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
   await expect(module.getByRole('img', { name: 'Current captured voltage traces' })).toBeVisible()
-  await expect(scope.getByRole('button', { name: 'CH1', exact: true }).locator('..').locator('.measurement')).toHaveText('0.00 Vpp  ·  0.00 V mean')
-  await expect(scope.getByRole('button', { name: 'CH2', exact: true }).locator('..').locator('.measurement')).toHaveText('0.00 Vpp  ·  5.00 V mean')
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
+  await scope.locator('.scope-measurements > summary').click()
+  const measurements = scope.getByRole('table', { name: 'Channel measurements' })
+  await expect(measurements.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Peak to peak', exact: true }) }).getByRole('cell')).toHaveText(['0.000 V', '0.000 V'])
+  await expect(measurements.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Capture mean', exact: true }) }).getByRole('cell')).toHaveText(['0.000 V', '5.000 V'])
 
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await expect(ch1).toHaveAttribute('title', 'CH1: unpatched · click to patch')
   await expect(ch2).toHaveAttribute('title', 'CH2: CV · click to patch')
 })

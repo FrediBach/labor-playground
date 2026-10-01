@@ -19,7 +19,7 @@ async function recovered(page: Page): Promise<CircuitDocument> {
 }
 
 async function captured(page: Page) {
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
 async function withinPage(control: Locator, width: number) {
@@ -218,6 +218,7 @@ test('a wired NPN circuit moves from cutoff to conduction with solved current, p
   await page.goto('/')
   await captured(page)
   await page.locator('[data-part="Q1"]').focus()
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   await page.locator('.operating-point-panel > summary').click()
   await page.locator('.scope-measurements > summary').click()
   const captureMeans = page.getByRole('table', { name: 'Channel measurements' })
@@ -236,10 +237,12 @@ test('a wired NPN circuit moves from cutoff to conduction with solved current, p
   expect(Math.abs(await reading('DC component power'))).toBeLessThan(1e-7)
 
   await page.getByText('Auto update', { exact: true }).click()
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   const bias = page.getByRole('spinbutton', { name: 'CV output', exact: true })
   await bias.fill('5')
   await bias.press('Tab')
   await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'stale')
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(page.getByLabel('CH2 DC voltage', { exact: true })).toHaveText('—')
   await expect(page.getByLabel('DC component power', { exact: true })).toHaveCount(0)
   await expect(captureMeans.nth(1)).toHaveText('—')

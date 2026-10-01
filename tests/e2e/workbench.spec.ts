@@ -2,16 +2,24 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 async function captured(page: Page) {
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
-function channelMeasurement(page: Page, channel: 'CH1' | 'CH2') {
-  return page.getByRole('region', { name: 'Oscilloscope' }).getByRole('button', { name: channel, exact: true }).locator('..').locator('.measurement')
+async function openMeasurements(page: Page) {
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
+  const scope = page.getByRole('region', { name: 'Oscilloscope' })
+  if (!await scope.getByRole('table', { name: 'Channel measurements' }).isVisible()) await scope.locator('.scope-measurements > summary').click()
+}
+
+function channelMeasurement(page: Page, channel: 'CH1' | 'CH2', measurement = 'Capture mean') {
+  return page.getByRole('table', { name: 'Channel measurements' }).getByRole('row')
+    .filter({ has: page.getByRole('rowheader', { name: measurement, exact: true }) }).getByRole('cell').nth(channel === 'CH1' ? 0 : 1)
 }
 
 async function peakToPeak(page: Page, channel: 'CH1' | 'CH2') {
-  const text = await channelMeasurement(page, channel).innerText()
-  const result = /([\d.]+) Vpp/.exec(text)
+  await openMeasurements(page)
+  const text = await channelMeasurement(page, channel, 'Peak to peak').innerText()
+  const result = /([\d.]+) V/.exec(text)
   expect(result, `Expected a voltage measurement for ${channel}, got ${text}`).not.toBeNull()
   return Number(result![1])
 }
@@ -22,6 +30,7 @@ function terminal(page: Page, id: string) {
 
 test('component selection survives pointer release and a later background click clears it', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await page.getByRole('button', { name: 'Select tool', exact: true }).click()
   const inspector = page.getByRole('complementary', { name: 'Inspector' })
   const part = page.locator('[data-part="R1"]')
@@ -100,9 +109,13 @@ test('build a divider with placement, wiring and probes, then undo a component m
   await library.getByRole('button', { name: 'Scope probe CH2', exact: true }).click()
   await terminal(page, 'd9').click()
   await captured(page)
-  await expect(channelMeasurement(page, 'CH1')).toHaveText('0.00 Vpp  ·  5.00 V mean')
-  await expect(channelMeasurement(page, 'CH2')).toHaveText('0.00 Vpp  ·  2.50 V mean')
+  await openMeasurements(page)
+  await expect(channelMeasurement(page, 'CH1', 'Peak to peak')).toHaveText('0.000 V')
+  await expect(channelMeasurement(page, 'CH2', 'Peak to peak')).toHaveText('0.000 V')
+  await expect(channelMeasurement(page, 'CH1')).toHaveText('5.000 V')
+  await expect(channelMeasurement(page, 'CH2')).toHaveText('2.500 V')
 
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await page.getByRole('button', { name: 'Select tool', exact: true }).click()
   const resistor = page.getByRole('button', { name: /^R2 · .*Drag to move or select to edit/ })
   await resistor.focus()
@@ -114,7 +127,10 @@ test('build a divider with placement, wiring and probes, then undo a component m
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await expect(inspector.getByText('C9', { exact: true })).toBeVisible()
   await captured(page)
-  await expect(channelMeasurement(page, 'CH2')).toHaveText('0.00 Vpp  ·  2.50 V mean')
+  await openMeasurements(page)
+  await expect(channelMeasurement(page, 'CH2', 'Peak to peak')).toHaveText('0.000 V')
+  await expect(channelMeasurement(page, 'CH2')).toHaveText('2.500 V')
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
 
   // Pointer dragging commits a single move and leaves jumpers on their holes.
   const partBounds = await resistor.boundingBox()
@@ -137,11 +153,14 @@ test('build a divider with placement, wiring and probes, then undo a component m
 test('manual capture marks old results stale and Reset recovers the worker', async ({ page }) => {
   await page.goto('/')
   await captured(page)
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   await page.getByText('Auto update', { exact: true }).click()
   await expect(page.getByRole('checkbox', { name: 'Auto update' })).not.toBeChecked()
   await page.getByRole('button', { name: '470', exact: true }).click()
   await expect(page.getByText('NEEDS SIMULATION', { exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Listen', exact: true })).toBeDisabled()
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   await page.getByRole('button', { name: 'Capture', exact: true }).click()
   await captured(page)
   expect(await peakToPeak(page, 'CH2')).toBeLessThan(1)

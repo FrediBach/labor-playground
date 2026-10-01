@@ -4,7 +4,7 @@ import type { Page } from '@playwright/test'
 const recoveryKey = 'labor-playground.document.v1'
 
 async function captured(page: Page) {
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
 function terminal(page: Page, id: string) {
@@ -16,6 +16,7 @@ async function recovered(page: Page) {
 }
 
 async function peakToPeak(page: Page, channel: 'CH1' | 'CH2') {
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   const scope = page.getByRole('region', { name: 'Oscilloscope' })
   const table = scope.getByRole('table', { name: 'Channel measurements' })
   if (!await table.isVisible()) await scope.locator('.scope-measurements > summary').click()
@@ -47,6 +48,7 @@ test('the powered dual op-amp doubles a real signal and feedback changes its gai
   await screenshot(page, 'opamp')
   await screenshot(page, 'expanded-library')
 
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await page.locator('[data-part="R1"]').focus()
   const resistance = page.getByRole('spinbutton', { name: 'Resistance', exact: true })
   await resistance.fill('20')
@@ -62,7 +64,7 @@ test('disconnecting an IC supply blocks capture and undo restores the powered ci
   await captured(page)
   await page.locator('[data-wire="W2"]').focus()
   await page.getByRole('button', { name: 'Remove wire' }).click()
-  await expect(page.getByText('INVALID', { exact: true })).toBeVisible()
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'invalid')
   await expect(page.getByRole('button', { name: /U1 V\+ \(pin 8\) has no connected supply/ })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Listen', exact: true })).toBeDisabled()
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
@@ -138,6 +140,9 @@ test('DIP-8 placement and movement preserve every pin and probes can reach the s
 
   await library.getByRole('button', { name: 'Scope probe CH1', exact: true }).click()
   // Click the physical pin under the rendered IC; the IC must resolve all eight leads.
+  // Clear the placement notice before using coordinates near the bottom of the viewport.
+  const dismissNotice = page.getByRole('button', { name: 'Dismiss notification', exact: true })
+  if (await dismissNotice.isVisible()) await dismissNotice.click()
   const pin = await terminal(page, 'e19').boundingBox()
   expect(pin).not.toBeNull()
   await page.mouse.click(pin!.x + pin!.width / 2, pin!.y + pin!.height / 2)
@@ -148,8 +153,9 @@ test('the charging example measures its exponential response and warns on revers
   await page.goto('/')
   await page.getByRole('combobox', { name: 'Load example' }).selectOption('capacitor-charge')
   await captured(page)
-  await expect(page.getByRole('combobox', { name: 'Capture stimulus' })).toHaveValue('step')
   await expect(page.getByRole('spinbutton', { name: 'Frequency in Hz' })).toBeDisabled()
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Capture stimulus' })).toHaveValue('step')
   await screenshot(page, 'charge')
   await page.locator('.scope-measurements > summary').click()
   await page.getByRole('spinbutton', { name: 'Cursor A milliseconds' }).fill('11.1')
@@ -174,7 +180,7 @@ test('the charging example measures its exponential response and warns on revers
 
 test('frequency editing normalizes invalid drafts and stays consistent through undo', async ({ page }) => {
   await page.goto('/')
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
   const frequency = page.getByRole('spinbutton', { name: 'Frequency in Hz' })
   const knob = page.getByRole('slider', { name: 'Oscillator frequency', exact: true })
   await frequency.fill('0')

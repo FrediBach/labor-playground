@@ -18,6 +18,7 @@ async function countScopeDraws(page: Page) {
 
 test('scope hover, measurement cursors and seeking reuse the rendered waveform', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible()
   await page.getByLabel('Time per division').selectOption('10')
   await page.locator('.scope-measurements > summary').click()
@@ -45,6 +46,7 @@ test('scope hover, measurement cursors and seeking reuse the rendered waveform',
 
 test('recording playback moves its overlay without redrawing until the view changes', async ({ page }) => {
   await page.goto('/')
+  await page.getByRole('tablist', { name: 'Workspace' }).getByRole('tab', { name: 'Results', exact: true }).click()
   await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible()
   await page.getByLabel('Time per division').selectOption('10')
   await page.getByLabel('Recording speed').selectOption('0.1')

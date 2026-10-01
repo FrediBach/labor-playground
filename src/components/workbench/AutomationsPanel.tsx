@@ -113,12 +113,13 @@ function automationWarning(automation: Automation, document: CircuitDocument, du
   return issue
 }
 
-export function AutomationsPanel({ document, onChange, durationSeconds, capture, status }: {
+export function AutomationsPanel({ document, onChange, durationSeconds, capture, status, onViewResults }: {
   document: CircuitDocument
   onChange: (document: CircuitDocument) => void
   durationSeconds: number
   capture: Capture | null
   status: SimulationStatus
+  onViewResults?: () => void
 }) {
   const automations = document.automations ?? []
   const [draft, setDraft] = useState<Draft | null>(null)
@@ -184,10 +185,10 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
 
   return <section className="automations-panel" id="automations" aria-labelledby={`${formId}-heading`} tabIndex={-1}>
     <div className="automations-heading">
-      <div className="automations-title"><Workflow size={19} aria-hidden="true" /><div><h2 id={`${formId}-heading`}>Automations</h2><p>Move a control when the time or voltage is right.</p></div></div>
+      <div className="automations-title"><Workflow size={19} aria-hidden="true" /><div><h2 id={`${formId}-heading`}>Automations</h2><p>Timed actions and voltage triggers.</p></div></div>
       <button className="automation-add" onClick={() => openEditor()} disabled={atLimit} title={atLimit ? 'Maximum 24 automations per circuit' : undefined}><Plus size={16} />Add automation</button>
     </div>
-    {automations.length === 0 ? <div className="automations-empty"><div className="automation-empty-flow" aria-hidden="true"><Clock3 size={18} /><span>10 ms</span><ArrowRight size={15} /><span>CV → 2.5 V</span></div><p>Repeat your experiment, hands free.</p><span>Schedule a knob change, pulse the gate, or react to a voltage crossing. Each automation runs once per simulation.</span></div> : <>
+    {automations.length === 0 ? <div className="automations-empty"><div className="automation-empty-flow" aria-hidden="true"><Clock3 size={18} /><span>10 ms</span><ArrowRight size={15} /><span>CV → 2.5 V</span></div><p>No automations</p><span>Schedule a knob change, pulse the gate, or react to a voltage crossing. Each automation runs once per simulation.</span></div> : <>
       <div className="automations-meta"><span>{enabledCount} enabled · once per simulation</span><span>{freshCapture ? `${firedCount} of ${enabledCount} fired` : status === 'calculating' ? 'Running automations…' : 'Simulate to run your automations'}</span></div>
       <ol className="automation-list">{automations.map((automation, index) => {
         const event = freshCapture?.automationEvents?.find(event => event.automationId === automation.id)
@@ -205,7 +206,7 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
             onChange({ ...document, automations: automations.map(existing => existing.id === automation.id ? { ...existing, enabled: !existing.enabled } : existing) })
             setNotice(`${automation.name} ${automation.enabled ? 'disabled' : 'enabled'}.`)
           }} /><span aria-hidden="true"><Check size={12} /></span></label>
-          <div className="automation-description"><button className="automation-name" onClick={() => openEditor(automation)}>{automation.name}</button><div className="automation-recipe"><span>{automation.trigger.kind === 'time' ? <Clock3 size={12} /> : <Activity size={12} />}{triggerLabel(automation.trigger)}</span><ArrowRight className="automation-recipe-arrow" size={13} /><span>{actionLabel(automation.action)}</span></div><div className="automation-result-line">{event && !warning ? <button className={`automation-result fired${upcoming ? ' upcoming' : ''}`} title="Seek recording to this automation" onClick={() => playback.seek(event.time)}><Check size={12} />{result}<span>↗</span></button> : <span className={`automation-result${warning ? ' warning' : ''}`}>{result}</span>}{event && <span className="automation-playhead-state">{upcoming ? 'Ahead of playhead' : interrupted ? 'Superseded at playhead' : automation.action.durationMs > 0 && seconds < event.time + automation.action.durationMs / 1000 ? 'In progress at playhead' : 'Reached at playhead'}</span>}</div></div>
+          <div className="automation-description"><button className="automation-name" onClick={() => openEditor(automation)}>{automation.name}</button><div className="automation-recipe"><span>{automation.trigger.kind === 'time' ? <Clock3 size={12} /> : <Activity size={12} />}{triggerLabel(automation.trigger)}</span><ArrowRight className="automation-recipe-arrow" size={13} /><span>{actionLabel(automation.action)}</span></div><div className="automation-result-line">{event && !warning ? <button className={`automation-result fired${upcoming ? ' upcoming' : ''}`} title="Seek recording to this automation" onClick={() => { playback.seek(event.time); onViewResults?.() }}><Check size={12} />{result}<span>↗</span></button> : <span className={`automation-result${warning ? ' warning' : ''}`}>{result}</span>}{event && <span className="automation-playhead-state">{upcoming ? 'Ahead of playhead' : interrupted ? 'Superseded at playhead' : automation.action.durationMs > 0 && seconds < event.time + automation.action.durationMs / 1000 ? 'In progress at playhead' : 'Reached at playhead'}</span>}</div></div>
           <div className="automation-row-actions"><button className="icon-button" aria-label={`Edit ${automation.name}`} title="Edit automation" onClick={() => openEditor(automation)}><Pencil size={14} /></button><button className="icon-button" aria-label={`Duplicate ${automation.name}`} title={atLimit ? 'Maximum 24 automations' : 'Duplicate automation'} disabled={atLimit} onClick={() => openEditor({ ...automation, id: automationId(), name: `${automation.name} copy`.slice(0, 80) })}><Copy size={14} /></button><button className="icon-button automation-delete" aria-label={`Delete ${automation.name}`} title="Delete automation · Undo restores it" onClick={() => { onChange({ ...document, automations: automations.filter(existing => existing.id !== automation.id) }); setNotice(`${automation.name} deleted. Undo restores it.`) }}><Trash2 size={14} /></button></div>
         </li>
       })}</ol>

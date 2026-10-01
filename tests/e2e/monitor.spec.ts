@@ -2,7 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Page } from '@playwright/test'
 
 async function captured(page: Page) {
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
 async function observeAudio(page: Page) {
@@ -77,6 +77,7 @@ test('the scope resizes by keyboard and drag without changing cursors, capture, 
   await captured(page)
   const original = await page.evaluate(() => localStorage.getItem('labor-playground.document.v1'))
   const capture = await page.locator('.scope-footnote').textContent()
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   const canvas = page.getByLabel('Voltage versus time for scope channels 1 and 2')
   const separator = page.getByRole('separator', { name: 'Scope height', exact: true })
   const initial = (await canvas.boundingBox())!.height

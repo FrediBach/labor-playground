@@ -2,17 +2,19 @@ import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
 
 async function captured(page: Page) {
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
-  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready')
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
 async function outputPeakToPeak(page: Page) {
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   const scope = page.getByRole('region', { name: 'Oscilloscope' })
   const table = scope.getByRole('table', { name: 'Channel measurements' })
   if (!await table.isVisible()) await scope.locator('.scope-measurements > summary').click()
   const value = table.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Peak to peak', exact: true }) }).getByRole('cell').nth(1)
   await expect(value).toHaveText(/[\d.]+ V/)
-  return parseFloat(await value.innerText())
+  const result = parseFloat(await value.innerText())
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
+  return result
 }
 
 async function withinPage(control: Locator, width: number) {
@@ -27,8 +29,10 @@ test('Simulate updates a changed circuit and the keyboard shortcut commits a foc
   await page.goto('/')
   await captured(page)
   const original = await outputPeakToPeak(page)
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   await page.getByText('Auto update', { exact: true }).click()
   await expect(page.getByRole('checkbox', { name: 'Auto update' })).not.toBeChecked()
+  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
 
   await page.getByRole('button', { name: '220', exact: true }).click()
   const status = page.getByRole('status', { name: 'Simulation status', exact: true })
@@ -46,10 +50,12 @@ test('Simulate updates a changed circuit and the keyboard shortcut commits a foc
   await expect(page.getByRole('button', { name: 'Wire tool', exact: true })).toHaveAttribute('aria-pressed', 'false')
 })
 
-test('Simulate and its status stay reachable while viewing results lower on the page', async ({ page }) => {
+test('Simulate and its status stay reachable while scrolling the Results tab', async ({ page }) => {
   await page.setViewportSize({ width: 1280, height: 900 })
   await page.goto('/')
   await captured(page)
+  await page.getByRole('link', { name: 'View results', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Results', exact: true })).toHaveAttribute('aria-selected', 'true')
   await page.locator('.app-footer').scrollIntoViewIfNeeded()
   await expect.poll(() => page.evaluate(() => window.scrollY)).toBeGreaterThan(200)
 
@@ -76,7 +82,14 @@ test('parts, connections, and Pico remain available at phone, tablet, and laptop
     await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await withinPage(page.getByRole('button', { name: 'Simulate', exact: true }), width)
     await withinPage(page.getByRole('status', { name: 'Simulation status', exact: true }), width)
-    await withinPage(page.getByRole('link', { name: 'View results ↓', exact: true }), width)
+    await withinPage(page.getByRole('link', { name: 'View results', exact: true }), width)
+    for (const tab of ['Circuit', 'Results', 'Automations']) {
+      await withinPage(page.getByRole('tab', { name: tab, exact: true }), width)
+    }
+    await page.getByRole('tab', { name: 'Results', exact: true }).click()
+    await withinPage(page.getByLabel('Simulation duration', { exact: true }), width)
+    await withinPage(page.getByRole('button', { name: 'Capture', exact: true }), width)
+    await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
     await withinPage(library.getByRole('button', { name: /Raspberry Pi Pico/ }), width)
     for (const channel of ['CH1', 'CH2']) {
       const probe = library.getByRole('button', { name: `Scope probe ${channel}`, exact: true })

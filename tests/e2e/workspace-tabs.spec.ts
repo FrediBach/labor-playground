@@ -1,0 +1,180 @@
+import { expect, test } from '@playwright/test'
+import type { Page } from '@playwright/test'
+import { examples } from '../../src/lib/circuit'
+
+const tab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true })
+const ready = (page: Page) => expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
+const savedDocument = (page: Page) => page.evaluate(() => JSON.parse(localStorage.getItem('labor-playground.document.v1')!))
+
+test('workspace tabs isolate their panels and support arrow, Home and End navigation', async ({ page }) => {
+  await page.goto('/')
+  const tabs = page.getByRole('tablist', { name: 'Workspace', exact: true })
+  await expect(tabs.getByRole('tab')).toHaveText(['Circuit', 'Results', 'Automations'])
+  await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('tabpanel', { name: 'Circuit', exact: true })).toBeVisible()
+  await expect(page.getByTestId('board-viewport')).toBeVisible()
+  await expect(page.locator('.recording-panel')).toBeHidden()
+  await expect(page.locator('.automations-panel')).toBeHidden()
+  await expect(page.getByLabel('Simulation duration')).toBeHidden()
+  // Panels remain in the document while only the active one is exposed.
+  await expect(page.locator('[role="tabpanel"]')).toHaveCount(3)
+  await expect(page.getByRole('tabpanel')).toHaveCount(1)
+  for (const name of ['Circuit', 'Results', 'Automations']) {
+    const control = tab(page, name)
+    const panelId = await control.getAttribute('aria-controls')
+    expect(panelId).toBeTruthy()
+    await expect(page.locator(`[id="${panelId}"]`)).toHaveAttribute('aria-labelledby', await control.getAttribute('id') ?? '')
+  }
+
+  await tab(page, 'Circuit').focus()
+  for (const [key, name] of [
+    ['ArrowRight', 'Results'], ['End', 'Automations'], ['ArrowRight', 'Circuit'],
+    ['ArrowLeft', 'Automations'], ['Home', 'Circuit'],
+  ]) {
+    await page.keyboard.press(key)
+    await expect(tab(page, name)).toBeFocused()
+    await expect(tab(page, name)).toHaveAttribute('aria-selected', 'true')
+    await expect(tab(page, name)).toHaveAttribute('tabindex', '0')
+    await expect(page.getByRole('tabpanel', { name, exact: true })).toBeVisible()
+    await expect(page.getByRole('tabpanel')).toHaveCount(1)
+  }
+  await tab(page, 'Results').click()
+  await expect(page.getByRole('region', { name: 'Oscilloscope', exact: true })).toBeVisible()
+  await expect(page.getByTestId('board-viewport')).toBeHidden()
+  await expect(page.getByLabel('Simulation duration')).toBeVisible()
+  await tab(page, 'Automations').click()
+  await expect(page.getByRole('region', { name: 'Automations', exact: true })).toBeVisible()
+  await expect(page.getByLabel('Simulation duration')).toBeVisible()
+  await expect(page.locator('.recording-panel')).toBeHidden()
+})
+
+test('switching tabs retains board zoom, recording position and scope settings', async ({ page }) => {
+  await page.goto('/')
+  await ready(page)
+  await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+  const zoom = await page.getByTestId('board-viewport').getAttribute('data-zoom')
+  await page.getByRole('checkbox', { name: 'Show connections', exact: true }).check()
+  await page.getByRole('link', { name: 'View results', exact: true }).click()
+  await expect(tab(page, 'Results')).toHaveAttribute('aria-selected', 'true')
+  await page.getByLabel('Recording time milliseconds').fill('37.5')
+  await page.getByLabel('Time per division', { exact: true }).selectOption('10')
+  await page.locator('.scope-measurements > summary').click()
+  await expect(page.getByRole('table', { name: 'Channel measurements', exact: true })).toBeVisible()
+
+  await tab(page, 'Automations').click()
+  await tab(page, 'Circuit').click()
+  await expect(page.getByTestId('board-viewport')).toHaveAttribute('data-zoom', zoom!)
+  await expect(page.getByRole('checkbox', { name: 'Show connections', exact: true })).toBeChecked()
+  await tab(page, 'Results').click()
+  await expect(page.getByLabel('Recording time milliseconds')).toHaveValue('37.5')
+  await expect(page.getByLabel('Time per division', { exact: true })).toHaveValue('10')
+  await expect(page.getByRole('table', { name: 'Channel measurements', exact: true })).toBeVisible()
+})
+
+test('board shortcuts are scoped to Circuit while history stays available in Results', async ({ page }) => {
+  await page.goto('/')
+  await ready(page)
+  await page.getByRole('button', { name: 'Wire tool', exact: true }).click()
+  const before = await savedDocument(page)
+  for (const name of ['Results', 'Automations']) {
+    await tab(page, name).click()
+    for (const key of ['v', 'w', 'r', 'Delete', 'Backspace']) await page.keyboard.press(key)
+    await expect(tab(page, name)).toHaveAttribute('aria-selected', 'true')
+    expect(await savedDocument(page)).toEqual(before)
+  }
+  await tab(page, 'Circuit').click()
+  await expect(page.getByRole('button', { name: 'Wire tool', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Select tool', exact: true }).click()
+  await page.locator('[data-part="C1"]').focus()
+  await page.keyboard.press('Delete')
+  await expect(page.locator('[data-part="C1"]')).toHaveCount(0)
+  await tab(page, 'Results').click()
+  await page.keyboard.press('Control+z')
+  await expect(page.locator('[data-part="C1"]')).toHaveCount(1)
+  await expect(tab(page, 'Results')).toHaveAttribute('aria-selected', 'true')
+  await page.keyboard.press('Control+Shift+z')
+  await expect(page.locator('[data-part="C1"]')).toHaveCount(0)
+  await expect(tab(page, 'Results')).toHaveAttribute('aria-selected', 'true')
+})
+
+test('parts and probe actions return to Circuit from other tabs', async ({ page }) => {
+  await page.goto('/')
+  const library = page.getByRole('complementary', { name: 'Parts library', exact: true })
+  await tab(page, 'Automations').click()
+  await library.getByRole('button', { name: 'Resistor', exact: true }).click()
+  await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
+  await expect(library.getByRole('button', { name: 'Resistor', exact: true })).toHaveAttribute('aria-pressed', 'true')
+  await tab(page, 'Results').click()
+  await library.getByRole('button', { name: 'Scope probe CH2', exact: true }).click()
+  await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.board-hint')).toContainText('attach CH2')
+  await expect(page.getByTestId('board-viewport')).toBeVisible()
+  await tab(page, 'Results').click()
+  const moveProbe = page.getByRole('button', { name: 'Move CH1 probe', exact: true })
+  await moveProbe.focus()
+  await moveProbe.press('Enter')
+  await expect(tab(page, 'Circuit')).toBeFocused()
+  await expect(page.locator('.board-hint')).toContainText('attach CH1')
+})
+
+test('Pico Code appears when needed and preserves editor state between tabs', async ({ page }) => {
+  await page.goto('/')
+  await expect(tab(page, 'Pico Code')).toHaveCount(0)
+  await page.getByRole('button', { name: /Raspberry Pi Pico/ }).click()
+  await expect(tab(page, 'Pico Code')).toHaveAttribute('aria-selected', 'true')
+  const editor = page.getByRole('textbox', { name: 'Pico main.py editor', exact: true })
+  await expect(editor).toBeVisible({ timeout: 45_000 })
+  await editor.focus()
+  await editor.press('Control+End')
+  await page.keyboard.insertText('\n# retained across workspace tabs')
+  await page.getByRole('button', { name: 'Collapse editor', exact: true }).click()
+  await tab(page, 'Results').click()
+  await expect(page.locator('.pico-panel')).toBeHidden()
+  await tab(page, 'Pico Code').click()
+  await expect(page.getByRole('button', { name: 'Expand editor', exact: true })).toBeVisible()
+  await page.getByRole('button', { name: 'Expand editor', exact: true }).click()
+  await expect(page.locator('.pico-editor')).toContainText('retained across workspace tabs')
+  await page.getByRole('button', { name: 'Remove Pico', exact: true }).focus()
+  await page.getByRole('button', { name: 'Remove Pico', exact: true }).press('Enter')
+  await expect(tab(page, 'Pico Code')).toHaveCount(0)
+  await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
+  await expect(tab(page, 'Circuit')).toBeFocused()
+  await page.getByRole('button', { name: 'Undo', exact: true }).click()
+  await tab(page, 'Pico Code').click()
+  await expect(page.locator('.pico-editor')).toContainText('retained across workspace tabs')
+})
+
+test('examples and imports select the relevant workspace tab', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Load example').selectOption('pico-console')
+  await expect(tab(page, 'Pico Code')).toHaveAttribute('aria-selected', 'true')
+  await page.getByLabel('Load example').selectOption('voltage-divider')
+  await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
+  await expect(tab(page, 'Pico Code')).toHaveCount(0)
+  for (const [id, destination] of [['pico-console', 'Pico Code'], ['rc-filter', 'Circuit']]) {
+    await tab(page, 'Automations').click()
+    const document = examples.find(example => example.id === id)!.document
+    await page.locator('input[type="file"]').setInputFiles({
+      name: `${id}.json`, mimeType: 'application/json', buffer: Buffer.from(JSON.stringify(document)),
+    })
+    await expect(tab(page, destination)).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tabpanel', { name: destination, exact: true })).toBeVisible()
+  }
+})
+
+test('a fired automation opens Results at the event time', async ({ page }) => {
+  await page.goto('/')
+  await page.getByLabel('Load example').selectOption('voltage-triggered-release')
+  await ready(page)
+  await tab(page, 'Automations').click()
+  const automations = page.getByRole('region', { name: 'Automations', exact: true })
+  await expect(automations).toContainText('2 of 2 fired')
+  await automations.getByRole('button', { name: /Fired at 19\./ }).focus()
+  await automations.getByRole('button', { name: /Fired at 19\./ }).press('Enter')
+  await expect(tab(page, 'Results')).toHaveAttribute('aria-selected', 'true')
+  await expect(tab(page, 'Results')).toBeFocused()
+  const time = Number(await page.getByLabel('Recording time milliseconds').inputValue())
+  expect(time).toBeGreaterThan(19)
+  expect(time).toBeLessThan(20)
+  await expect(page.getByRole('region', { name: 'Simulation recording', exact: true })).toBeVisible()
+})

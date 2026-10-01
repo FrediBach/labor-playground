@@ -8,7 +8,7 @@ async function recovered(page: Page) {
 }
 async function ready(page: Page) {
   await page.goto('/')
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible({ timeout: 45_000 })
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
 }
 
 test('shortening a legacy resistor lead previews beneath its body and commits one reversible edit', async ({ page }) => {
@@ -20,7 +20,7 @@ test('shortening a legacy resistor lead previews beneath its body and commits on
   await terminal(page, 'a9').hover()
   await expect(page.locator('[data-lead-preview="valid"]')).toBeVisible()
   expect(await recovered(page)).toEqual(original)
-  await expect(page.getByText('CAPTURED', { exact: true })).toBeVisible()
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready')
   await terminal(page, 'a9').click()
   await expect.poll(async () => (await recovered(page)).parts[0].pins).toEqual(['a9', 'a17'])
   const changed = await recovered(page)
@@ -89,10 +89,14 @@ test('keyboard lead handles preserve capacitor polarity and cancel when the tool
   expect((await recovered(page)).parts[1].pins).toEqual(['e17', 'f17'])
 })
 
-test('Escape cancels both an active lead edit and a concurrent scope resize', async ({ page }) => {
+test('Escape cancels a lead edit and a scope resize in their respective tabs', async ({ page }) => {
   await ready(page)
   const original = await recovered(page)
   await inspector(page).getByRole('button', { name: 'Move C1 lead 2', exact: true }).click()
+  await expect(page.locator('[data-lead-preview]')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('[data-lead-preview]')).toHaveCount(0)
+  await page.getByRole('tab', { name: 'Results', exact: true }).click()
   const resizer = page.getByRole('separator', { name: 'Scope height', exact: true })
   const height = Number(await resizer.getAttribute('aria-valuenow'))
   await resizer.scrollIntoViewIfNeeded()
