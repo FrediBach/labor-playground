@@ -89,7 +89,8 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
         const picoChecks = snapshot.pico ? PICO_PINS.filter(pin => pin.gpio !== null && used.has(transient.nodeByTerminal[pin.id])).map(pin => ({ gpio: pin.gpio!, node: transient.nodeByTerminal[pin.id] })) : undefined
         const capture = await instance.run(transient.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
           if (!cancelled && currentRevision === revision.current) setState((previous) => ({ ...previous, key, requestKey, status, error: null }))
-        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks, durationSeconds)
+        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks, durationSeconds, snapshot.automations?.some(automation => automation.enabled) ? { document: snapshot, picoTrace } : undefined)
+        if (capture.automationEvents) runNetlist = compileCircuit(snapshot, 'transient', picoTrace, durationSeconds, capture.automationEvents).netlist
         return picoTrace ? { ...capture, picoTrace } : capture
       }
       void execute().then((capture) => {
@@ -104,7 +105,7 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
         setState((previous) => ({ ...previous, key, requestKey, status: 'error', error: error instanceof Error ? error.message : 'Simulation failed. Check the circuit and capture again.' }))
       })
     }, manuallyRequested ? 0 : SIMULATION_LIMITS.debounceMs)
-    return () => { cancelled = true; clearTimeout(timer); if (snapshot.pico) { picoClient.current?.stop(); instance.dispose() } }
+    return () => { cancelled = true; clearTimeout(timer); if (snapshot.pico || snapshot.automations?.some(automation => automation.enabled)) { picoClient.current?.stop(); instance.dispose() } }
   }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger, durationSeconds])
 
   const captureNow = useCallback(() => {

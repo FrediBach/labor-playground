@@ -1,6 +1,7 @@
 import type { PicoElectricalCheck } from './pico/checks.ts'
 import type { PicoTrace } from './pico/runtime.ts'
-import type { Diagnostic } from './circuit'
+import type { CircuitDocument, Diagnostic } from './circuit'
+import type { AutomationEvent } from './automations.ts'
 
 export type Channel = 'CH1' | 'CH2'
 export type ProbeNodes = Record<Channel, string | null>
@@ -55,6 +56,8 @@ export interface Capture {
     parts: OperatingPointPartDescriptor[]
   }
   picoTrace?: PicoTrace
+  /** Resolved, once-per-recording actions; times use the simulation clock. */
+  automationEvents?: AutomationEvent[]
 }
 
 export type SimulationStatus = 'loading' | 'calculating' | 'ready' | 'stale' | 'invalid' | 'error'
@@ -68,6 +71,7 @@ export interface SimulationRequest {
   picoChecks?: PicoElectricalCheck[]
   operatingPoint?: OperatingPointRequest
   durationSeconds?: number
+  automation?: { document: CircuitDocument; picoTrace?: PicoTrace }
 }
 
 export type SimulationResponse =

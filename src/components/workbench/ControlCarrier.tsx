@@ -1,6 +1,7 @@
 import { Plus } from 'lucide-react'
 import { RotaryControl } from './ParameterControls'
 import { formatValue, type CircuitDocument, type Part } from '@/lib/circuit'
+import { RecordedAutomationValue } from './AutomationPlayback'
 
 /** Front-panel access to the controls placed in the circuit. */
 export function ControlCarrier({ document, onChange, onSelect, onPlace }: {
@@ -25,6 +26,7 @@ export function ControlCarrier({ document, onChange, onSelect, onPlace }: {
               : <button className="hardware-toggle" aria-label={`${part.id} closed`} aria-pressed={!!part.value} onClick={() => update(part, { value: part.value ? 0 : 1 })}><span aria-hidden="true" /><small>{part.value ? 'CLOSED' : 'OPEN'}</small></button>}
             <button className="carrier-part-link" onClick={() => onSelect(part.id)} title={`Inspect ${part.id}`}>{part.id} <span>{kind === 'potentiometer' ? formatValue(part.value, kind) : 'SPST'}</span></button>
             <span className="carrier-pins">{part.pins.map(pin => pin.toUpperCase()).join(' · ')}</span>
+            <RecordedAutomationValue document={document} target={kind} partId={part.id} />
           </div>)}</div> : <p className="carrier-empty">{kind === 'potentiometer' ? 'Place a pot, wire its three pins, then turn it here.' : 'Place a switch, wire its two pins, then toggle it here.'}</p>}
         </div>
       })}

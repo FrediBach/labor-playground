@@ -4,6 +4,9 @@ import type { Capture, SimulationRequest } from './simulation-types.ts'
 import { extractCapture, extractOperatingPoint, fatalSimulationMessages, requireAnalysisCompletion, requireCompleteCapture } from './simulation-results.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { extractRecording } from './recording.ts'
+import { compileCircuit, validateDocument } from './circuit.ts'
+import { automationCrossing, automationIssue, scheduledAutomationEvents } from './automations.ts'
+import { operatingPointDescriptors } from './simulation-descriptors.ts'
 
 type Engine = Pick<Simulation, 'setNetList' | 'runSim' | 'getError' | 'getInfo'>
 
@@ -45,13 +48,37 @@ export async function runCircuitCapture(engine: Engine, request: SimulationReque
     if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
   }
 
-  const result = await executeAnalysis(engine, request.netlist)
-  if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
-  const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started, request.voltageChecks)
-  requireCompleteCapture(capture, durationSeconds)
-  requireAnalysisCompletion(result, engine.getInfo(), 'transient')
-  const errors = fatalSimulationMessages(engine.getError(), capture, durationSeconds)
-  if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
-  const recording = extractRecording(result, request.operatingPoint?.parts ?? [])
-  return { ...capture, recording, elapsedMs: performance.now() - started, ...(operatingPoint ? { operatingPoint } : {}) }
+  const document = request.automation ? validateDocument(request.automation.document) : undefined
+  const events = document ? scheduledAutomationEvents(document, durationSeconds) : []
+  const pending = document?.automations?.filter(row => row.enabled && row.trigger.kind === 'voltage' && !automationIssue(row, document, durationSeconds)) ?? []
+  let causalCursor = 0
+  // Every pass is a continuous SPICE trajectory from the original DC state.
+  // Commit only the earliest causal event, then resolve future events again
+  // against the changed circuit. Never splice captures or reset stored charge.
+  for (;;) {
+    const compiled = document ? compileCircuit(document, 'transient', request.automation?.picoTrace, durationSeconds, events) : undefined
+    const failure = compiled?.diagnostics.find(item => item.severity === 'error')
+    if (failure) throw new Error(failure.message)
+    const result = await executeAnalysis(engine, compiled?.netlist ?? request.netlist)
+    const capture = extractCapture(result, request.nodes, request.revision, performance.now() - started, request.voltageChecks)
+    requireCompleteCapture(capture, durationSeconds)
+    requireAnalysisCompletion(result, engine.getInfo(), 'transient')
+    const errors = fatalSimulationMessages(engine.getError(), capture, durationSeconds)
+    if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
+    const candidates = pending.map(row => ({ automationId: row.id, time: automationCrossing(row, capture, causalCursor) }))
+      .filter((event): event is { automationId: string; time: number } => event.time !== null && event.time < durationSeconds)
+      .sort((a, b) => a.time - b.time)
+    if (candidates.length) {
+      causalCursor = candidates[0].time
+      for (const event of candidates.filter(candidate => candidate.time <= causalCursor + 1e-12)) {
+        events.push(event)
+        pending.splice(pending.findIndex(row => row.id === event.automationId), 1)
+      }
+      continue
+    }
+    if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
+    const descriptors = document && compiled ? operatingPointDescriptors(document, compiled.nodeByTerminal, true, durationSeconds) : request.operatingPoint?.parts ?? []
+    const recording = extractRecording(result, descriptors)
+    return { ...capture, recording, elapsedMs: performance.now() - started, ...(operatingPoint ? { operatingPoint } : {}), ...(document ? { automationEvents: events.sort((a, b) => a.time - b.time) } : {}) }
+  }
 }

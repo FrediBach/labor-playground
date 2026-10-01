@@ -1,13 +1,21 @@
 import { spiceDeviceId, type CircuitDocument } from './circuit.ts'
 import type { OperatingPointBranch, OperatingPointPartDescriptor } from './simulation-types.ts'
+import { automationIssue } from './automations.ts'
 
 /** These match the compiler's fixed device models; this is measurement, not a solver. */
-export function operatingPointDescriptors(document: CircuitDocument, nodeByTerminal: Record<string, string>): OperatingPointPartDescriptor[] {
+export function operatingPointDescriptors(document: CircuitDocument, nodeByTerminal: Record<string, string>, automatedTransient = false, durationSeconds = 10): OperatingPointPartDescriptor[] {
   return document.parts.map((part) => {
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
     const branches: OperatingPointBranch[] = []
-    if (part.kind === 'resistor' || part.kind === 'switch') {
+    const automated = automatedTransient && document.automations?.some(row => row.enabled && row.action.partId === part.id && !automationIssue(row, document, durationSeconds))
+    if (automated && part.kind === 'switch') {
+      branches.push({ kind: 'saved-current', label: '1 → 2', fromNode: a, toNode: b, vector: `i(@ba_${spiceDeviceId(part).toLowerCase()}[i])` })
+    } else if (automated && part.kind === 'potentiometer') {
+      const safeId = spiceDeviceId(part).toLowerCase()
+      branches.push({ kind: 'saved-current', label: 'CCW → Wiper', fromNode: a, toNode: b, vector: `i(@ba_${safeId}_ccw[i])` })
+      branches.push({ kind: 'saved-current', label: 'Wiper → CW', fromNode: b, toNode: c, vector: `i(@ba_${safeId}_cw[i])` })
+    } else if (part.kind === 'resistor' || part.kind === 'switch') {
       branches.push({ kind: 'resistance', label: '1 → 2', fromNode: a, toNode: b, resistance: part.kind === 'resistor' ? part.value : part.value === 1 ? 1 : 1e9 })
     } else if (part.kind === 'potentiometer') {
       const position = part.position ?? 0.5

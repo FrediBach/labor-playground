@@ -29,3 +29,12 @@
 .recording-gpio output { color: #e0eccb; font-family: monospace; }
 .recording-gpio p { font-size: 10px; color: #a7b3a4; }
 @media (max-width: 520px) { .recording-panel { padding: 12px; } .recording-heading { align-items: flex-start; } .recording-heading > div > span { display: block; margin-top: 3px; } .recording-position { width: 100%; margin: 0; } .capture-actions { flex-wrap: wrap; } }
+.automation-recorded-value { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 3px 6px; font: 10px monospace; color: #d5e9b4; margin: 5px 0; }
+.automation-recorded-value > span { font-size: 7px; letter-spacing: .5px; color: #abb99a; }
+.automation-event-strip { margin: 3px 0 10px; color: #b6c3a5; font-size: 9px; }
+.automation-event-labels { display: flex; justify-content: space-between; gap: 12px; }
+.automation-event-track { position: relative; height: 26px; margin-inline: 6px; border-bottom: 1px solid #56604c; }
+.automation-event-track button { position: absolute; width: 26px; height: 26px; transform: translateX(-50%); border: 0; border-radius: 3px; background: transparent; cursor: pointer; }
+.automation-event-track button::after { content: ''; display: block; width: 10px; height: 14px; margin: auto; border: 1px solid #9daf84; border-radius: 3px; background: #3a4630; }
+.automation-event-track button.occurred::after { background: #c6db94; }
+.automation-event-track button:focus-visible { outline: 2px solid #e5f0d2; outline-offset: 2px; }

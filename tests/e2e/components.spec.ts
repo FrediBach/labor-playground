@@ -17,10 +17,11 @@ async function recovered(page: Page) {
 
 async function peakToPeak(page: Page, channel: 'CH1' | 'CH2') {
   const scope = page.getByRole('region', { name: 'Oscilloscope' })
-  const text = await scope.getByRole('button', { name: channel, exact: true }).locator('..').locator('.measurement').innerText()
-  const match = /([\d.]+) Vpp/.exec(text)
-  expect(match, `Expected ${channel} voltage, got ${text}`).not.toBeNull()
-  return Number(match![1])
+  const table = scope.getByRole('table', { name: 'Channel measurements' })
+  if (!await table.isVisible()) await scope.locator('.scope-measurements > summary').click()
+  const value = table.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Peak to peak', exact: true }) }).getByRole('cell').nth(channel === 'CH1' ? 0 : 1)
+  await expect(value).toHaveText(/[\d.]+ V/)
+  return parseFloat(await value.innerText())
 }
 
 async function screenshot(page: Page, name: string) {

@@ -5,9 +5,11 @@ import { passiveExamples } from './passive-examples.ts'
 import { picoExamples } from './pico/examples.ts'
 import { activeExamples } from './active-examples.ts'
 import { icExamples } from './ic-examples.ts'
+import { automationExamples } from './automation-examples.ts'
 import { timer555Lines } from './timer555.ts'
 import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
+import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
 export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700'
 
@@ -47,6 +49,8 @@ export interface CircuitDocument {
   parts: Part[]
   wires: Wire[]
   probes: { CH1: string | null; CH2: string | null }
+  /** Optional so legacy projects remain byte-for-byte compatible on import. */
+  automations?: Automation[]
   instruments: {
     frequency: number
     amplitude: number
@@ -141,7 +145,7 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     pinNames: ['1', '2'],
     label: 'Switch', unit: '', defaultValue: 1, min: 0, max: 1,
     description: 'Open or close a connection between two holes.',
-    model: 'Static two-terminal switch represented by 1 Ω closed or 1 GΩ open to avoid an ideal zero-resistance branch.',
+    model: 'Two-terminal switch represented by 1 Ω closed or 1 GΩ open to avoid an ideal zero-resistance branch. Automations can change its state during a recording.',
   },
   potentiometer: {
     pinNames: ['CCW', 'Wiper', 'CW'],
@@ -369,6 +373,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     schemaVersion: raw.schemaVersion as 1 | 2, boardVersion: 'virtual-1', title: raw.title,
     ...(pico ? { pico } : {}),
     parts, wires,
+    ...(raw.automations === undefined ? {} : { automations: validateAutomations(raw.automations, parts) }),
     ...(raw.stimulus === undefined ? {} : { stimulus: raw.stimulus as CircuitDocument['stimulus'] }),
     instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'], ...(envelope === undefined ? {} : { envelope }) },
     probes: { CH1: probes.CH1 === null ? null : readTerminal(probes.CH1), CH2: probes.CH2 === null ? null : readTerminal(probes.CH2) },
@@ -429,7 +434,7 @@ export function resolveTopology(doc: CircuitDocument) {
   return { nodeByTerminal, nets }
 }
 
-export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace, durationSeconds = 0.1): CompiledCircuit {
+export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace, durationSeconds = 0.1, automationEvents?: readonly AutomationEvent[]): CompiledCircuit {
   const diagnostics: Diagnostic[] = []
   let doc: CircuitDocument
   try { doc = validateDocument(document) } catch (error) {
@@ -443,6 +448,13 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   if (picoTrace && Math.abs(picoTrace.durationNs / 1e9 - durationSeconds) > 1e-9) {
     diagnostics.push({ severity: 'error', message: 'The Pico recording and circuit simulation must have the same duration. Run the simulation again.' })
   }
+  for (const automation of doc.automations ?? []) {
+    const issue = automation.enabled ? automationIssue(automation, doc, durationSeconds) : null
+    if (issue) diagnostics.push({ severity: 'warning', message: `${automation.name}: ${issue}`, ...(automation.action.partId ? { partId: automation.action.partId } : {}) })
+  }
+  const timelines: AutomationTimelines = analysis === 'transient' ? automationTimelines(doc, automationEvents ?? scheduledAutomationEvents(doc, durationSeconds), durationSeconds) : new Map()
+  const controlNodes = new Map([...timelines.keys()].map((key, index) => [key, `automation_${index}`]))
+  const control = (key: string, fallback: number) => controlNodes.has(key) ? `v(${controlNodes.get(key)})` : spiceNumber(fallback)
   const usedTerminals = [...doc.parts.flatMap((part) => part.pins), ...doc.wires.flatMap((wire) => [wire.from, wire.to]), ...Object.values(doc.probes).filter((probe): probe is string => probe !== null)]
   const activeNodes = new Set(usedTerminals.map((terminal) => nodeByTerminal[terminal]))
   if (activeNodes.size > 60) diagnostics.push({ severity: 'error', message: 'This workbench supports up to 60 connected circuit nodes. Simplify the circuit before capturing.' })
@@ -671,7 +683,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const lines = [
     '* Pico Labor virtual-1; local educational circuit',
     ...(activeNodes.has(nodeByTerminal.osc) ? ['VOSC osc_internal 0 ' + stimulus, `ROSC osc_internal ${nodeByTerminal.osc} 100`] : []),
-    `VCV ${nodeByTerminal.cv} 0 ${spiceNumber(cv)}`,
+    controlNodes.has('cv') ? `BCV ${nodeByTerminal.cv} 0 V = ${control('cv', cv)}` : `VCV ${nodeByTerminal.cv} 0 ${spiceNumber(cv)}`,
     `VPLUS ${nodeByTerminal.vplus} 0 12`,
     `VMINUS ${nodeByTerminal.vminus} 0 -12`,
     '.model D_SIGNAL D(Is=2.52e-9 N=1.752 Rs=0.568 Cjo=4e-12)',
@@ -680,6 +692,22 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     '.model Q_NPN NPN(Is=1e-14 Bf=100 Br=1 Vaf=100 Cje=10e-12 Cjc=4e-12 Tf=0.5e-9 Tr=10e-9)',
     '.model Q_PNP PNP(Is=1e-14 Bf=100 Br=1 Vaf=100 Cje=10e-12 Cjc=4e-12 Tf=0.5e-9 Tr=10e-9)',
   ]
+  for (const [key, points] of timelines) lines.push(`V_${controlNodes.get(key)} ${controlNodes.get(key)} 0 ${automationPwl(points)}`)
+  if (activeNodes.has(nodeByTerminal.osc) && (timelines.has('amplitude') || timelines.has('frequency'))) {
+    const frequencyPoints = timelines.get('frequency') ?? [{ time: 0, value: frequency }]
+    const phase = automationPhase(frequencyPoints)
+    const fraction = `(${phase}-floor(${phase}))`
+    const wave = waveform === 'sine' ? `sin(6.283185307179586*${phase})`
+      : waveform === 'triangle' ? `(1-4*abs(${fraction}-0.5))`
+        : 'v(automation_wave)'
+    const index = lines.findIndex(line => line.startsWith('VOSC '))
+    lines[index] = `BOSC osc_internal 0 V = ${control('amplitude', amplitude)}*${doc.stimulus === 'step' ? 'v(automation_step)' : wave}`
+    if (doc.stimulus === 'step') lines.push('VAUTOSTEP automation_step 0 PULSE(0 1 0.001 1e-6 1e-6 0.049999 1)')
+    // Native sources force exact edge/corner solver breakpoints. Triangle still
+    // uses the analytic phase expression above: a frequency ramp makes each
+    // slope quadratic in time, which linear PWL vertices alone cannot preserve.
+    else if (waveform !== 'sine') lines.push(`VAUTOWAVE automation_wave 0 ${automationPwl(automationWaveformTiming(frequencyPoints, durationSeconds, waveform))}`)
+  }
   if (doc.pico) {
     try { lines.push(...picoDriverLines(nodeByTerminal, activeNodes, picoTrace, analysis === 'operating-point')) }
     catch (error) { diagnostics.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid Pico trace.' }) }
@@ -687,7 +715,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const envelope = envelopeSettings(doc)
   if (activeNodes.has(nodeByTerminal.eg)) {
     if (envelope.mode === 'gate') {
-      lines.push(`VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
+      lines.push(timelines.has('gate') ? `BEG eg_internal 0 V = 5*${control('gate', Number(envelope.gateHigh))}` : `VEG eg_internal 0 ${envelope.gateHigh ? 5 : 0}`)
     } else if (envelope.mode === 'trigger') {
       // A finite PWL pulse keeps exact edge breakpoints without a second periodic
       // clock competing with the oscillator's square/triangle source.
@@ -716,12 +744,19 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       lines.push(`D_${safeId} ${a} ${b} DZ_${safeId}`)
     }
     if (part.kind === 'npn' || part.kind === 'pnp') lines.push(`Q_${safeId} ${a} ${b} ${nodeByTerminal[part.pins[2]]} ${part.kind === 'npn' ? 'Q_NPN' : 'Q_PNP'}`)
-    if (part.kind === 'switch') lines.push(`R_${safeId} ${a} ${b} ${part.value === 1 ? '1' : '1e9'}`)
+    if (part.kind === 'switch') lines.push(timelines.has(`switch:${part.id}`)
+      ? `BA_${safeId} ${a} ${b} I = v(${a},${b})/(1+(1-${control(`switch:${part.id}`, part.value)})*999999999)`
+      : `R_${safeId} ${a} ${b} ${part.value === 1 ? '1' : '1e9'}`)
     if (part.kind === 'potentiometer') {
       const position = part.position ?? 0.5
       const c = nodeByTerminal[part.pins[2]]
-      lines.push(`RP_${safeId}_ccw ${a} ${b} ${spiceNumber(Math.max(1, position * part.value))}`)
-      lines.push(`RP_${safeId}_cw ${b} ${c} ${spiceNumber(Math.max(1, (1 - position) * part.value))}`)
+      if (timelines.has(`potentiometer:${part.id}`)) {
+        lines.push(`BA_${safeId}_ccw ${a} ${b} I = v(${a},${b})/max(1,${control(`potentiometer:${part.id}`, position)}*${spiceNumber(part.value)})`)
+        lines.push(`BA_${safeId}_cw ${b} ${c} I = v(${b},${c})/max(1,(1-${control(`potentiometer:${part.id}`, position)})*${spiceNumber(part.value)})`)
+      } else {
+        lines.push(`RP_${safeId}_ccw ${a} ${b} ${spiceNumber(Math.max(1, position * part.value))}`)
+        lines.push(`RP_${safeId}_cw ${b} ${c} ${spiceNumber(Math.max(1, (1 - position) * part.value))}`)
+      }
     }
     if (part.kind === 'timer555') lines.push(...timer555Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm13700') lines.push(...lm13700Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
@@ -763,11 +798,15 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       ? Math.min(...capacitors.map(part => part.value)) * Math.min(...resistors.map(part => part.value)) / 50
       : 1e-5)
   }
-  const maximumStep = Math.min(durationSeconds / (activeNodes.has(nodeByTerminal.osc) && doc.stimulus === 'step' ? 10000 : 1000), activeNodes.has(nodeByTerminal.osc) && amplitude > 0 && doc.stimulus !== 'step' ? period / 80 : Infinity,
+  const maximumFrequency = Math.max(frequency, ...(timelines.get('frequency') ?? []).map(point => point.value))
+  const maximumAmplitude = Math.max(amplitude, ...(timelines.get('amplitude') ?? []).map(point => point.value))
+  const maximumStep = Math.min(durationSeconds / (activeNodes.has(nodeByTerminal.osc) && doc.stimulus === 'step' ? 10000 : 1000), activeNodes.has(nodeByTerminal.osc) && maximumAmplitude > 0 && doc.stimulus !== 'step' ? 1 / maximumFrequency / 80 : Infinity,
     activeNodes.has(nodeByTerminal.eg) && envelope.mode === 'envelope' ? envelope.decayMs / 200_000 : Infinity, timerStep)
   const step = spiceNumber(maximumStep)
   const savedCurrents = [...doc.parts].sort((a, b) => a.id.localeCompare(b.id)).flatMap((part) => {
     const safeId = spiceDeviceId(part)
+    if (timelines.has(`switch:${part.id}`)) return [`@BA_${safeId}[i]`]
+    if (timelines.has(`potentiometer:${part.id}`)) return [`@BA_${safeId}_ccw[i]`, `@BA_${safeId}_cw[i]`]
     if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
     if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
     if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
@@ -917,6 +956,7 @@ export const examples: CircuitExample[] = [
     },
   },
   ...passiveExamples,
+  ...automationExamples,
   ...activeExamples,
   ...icExamples,
   ...picoExamples,

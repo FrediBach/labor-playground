@@ -7,11 +7,12 @@ async function captured(page: Page) {
 }
 
 async function outputPeakToPeak(page: Page) {
-  const channel = page.getByRole('region', { name: 'Oscilloscope' }).getByRole('button', { name: 'CH2', exact: true }).locator('..')
-  const text = await channel.locator('.measurement').innerText()
-  const value = /([\d.]+) Vpp/.exec(text)
-  expect(value, `Expected CH2 voltage measurement, received ${text}`).not.toBeNull()
-  return Number(value![1])
+  const scope = page.getByRole('region', { name: 'Oscilloscope' })
+  const table = scope.getByRole('table', { name: 'Channel measurements' })
+  if (!await table.isVisible()) await scope.locator('.scope-measurements > summary').click()
+  const value = table.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Peak to peak', exact: true }) }).getByRole('cell').nth(1)
+  await expect(value).toHaveText(/[\d.]+ V/)
+  return parseFloat(await value.innerText())
 }
 
 async function withinPage(control: Locator, width: number) {

@@ -8,6 +8,8 @@ import { formatElectrical } from '@/lib/format-electrical'
 import { samplePicoPin } from '@/lib/pico/electrical'
 import { PartGlyph } from './PartGlyph'
 import { Scope } from './Scope'
+import type { CircuitDocument } from '@/lib/circuit'
+import { AutomationTimeline } from './AutomationPlayback'
 import './Recording.css'
 
 export function RecordingProvider({ capture, children }: { capture: Capture | null; children: ReactNode }) {
@@ -20,7 +22,7 @@ export function RecordingProvider({ capture, children }: { capture: Capture | nu
   return <RecordingContext.Provider value={playback}>{children}</RecordingContext.Provider>
 }
 
-export function RecordingTransport({ probes }: { probes: ProbeNodes }) {
+export function RecordingTransport({ probes, document }: { probes: ProbeNodes; document?: CircuitDocument }) {
   const { playback, seconds, playing, speed, loop, point } = useRecording()
   const available = !!playback.capture?.recording
   const picoTrace = playback.capture?.picoTrace
@@ -36,6 +38,7 @@ export function RecordingTransport({ probes }: { probes: ProbeNodes }) {
       <label className="recording-position"><input type="number" aria-label="Recording time milliseconds" min={playback.start * 1000} max={playback.end * 1000} step="any" value={Number((seconds * 1000).toFixed(4))} onChange={event => playback.seek(event.target.valueAsNumber / 1000)} /><span>/ {(playback.end * 1000).toLocaleString()} ms</span></label>
       <input className="recording-timeline" type="range" aria-label="Recording timeline" aria-valuetext={`${(seconds * 1000).toFixed(3)} milliseconds`} min={playback.start} max={playback.end || 0.1} step="any" value={seconds} onChange={event => playback.seek(Number(event.target.value))} />
     </fieldset>
+    {document && <AutomationTimeline document={document} />}
     <div className="recording-readings">{(['CH1', 'CH2'] as const).map(channel => <div key={channel}><span className={channel === 'CH1' ? 'ch1-text' : 'ch2-text'}>{channel}</span><output aria-label={`${channel} recorded voltage`}>{formatElectrical(probes[channel] ? point?.nodeVoltages[probes[channel]] : undefined, 'V')}</output></div>)}<p>Select a component for pin voltages, current and power at this time. LED brightness follows forward current.</p></div>
     {picoTrace && <details className="recording-gpio"><summary>Pico GPIO states</summary><div>{activePins.map(gpio => {
       const pin = samplePicoPin(picoTrace, gpio, seconds)

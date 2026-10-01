@@ -261,3 +261,7 @@
   .rotary-control.frequency-knob { width: 64px; }
   .rotary-control .knob-number input { width: 42px; }
 }
+.automations-shortcut { display: inline-flex; align-items: center; justify-content: center; gap: 7px; color: #c4cbbb; text-decoration: none; font-size: 12px; min-height: 36px; white-space: nowrap; }
+.automations-shortcut:hover { color: #e7f1cf; }
+.automations-shortcut:focus-visible { outline: 2px solid #cee399; outline-offset: 4px; border-radius: 4px; }
+.automations-count { min-width: 20px; padding: 2px 5px; border: 1px solid #59634d; border-radius: 5px; text-align: center; font: 11px monospace; color: #d1e4ac; }
