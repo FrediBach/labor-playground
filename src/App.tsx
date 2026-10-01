@@ -1,7 +1,7 @@
 import { createPico, PROJECT_LIMITS, type PicoCaptureMs } from '@/lib/pico/profile'
 const PicoPanel = lazy(() => import('@/components/pico/PicoPanel'))
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
-import { ArrowDownToLine, ArrowUpFromLine, Cable, ChevronDown, CircleHelp, CircuitBoard, Hand, Info, LoaderCircle, Maximize2, Minus, MousePointer2, PanelLeftOpen, Play, Plus, Redo2, RotateCcw, RotateCw, SlidersHorizontal, Undo2, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowUpFromLine, Cable, ChevronDown, CircleHelp, CircuitBoard, FolderOpen, Hand, Info, LoaderCircle, Maximize2, Minus, MousePointer2, PanelLeftOpen, Play, Plus, Redo2, RotateCcw, RotateCw, SlidersHorizontal, Undo2, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Breadboard } from '@/components/workbench/Breadboard'
 import { RecordingProvider, RecordingScope, RecordingTransport } from '@/components/workbench/Recording'
@@ -35,6 +35,9 @@ const WIRE_COLORS = ['#de8564', '#e5bd68', '#91bfad', '#86a8d7', '#b899ce', '#d2
 export default function App() {
   const { document, sourceSession, change, replace, changeSource, undo, redo, canUndo, canRedo, saved } = useDocument()
   const folder = useDirectorySync(document, replace)
+  const folderDescription = folder.supported
+    ? 'Keep a project in sync with circuit.json on your computer.'
+    : 'Folder access is unavailable in this browser. Use Import and Export, or desktop Chrome / Edge.'
   const [activeTab, setActiveTab] = useState<WorkspaceTab>(document.pico ? 'code' : 'circuit')
   const workspaceTab = activeTab === 'code' && !document.pico ? 'circuit' : activeTab
   const workspaceHeader = useRef<HTMLDivElement>(null)
@@ -205,9 +208,16 @@ export default function App() {
   const toolHint = editingLead ? `${editingLead.partId}: choose a free hole for lead ${editingLead.pinIndex + 1}. Escape cancels.` : panEnabled ? 'Drag the board to pan. Press Escape to return to selecting parts.' : tool === 'wire' ? 'Click a terminal to start a wire, then click its destination.' : tool === 'probe1' || tool === 'probe2' ? `Click a terminal to attach ${tool === 'probe1' ? 'CH1' : 'CH2'}.` : tool === 'select' ? 'Select a part to inspect it. Drag a part to move it.' : isDipTool(tool) ? 'Place pin 1 on row E at the trench. Press R for a 180° turn to row F.' : `Click a hole to place a ${PARTS[tool].label.toLowerCase()}. Press R to rotate.`
 
   return <RecordingProvider capture={simulation.status === 'ready' ? simulation.capture : null}><div className="app-shell dark">
-    <header className="app-header"><div className="header-branding"><a className="brand" href="#" onClick={e => e.preventDefault()} aria-label="Pico Labor home"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></a></div><div className="header-right"><span className="local-indicator"><span />LOCAL WORKBENCH</span><button className="icon-button" title="Workbench guide · ?" aria-label="Workbench guide" onClick={() => setHelpOpen(true)}><CircleHelp size={19} /></button><a className="about-link" href="https://www.ericasynths.lv/edu-diy-labor/" target="_blank" rel="noreferrer">Inspired by LABOR ↗</a></div></header>
+    <header className="app-header">
+      <div className="header-branding"><a className="brand" href="#" onClick={e => e.preventDefault()} aria-label="Pico Labor home"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></a><span className="brand-slogan">Circuit simulation &amp; Pico programming, inspired by the Erica Synths EDU Labor</span></div>
+      <div className="header-right">
+        {!folder.name && <span className="folder-connect" title={folderDescription}><button className="subtle-button" aria-describedby="folder-description" disabled={!folder.supported || folder.busy} onClick={() => void folder.connect()}><FolderOpen size={15} /><span>{folder.busy ? 'Connecting…' : 'Connect folder'}</span></button><span id="folder-description" className="sr-only">{folderDescription}</span></span>}
+        <button className="icon-button" title="Workbench guide · ?" aria-label="Workbench guide" onClick={() => setHelpOpen(true)}><CircleHelp size={18} /></button>
+        <a className="about-link" href="https://www.ericasynths.lv/edu-diy-labor/" target="_blank" rel="noreferrer">Inspired by LABOR ↗</a>
+      </div>
+    </header>
     <div ref={projectToolbar} className="project-toolbar" aria-label="Project controls">
-      <div className="project-title"><CircuitBoard size={20} /><div><strong>{document.title}</strong></div></div>
+      <div className="project-title"><CircuitBoard size={18} /><div><strong title={document.title}>{document.title}</strong></div></div>
       <div className="project-actions">
         <div className="history-actions"><button className="icon-button" aria-label="Undo" title="Undo · ⌘Z / Ctrl+Z" disabled={!canUndo} onClick={undo}><Undo2 size={18} /></button><button className="icon-button" aria-label="Redo" title="Redo · ⇧⌘Z / Ctrl+Shift+Z" disabled={!canRedo} onClick={redo}><Redo2 size={18} /></button></div>
         <label className="example-select"><span>Examples</span><select aria-label="Load example" value={exampleId} onChange={e => loadExample(e.target.value)}>{!exampleId && <option value="">Custom circuit</option>}{(['Basic', 'Intermediate', 'Advanced'] as const).map(level => <optgroup key={level} label={level}>{examples.filter(example => example.level === level).map(example => <option key={example.id} value={example.id}>{example.name}</option>)}</optgroup>)}</select><ChevronDown size={14} /></label>
@@ -225,11 +235,11 @@ export default function App() {
         </Button>
       </div>
     </div>
-    <div className="folder-toolbar" aria-label="Local folder sync">
-      <div><strong>{folder.name ? `Folder: ${folder.name}` : 'Local project folder'}</strong><span role="status">{folder.status || (folder.supported ? 'Keep a project in sync with circuit.json on your computer.' : 'Folder access is unavailable in this browser. Use Import and Export, or desktop Chrome / Edge.')}{folder.name && folder.dirty && !folder.conflict ? ' Workbench changes pending.' : ''}</span></div>
-      <div className="folder-actions">{folder.name ? <><button className="subtle-button" disabled={folder.busy || folder.conflict} onClick={() => void folder.sync()}>{folder.busy ? 'Syncing…' : 'Sync now'}</button><button className="subtle-button" disabled={folder.busy} onClick={folder.disconnect}>Disconnect</button></> : <button className="subtle-button" disabled={!folder.supported || folder.busy} onClick={() => void folder.connect()}>Connect folder</button>}</div>
+    {(folder.name || folder.status) && <div className="folder-toolbar" aria-label="Local folder sync">
+      <div><strong>{folder.name ? `Folder: ${folder.name}` : 'Local project folder'}</strong><span role="status">{folder.status}{folder.name && folder.dirty && !folder.conflict ? ' Workbench changes pending.' : ''}</span></div>
+      <div className="folder-actions">{folder.name && <><button className="subtle-button" disabled={folder.busy || folder.conflict} onClick={() => void folder.sync()}>{folder.busy ? 'Syncing…' : 'Sync now'}</button><button className="subtle-button" disabled={folder.busy} onClick={() => { folder.disconnect(); message('Folder disconnected. Files remain on disk.') }}>Disconnect</button></>}</div>
       {folder.conflict && <div className="folder-conflict" role="alert"><span>Choose a version for circuit.json. Keeping the workbench overwrites the folder file; loading the folder replaces the workbench and can be undone.</span><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('local')}>Keep workbench</button><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('disk')}>Load folder version</button></div>}
-    </div>
+    </div>}
     <main className={`workbench-layout ${!partsOpen ? 'parts-collapsed' : ''} ${!inspectorOpen ? 'inspector-collapsed' : ''}`}>
       {partsOpen && <PartsLibrary tool={tool} onToolChange={setTool} onPlace={kind => { setTool(kind); setRotation(0) }} hasPico={!!document.pico} onAddPico={() => { change({ ...document, schemaVersion: 2, pico: createPico() }); openTab('code') }} wireColor={wireColor} wireColors={WIRE_COLORS} onWireColorChange={setWireColor} partCount={document.parts.length} onCollapse={() => setPartsOpen(false)} onClear={() => { change({ ...createEmptyDocument(), ...(document.pico ? { schemaVersion: 2 as const, pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }} />}
       <div className="workspace">

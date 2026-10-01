@@ -67,6 +67,7 @@ test('shortcuts switch tools and tabs without changing text input', async ({ pag
 test('folder sync saves, loads external edits, resolves conflicts, and recovers from denied writes', async ({ page }) => {
   await mockFolder(page)
   await page.goto('/')
+  await expect(page.locator('.folder-toolbar')).toHaveCount(0)
   await page.getByRole('button', { name: 'Connect folder' }).click()
   expect(await page.evaluate(() => window.testDisk.writes)).toBe(0)
   await page.keyboard.press('Control+s')
@@ -94,6 +95,7 @@ test('folder sync saves, loads external edits, resolves conflicts, and recovers 
   expect(await page.evaluate(() => window.testDisk.writes)).toBe(3)
   await page.getByRole('button', { name: 'Disconnect', exact: true }).click()
   await expect(page.getByRole('button', { name: 'Connect folder' })).toBeEnabled()
+  await expect(page.locator('.folder-toolbar')).toHaveCount(0)
   expect(await page.evaluate(() => window.testDisk.content)).toBeTruthy()
 })
 
@@ -121,7 +123,8 @@ test('unsupported browsers retain file export and disabled folder controls', asy
   await page.addInitScript(() => { Object.defineProperty(window, 'showDirectoryPicker', { value: undefined }) })
   await page.goto('/')
   await expect(page.getByRole('button', { name: 'Connect folder' })).toBeDisabled()
-  await expect(page.locator('.folder-toolbar')).toContainText('Folder access is unavailable')
+  await expect(page.getByRole('button', { name: 'Connect folder' })).toHaveAccessibleDescription(/Folder access is unavailable/)
+  await expect(page.locator('.folder-toolbar')).toHaveCount(0)
   const download = page.waitForEvent('download')
   await page.keyboard.press('Control+s')
   expect((await download).suggestedFilename()).toMatch(/\.json$/)

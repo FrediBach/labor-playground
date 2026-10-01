@@ -81,7 +81,7 @@ export function useDirectorySync(document: CircuitDocument, replace: (next: Circ
   })
   function disconnect() {
     if (locked.current) return
-    directory.current = null; baseline.current = null; setName(''); setSynced(null); setConflict(false); setStatus('Folder disconnected. Files remain on disk.')
+    directory.current = null; baseline.current = null; setName(''); setSynced(null); setConflict(false); setStatus('')
   }
   return { supported: !!picker && window.isSecureContext, name, busy, status, conflict, dirty: !!name && serialize(document) !== synced, connect, sync, disconnect }
 }
