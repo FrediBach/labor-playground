@@ -83,9 +83,12 @@ test('parts, connections, and Pico remain available at phone, tablet, and laptop
     await withinPage(page.getByRole('button', { name: 'Simulate', exact: true }), width)
     await withinPage(page.getByRole('status', { name: 'Simulation status', exact: true }), width)
     await withinPage(page.getByRole('link', { name: 'View results', exact: true }), width)
-    for (const tab of ['Circuit', 'Results', 'Automations']) {
+    for (const tab of ['Circuit', 'Results', 'Automations', 'Overview']) {
       await withinPage(page.getByRole('tab', { name: tab, exact: true }), width)
     }
+    await page.getByRole('tab', { name: 'Overview', exact: true }).click()
+    await expect(page.getByRole('table', { name: 'Circuit parts', exact: true })).toBeVisible()
+    await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(width)
     await page.getByRole('tab', { name: 'Results', exact: true }).click()
     await withinPage(page.getByLabel('Simulation duration', { exact: true }), width)
     await withinPage(page.getByRole('button', { name: 'Capture', exact: true }), width)
@@ -146,7 +149,7 @@ test('top Simulate and both editor shortcuts execute Pico code without changing 
   }
 })
 
-test('circuit errors remain visible with Inspector closed and correction restores Simulate', async ({ page }) => {
+test('circuit errors remain visible with Inspector closed and correction restores Simulate', async ({ page }, testInfo) => {
   await page.goto('/')
   await page.getByRole('combobox', { name: 'Load example' }).selectOption('opamp-amplifier')
   await captured(page)
@@ -162,6 +165,17 @@ test('circuit errors remain visible with Inspector closed and correction restore
   await expect(page.getByRole('alert')).toContainText('U1 V+ (pin 8) has no connected supply')
   await expect(page.getByRole('button', { name: 'Simulate', exact: true })).toBeDisabled()
   await expect(page.getByRole('complementary', { name: 'Inspector', exact: true })).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'View circuit details', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Overview', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('complementary', { name: 'Inspector', exact: true })).toHaveCount(0)
+  const checks = page.getByRole('region', { name: 'Circuit checks', exact: true })
+  await expect(checks).toContainText('U1 V+ (pin 8) has no connected supply')
+  await page.screenshot({ path: testInfo.outputPath('overview-error.png'), fullPage: true })
+  await checks.getByRole('listitem').filter({ hasText: 'U1 V+ (pin 8) has no connected supply' }).getByRole('button', { name: 'Inspect U1', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Circuit', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.getByRole('complementary', { name: 'Inspector', exact: true })).toContainText('U1')
+  await expect(page.getByRole('complementary', { name: 'Inspector', exact: true }).getByRole('heading', { name: 'TL072-style dual op-amp', exact: true })).toBeVisible()
 
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
   await captured(page)

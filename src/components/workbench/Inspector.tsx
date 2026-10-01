@@ -1,5 +1,5 @@
-import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2, Zap } from 'lucide-react'
-import { PARTS, formatValue, type CircuitDocument, type CircuitExample, type Diagnostic, type Part } from '@/lib/circuit'
+import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2 } from 'lucide-react'
+import { PARTS, type CircuitDocument, type Part } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
@@ -11,15 +11,8 @@ interface InspectorProps {
   document: CircuitDocument
   selectedId: string | null
   onChange: (document: CircuitDocument) => void
-  onSelect: (id: string | null) => void
   onDelete: () => void
-  example?: CircuitExample
-  onRestore: (id: string) => void
   colors: string[]
-  status: string
-  error: string | null
-  diagnostics: Diagnostic[]
-  netlist: string
   operatingPoint?: OperatingPoint
   nodeByTerminal?: Record<string, string>
   editingLead?: LeadEdit | null
@@ -27,7 +20,7 @@ interface InspectorProps {
   onFinishLeadEdit: () => void
 }
 
-export function Inspector({ document, selectedId, onChange, onSelect, onDelete, example, onRestore, colors, status, error, diagnostics, netlist, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
+export function Inspector({ document, selectedId, onChange, onDelete, colors, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
@@ -48,7 +41,7 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
 
   return (
     <aside className="inspector" aria-label="Inspector">
-      <div className="panel-heading"><h2>Inspector</h2><span className="tiny-tag">{part ? part.id : wire ? 'WIRE' : 'WORKBENCH'}</span></div>
+      <div className="panel-heading"><h2>Inspector</h2><span className="tiny-tag">{part?.id ?? wire?.id ?? '—'}</span></div>
       {part && definition ? <>
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
@@ -118,38 +111,8 @@ export function Inspector({ document, selectedId, onChange, onSelect, onDelete, 
         ))}</div></div>
         <button className="delete-part" onClick={onDelete}><Trash2 size={14} />Remove wire<kbd>⌫</kbd></button>
       </> : (
-        <div className="inspector-empty"><MousePointer2 size={28} /><h2>A closer look.</h2><p>Select a component or a wire to inspect its values and connections.</p></div>
+        <div className="inspector-empty"><MousePointer2 size={28} /><h2>No selection</h2><p>Select a component or a wire to inspect its values and connections.</p></div>
       )}
-      <div className="experiment-card">
-        <span className="eyebrow"><Zap size={12} /> {example ? `${example.level} · ${example.document.parts.length} ${example.document.parts.length === 1 ? 'part' : 'parts'}` : 'THE EXPERIMENT'}</span>
-        <h3>{example?.name ?? 'A blank canvas'}</h3>
-        {example ? <>
-          <p>{example.description}</p>
-          <details className="experiment-lesson">
-            <summary>What to try</summary>
-            <h4>Change</h4><p>{example.whatToChange}</p>
-            <h4>Observe</h4><p>{example.whatToObserve}</p>
-            <h4>Why it happens</h4><p>{example.why}</p>
-          </details>
-          <details className="experiment-lesson">
-            <summary>Build on EDU LABOR</summary>
-            <p>{example.hardware}</p>
-            <h4>Parts on this board</h4>
-            <ul className="experiment-parts">{document.parts.map(item => <li key={item.id}><strong>{item.id}</strong> {PARTS[item.kind].label} · {formatValue(item.value, item.kind)}</li>)}</ul>
-            <p>Use full-kit parts or equivalent separately sourced components. Recreate the electrical connections on LABOR’s breadboard; virtual hole names are not hardware coordinates. Use non-polarized capacitors rated at least 25 V unless a polarized part is specified.</p>
-            <p>Connect a common GND. Measure physical source levels and use attenuation where needed; virtual amplitude and timing settings are illustrative. Send audio through LABOR AUDIO IN and its output amplifier.</p>
-            <a href="https://www.ericasynths.lv/service/file/download/product_id/804/file_id/534/" target="_blank" rel="noreferrer">LABOR manual ↗</a>
-          </details>
-          <button className="subtle-button" onClick={() => onRestore(example.id)}><RotateCcw size={12} />Restore example</button>
-        </> : <p>Add components, wire them to a source and ground, and measure what you build.</p>}
-      </div>
-      <div className="diagnostics">
-        <div className="section-overline">CIRCUIT STATUS</div>
-        {error ? <p className="error-copy">{error}</p> : diagnostics.length ? diagnostics.map((diagnostic, index) => (
-          <button key={index} className={`diagnostic ${diagnostic.severity}`} onClick={() => { if (diagnostic.partId) onSelect(diagnostic.partId) }}><Info size={13} />{diagnostic.message}</button>
-        )) : <p className="healthy-status"><span />{status === 'ready' ? 'Capture complete' : status === 'loading' ? 'Starting simulation engine…' : status === 'calculating' ? 'Calculating your circuit…' : 'Ready to capture'}</p>}
-        <details className="debug-details"><summary>View generated netlist</summary><pre>{netlist}</pre></details>
-      </div>
     </aside>
   )
 }

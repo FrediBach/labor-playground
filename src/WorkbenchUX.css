@@ -298,6 +298,7 @@
 .workspace-tabs [role="tab"][aria-selected="true"] { color: #f2d5a5; border-bottom-color: #edc580; }
 .workspace-tabs [role="tab"]:focus-visible { outline: 2px solid #edc580; outline-offset: -4px; border-radius: 4px; }
 .workspace-tab-count { min-width: 18px; padding: 1px 4px; border-radius: 4px; background: #3e493c; color: #cdddbb; font: 10px/1.5 monospace; }
+.workspace-tab-count.has-issues { background: #4c3b2a; color: #f2c68e; }
 .workspace-actions { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
 .workspace-actions .icon-button { width: 32px; height: 32px; }
 .workspace-actions .is-on { background: #343c35; color: #d9e1d7; }

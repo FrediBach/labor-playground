@@ -33,7 +33,7 @@ The automation changes the electrical simulation as it runs. A switch can interr
 
 **Voltage-triggered gate release** charges a 1 µF capacitor through 10 kΩ. A timed automation raises EG at 10 ms. When the capacitor voltage on CH2 crosses 3 V, a voltage automation lowers EG and the capacitor begins to discharge. With the source’s 100 Ω output resistance, the time constant is 10.1 ms and release occurs around 19.3 ms into the recording. Raising the threshold to 4 V moves release to around 26.3 ms. Increasing the capacitor slows both charging and discharge.
 
-Both examples fit the default 100 ms recording. Their **What to try** and **Build on EDU LABOR** notes explain the circuits and distinguish simulated automation from a manual hardware experiment.
+Both examples fit the default 100 ms recording. Their **What to try** and **Build on EDU LABOR** notes in **Overview** explain the circuits and distinguish simulated automation from a manual hardware experiment.
 
 ## Editing and repeatability
 

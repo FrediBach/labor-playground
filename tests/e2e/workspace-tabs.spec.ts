@@ -9,7 +9,7 @@ const savedDocument = (page: Page) => page.evaluate(() => JSON.parse(localStorag
 test('workspace tabs isolate their panels and support arrow, Home and End navigation', async ({ page }) => {
   await page.goto('/')
   const tabs = page.getByRole('tablist', { name: 'Workspace', exact: true })
-  await expect(tabs.getByRole('tab')).toHaveText(['Circuit', 'Results', 'Automations'])
+  await expect(tabs.getByRole('tab')).toHaveText(['Circuit', 'Results', 'Automations', 'Overview'])
   await expect(tab(page, 'Circuit')).toHaveAttribute('aria-selected', 'true')
   await expect(page.getByRole('tabpanel', { name: 'Circuit', exact: true })).toBeVisible()
   await expect(page.getByTestId('board-viewport')).toBeVisible()
@@ -17,9 +17,9 @@ test('workspace tabs isolate their panels and support arrow, Home and End naviga
   await expect(page.locator('.automations-panel')).toBeHidden()
   await expect(page.getByLabel('Simulation duration')).toBeHidden()
   // Panels remain in the document while only the active one is exposed.
-  await expect(page.locator('[role="tabpanel"]')).toHaveCount(3)
+  await expect(page.locator('[role="tabpanel"]')).toHaveCount(4)
   await expect(page.getByRole('tabpanel')).toHaveCount(1)
-  for (const name of ['Circuit', 'Results', 'Automations']) {
+  for (const name of ['Circuit', 'Results', 'Automations', 'Overview']) {
     const control = tab(page, name)
     const panelId = await control.getAttribute('aria-controls')
     expect(panelId).toBeTruthy()
@@ -28,8 +28,8 @@ test('workspace tabs isolate their panels and support arrow, Home and End naviga
 
   await tab(page, 'Circuit').focus()
   for (const [key, name] of [
-    ['ArrowRight', 'Results'], ['End', 'Automations'], ['ArrowRight', 'Circuit'],
-    ['ArrowLeft', 'Automations'], ['Home', 'Circuit'],
+    ['ArrowRight', 'Results'], ['End', 'Overview'], ['ArrowRight', 'Circuit'],
+    ['ArrowLeft', 'Overview'], ['Home', 'Circuit'],
   ]) {
     await page.keyboard.press(key)
     await expect(tab(page, name)).toBeFocused()
@@ -46,6 +46,9 @@ test('workspace tabs isolate their panels and support arrow, Home and End naviga
   await expect(page.getByRole('region', { name: 'Automations', exact: true })).toBeVisible()
   await expect(page.getByLabel('Simulation duration')).toBeVisible()
   await expect(page.locator('.recording-panel')).toBeHidden()
+  await tab(page, 'Overview').click()
+  await expect(page.getByRole('tabpanel', { name: 'Overview', exact: true })).toBeVisible()
+  await expect(page.getByLabel('Simulation duration')).toBeHidden()
 })
 
 test('switching tabs retains board zoom, recording position and scope settings', async ({ page }) => {
@@ -62,6 +65,7 @@ test('switching tabs retains board zoom, recording position and scope settings',
   await expect(page.getByRole('table', { name: 'Channel measurements', exact: true })).toBeVisible()
 
   await tab(page, 'Automations').click()
+  await tab(page, 'Overview').click()
   await tab(page, 'Circuit').click()
   await expect(page.getByTestId('board-viewport')).toHaveAttribute('data-zoom', zoom!)
   await expect(page.getByRole('checkbox', { name: 'Show connections', exact: true })).toBeChecked()
@@ -76,7 +80,7 @@ test('board shortcuts are scoped to Circuit while history stays available in Res
   await ready(page)
   await page.getByRole('button', { name: 'Wire tool', exact: true }).click()
   const before = await savedDocument(page)
-  for (const name of ['Results', 'Automations']) {
+  for (const name of ['Results', 'Automations', 'Overview']) {
     await tab(page, name).click()
     for (const key of ['v', 'w', 'r', 'Delete', 'Backspace']) await page.keyboard.press(key)
     await expect(tab(page, name)).toHaveAttribute('aria-selected', 'true')
@@ -122,6 +126,10 @@ test('Pico Code appears when needed and preserves editor state between tabs', as
   await expect(tab(page, 'Pico Code')).toHaveCount(0)
   await page.getByRole('button', { name: /Raspberry Pi Pico/ }).click()
   await expect(tab(page, 'Pico Code')).toHaveAttribute('aria-selected', 'true')
+  const workspaceTabs = page.getByRole('tablist', { name: 'Workspace', exact: true }).getByRole('tab')
+  const tabNames = ['Circuit', 'Results', 'Automations', 'Pico Code', 'Overview']
+  await expect(workspaceTabs).toHaveCount(tabNames.length)
+  for (const [index, name] of tabNames.entries()) await expect(workspaceTabs.nth(index)).toHaveAccessibleName(name)
   const editor = page.getByRole('textbox', { name: 'Pico main.py editor', exact: true })
   await expect(editor).toBeVisible({ timeout: 45_000 })
   await editor.focus()

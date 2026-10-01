@@ -12,6 +12,7 @@ import { AudioMonitor } from '@/components/workbench/AudioMonitor'
 import { BoardViewport, type BoardViewportHandle } from '@/components/workbench/BoardViewport'
 import type { LeadEdit } from '@/lib/part-editing'
 import { Inspector } from '@/components/workbench/Inspector'
+import { OverviewPanel } from '@/components/workbench/OverviewPanel'
 import { PartsLibrary } from '@/components/workbench/PartsLibrary'
 import { RotaryControl, FrequencyKnob } from '@/components/workbench/ParameterControls'
 import { EnvelopeControls } from '@/components/workbench/EnvelopeControls'
@@ -79,7 +80,10 @@ export default function App() {
   const captureNow = simulation.captureNow
   const simulationBusy = simulation.status === 'loading' || simulation.status === 'calculating'
   const simulationBlocked = simulation.status === 'invalid'
-  const simulationIssue = simulation.error ?? simulation.diagnostics.find(item => item.severity === 'error')?.message
+  const circuitIssues = simulation.error && !simulation.diagnostics.some(item => item.message === simulation.error)
+    ? [{ severity: 'error' as const, message: simulation.error }, ...simulation.diagnostics]
+    : simulation.diagnostics
+  const simulationIssue = circuitIssues.find(item => item.severity === 'error')?.message
   const simulationLabel = simulationBusy ? 'Simulating circuit…'
     : simulation.status === 'ready' ? 'Results up to date'
     : simulation.status === 'invalid' ? 'Check circuit connections'
@@ -136,6 +140,17 @@ export default function App() {
     window.addEventListener('keydown', key); return () => window.removeEventListener('keydown', key)
   }, [deleteSelection, helpOpen, redo, tool, undo, setTool, workspaceTab])
 
+  function inspectComponent(id: string) {
+    setSelectedId(id)
+    setInspectorOpen(true)
+    setTool('select')
+    requestAnimationFrame(() => {
+      const part = window.document.querySelector<HTMLElement>(`[data-part="${CSS.escape(id)}"], [data-wire="${CSS.escape(id)}"]`)
+      part?.scrollIntoView({ block: 'center', inline: 'nearest' })
+      part?.focus({ preventScroll: true })
+    })
+  }
+
   function loadExample(id: string) {
     const example = examples.find(item => item.id === id)
     if (!example) return
@@ -186,10 +201,10 @@ export default function App() {
     <main className={`workbench-layout ${!partsOpen ? 'parts-collapsed' : ''} ${!inspectorOpen ? 'inspector-collapsed' : ''}`}>
       {partsOpen && <PartsLibrary tool={tool} onToolChange={setTool} onPlace={kind => { setTool(kind); setRotation(0) }} hasPico={!!document.pico} onAddPico={() => { change({ ...document, schemaVersion: 2, pico: createPico() }); openTab('code') }} wireColor={wireColor} wireColors={WIRE_COLORS} onWireColorChange={setWireColor} partCount={document.parts.length} onCollapse={() => setPartsOpen(false)} onClear={() => { change({ ...createEmptyDocument(), ...(document.pico ? { schemaVersion: 2 as const, pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }} />}
       <div className="workspace">
-        {simulationIssue && <div className="simulation-error" role="alert"><Info size={18} /><div><strong>Simulation needs your attention</strong><p>{simulationIssue}</p><button className="subtle-button" onClick={() => { setInspectorOpen(true); requestAnimationFrame(() => window.document.querySelector('.diagnostics')?.scrollIntoView({ block: 'center' })) }}>View circuit details</button></div></div>}
+        {simulationIssue && workspaceTab !== 'overview' && <div className="simulation-error" role="alert"><Info size={18} /><div><strong>Simulation needs your attention</strong><p>{simulationIssue}</p><button className="subtle-button" onClick={() => { openTab('overview', true); requestAnimationFrame(() => window.document.getElementById('workspace-tab-overview')?.focus({ preventScroll: true })) }}>View circuit details</button></div></div>}
         <div className="workspace-header" ref={workspaceHeader}>
           <h1 className="sr-only">Circuit workspace</h1>
-          <WorkspaceTabs active={workspaceTab} onChange={openTab} hasPico={!!document.pico} automationCount={document.automations?.filter(item => item.enabled).length ?? 0} />
+          <WorkspaceTabs active={workspaceTab} onChange={openTab} hasPico={!!document.pico} automationCount={document.automations?.filter(item => item.enabled).length ?? 0} issueCount={circuitIssues.length} />
           <div className="workspace-actions">{!partsOpen && <button className="icon-button" title="Open parts library" aria-label="Open parts library" onClick={() => setPartsOpen(true)}><PanelLeftOpen size={17} /></button>}<button className={`icon-button ${inspectorOpen ? 'is-on' : ''}`} title="Toggle inspector" aria-label="Toggle inspector" aria-pressed={inspectorOpen} onClick={() => setInspectorOpen(!inspectorOpen)}><SlidersHorizontal size={17} /></button></div>
         </div>
         <div className="workspace-panel" id="workspace-panel-circuit" role="tabpanel" aria-labelledby="workspace-tab-circuit" hidden={workspaceTab !== 'circuit'}>
@@ -227,19 +242,20 @@ export default function App() {
         <OperatingPointPanel operatingPoint={operatingPoint} probes={document.probes} nodeByTerminal={simulation.nodeByTerminal} onHighlight={highlightChannel} />
         </div>
         </div>
+        <div className="workspace-panel" id="workspace-panel-overview" role="tabpanel" aria-labelledby="workspace-tab-overview" hidden={workspaceTab !== 'overview'}>
+          <OverviewPanel document={document} example={currentExample} onRestore={loadExample} status={simulation.status} diagnostics={circuitIssues} netlist={simulation.netlist} onInspect={inspectComponent} onOpenCircuit={() => openTab('circuit')} onViewResults={() => openTab('results')} />
+        </div>
       </div>
       {inspectorOpen && (
         <Inspector
-          document={document} selectedId={selectedId} onChange={change} onSelect={setSelectedId}
-          onDelete={deleteSelection} example={currentExample} onRestore={loadExample}
-          colors={WIRE_COLORS} status={simulation.status} error={simulation.error}
-          diagnostics={simulation.diagnostics} netlist={simulation.netlist} operatingPoint={operatingPoint} nodeByTerminal={simulation.nodeByTerminal}
+          document={document} selectedId={selectedId} onChange={change} onDelete={deleteSelection}
+          colors={WIRE_COLORS} operatingPoint={operatingPoint} nodeByTerminal={simulation.nodeByTerminal}
           editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit}
         />
       )}
     </main>
     <footer className="app-footer"><span><span className={`small-status-dot ${saved ? '' : 'unsaved'}`} />{saved ? 'Browser recovery copy saved' : 'Browser recovery unavailable'}<span className="footer-separator">·</span>Export a file to keep a separate copy.</span><span className="copyright">© 2026 <a href="https://fredibach.com">Fredi Bach</a></span><span>Simulation runs locally.</span></footer>
     {notice && <div className="toast" role="status" aria-label="Workbench notification"><Info size={16} /><span>{notice}</span><button className="icon-button" aria-label="Dismiss notification" onClick={() => setNotice('')}><X size={14} /></button></div>}
-    <dialog ref={guideDialog} className="guide-dialog" aria-labelledby="guide-title" onClose={() => setHelpOpen(false)}><button className="icon-button modal-close" aria-label="Close guide" autoFocus onClick={() => setHelpOpen(false)}><X size={18} /></button><h2 id="guide-title">Workbench guide</h2><p>{document.pico ? 'Edit main.py, then select Simulate. The selected duration of GPIO output drives your circuit; the scope and serial console show the results.' : exampleId === examples[0].id ? 'Start with the filter: select C1 and change its capacitance. CH1 measures the input; CH2 shows what makes it through.' : 'Load an example to explore a working circuit, or build your own. Connect a source and ground, attach a probe, and select Simulate to see the result.'}</p><ol><li><strong>Build.</strong> Choose a part, then click a hole. Rotate with R. Drag existing parts to move them. Select a two-lead part and use Move beside a lead to adjust its spacing.</li><li><strong>Connect.</strong> Choose the wire tool and click two terminals. The five holes in each vertical strip connect internally. The center trench and the rail breaks stay separate.</li><li><strong>Measure.</strong> Choose a CH1 or CH2 probe, then a terminal. Simulate in the top bar runs the circuit from its initial state. Use ⌘Enter or Ctrl+Enter from anywhere, including the Pico editor. The Results tab contains the full oscilloscope and recording; Capture there repeats the same simulation. Open Measurements under the scope for cursors and waveform statistics. Choose a recording duration up to 10 seconds. Scrub the recording timeline or play it in a loop; component readings and LEDs follow its selected time. Slow playback to see fast changes. Use Trigger to frame a crossing and DC operating point to inspect the initial state. Click a channel label to highlight its connection. Drag the grip beneath the trace to resize the scope. Choose Steady loop in Audio / Power to listen to a settled periodic signal; edits stop playback.</li><li><strong>Automate.</strong> Open Automations to schedule a knob ramp, switch change, or gate press at a time or a voltage crossing. Each enabled action runs once per capture. Click a fired event to inspect its moment in the recording; playback values appear beside automated controls. Export includes your automations.</li><li><strong>Keep it.</strong> Export your circuit as JSON. Import it anytime; undo also works after loading or clearing a board.</li></ol><div className="guide-note"><Info size={17} /><p>This first build uses a documented virtual breadboard and simplified instrument sources. It is inspired by LABOR, and is not an exact hardware replica. The TL072-style dual op-amp requires visible supply connections. The control board operates potentiometers and switches placed on the breadboard. The EG terminal provides a held gate, a short trigger, or a decay envelope; Fire starts a fresh capture. The recording loop replays the whole capture; the audio monitor loops only verified settled cycles. Calibrated hardware models and live audio simulation remain future work.</p></div><Button onClick={() => setHelpOpen(false)}>Close guide <ChevronDown size={14} /></Button></dialog>
+    <dialog ref={guideDialog} className="guide-dialog" aria-labelledby="guide-title" onClose={() => setHelpOpen(false)}><button className="icon-button modal-close" aria-label="Close guide" autoFocus onClick={() => setHelpOpen(false)}><X size={18} /></button><h2 id="guide-title">Workbench guide</h2><p>{document.pico ? 'Edit main.py, then select Simulate. The selected duration of GPIO output drives your circuit; the scope and serial console show the results.' : exampleId === examples[0].id ? 'Start with the filter: select C1 and change its capacitance. CH1 measures the input; CH2 shows what makes it through.' : 'Load an example, or build your own. Overview contains circuit checks, example instructions, and the parts list. Connect a source and ground, attach a probe, and select Simulate to see the result.'}</p><ol><li><strong>Build.</strong> Choose a part, then click a hole. Rotate with R. Drag existing parts to move them. Select a two-lead part and use Move beside a lead to adjust its spacing.</li><li><strong>Connect.</strong> Choose the wire tool and click two terminals. The five holes in each vertical strip connect internally. The center trench and the rail breaks stay separate.</li><li><strong>Measure.</strong> Choose a CH1 or CH2 probe, then a terminal. Simulate in the top bar runs the circuit from its initial state. Use ⌘Enter or Ctrl+Enter from anywhere, including the Pico editor. The Results tab contains the full oscilloscope and recording; Capture there repeats the same simulation. Open Measurements under the scope for cursors and waveform statistics. Choose a recording duration up to 10 seconds. Scrub the recording timeline or play it in a loop; component readings and LEDs follow its selected time. Slow playback to see fast changes. Use Trigger to frame a crossing and DC operating point to inspect the initial state. Click a channel label to highlight its connection. Drag the grip beneath the trace to resize the scope. Choose Steady loop in Audio / Power to listen to a settled periodic signal; edits stop playback.</li><li><strong>Automate.</strong> Open Automations to schedule a knob ramp, switch change, or gate press at a time or a voltage crossing. Each enabled action runs once per capture. Click a fired event to inspect its moment in the recording; playback values appear beside automated controls. Export includes your automations.</li><li><strong>Keep it.</strong> Export your circuit as JSON. Import it anytime; undo also works after loading or clearing a board.</li></ol><div className="guide-note"><Info size={17} /><p>This first build uses a documented virtual breadboard and simplified instrument sources. It is inspired by LABOR, and is not an exact hardware replica. The TL072-style dual op-amp requires visible supply connections. The control board operates potentiometers and switches placed on the breadboard. The EG terminal provides a held gate, a short trigger, or a decay envelope; Fire starts a fresh capture. The recording loop replays the whole capture; the audio monitor loops only verified settled cycles. Calibrated hardware models and live audio simulation remain future work.</p></div><Button onClick={() => setHelpOpen(false)}>Close guide <ChevronDown size={14} /></Button></dialog>
   </div></RecordingProvider>
 }
