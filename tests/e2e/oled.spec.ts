@@ -34,7 +34,7 @@ test('OLED library, Pico firmware and scrubbable display frames', async ({ page 
   await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await expect(page.locator('[data-oled="OLED1"] [data-oled-pixels]')).toHaveAttribute('d', '')
   await page.reload()
-  await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
+  await expect(page.getByRole('tab', { name: 'Circuit', exact: true })).toHaveAttribute('aria-selected', 'true')
   await expect(page.locator('[data-part="OLED1"]')).toBeVisible()
   await expect(page.locator('[data-oled="OLED1"]')).toHaveAttribute('data-oled-state', 'off')
   expect(errors).toEqual([])

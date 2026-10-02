@@ -64,6 +64,8 @@ test('Pico PWM workflow, local assets, keyboard focus, stale edits and persisten
   await expect(page.locator('.pico-editor')).toBeVisible()
   await expect.poll(() => page.evaluate(() => localStorage.getItem('labor-playground.document.v1'))).toContain('# wiring remains unchanged')
   await page.reload()
+  await expect(page.getByRole('tab', { name: 'Circuit', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await page.getByRole('tab', { name: 'Pico Code', exact: true }).click()
   await expect(page.getByLabel('Pico serial console')).toContainText('Use print() in your code, then Simulate to see serial output here.')
   await page.screenshot({ path: testInfo.outputPath('pico-workbench.png'), fullPage: true })
   expect(external).toEqual([])

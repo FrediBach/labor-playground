@@ -38,7 +38,7 @@ export default function App() {
   const folderDescription = folder.supported
     ? 'Keep a project in sync with circuit.json on your computer.'
     : 'Folder access is unavailable in this browser. Use Import and Export, or desktop Chrome / Edge.'
-  const [activeTab, setActiveTab] = useState<WorkspaceTab>(document.pico ? 'code' : 'circuit')
+  const [activeTab, setActiveTab] = useState<WorkspaceTab>('circuit')
   const workspaceTab = activeTab === 'code' && !document.pico ? 'circuit' : activeTab
   const workspaceHeader = useRef<HTMLDivElement>(null)
   const openTab = useCallback((tab: WorkspaceTab, reveal = false) => {
