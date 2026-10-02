@@ -7,7 +7,7 @@ import {
 import type { CircuitDocument, Part, ComponentKind } from '@/lib/circuit'
 import { hasEditableLeads, leadPlacementError, previewLeadPins, type LeadEdit } from '@/lib/part-editing'
 import { PartGlyph } from './PartGlyph'
-import { RecordedLed, RecordedTerminalVoltage } from './Recording'
+import { RecordedOled, RecordedLed, RecordedTerminalVoltage } from './Recording'
 import { PicoBoard } from './PicoBoard'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
@@ -85,7 +85,7 @@ function makeId(prefix: string, document: CircuitDocument) {
   return `${prefix}${value}`
 }
 
-const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U' }
+const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
@@ -319,16 +319,16 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     }))
     const span = Math.hypot(b.x - a.x, b.y - a.y)
     const threeLeadPackage = part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp'
-    const bounds = dipPackage
+    const bounds = part.kind === 'ssd1306' ? { x: -77, y: -5, width: 154, height: 119 } : dipPackage
       ? { x: -span / 2 - 15, y: -35, width: span + 30, height: 74 }
       : threeLeadPackage
         ? { x: -span / 2 - 8, y: -45, width: span + 16, height: 56 }
         : { x: -span / 2 - 5, y: -23, width: span + 10, height: 46 }
-    const labelY = dipPackage ? 43
+    const labelY = part.kind === 'ssd1306' ? Math.abs(angle) > 135 ? -138 : 118 : dipPackage ? 43
       : threeLeadPackage ? Math.abs(angle) > 135 ? 48 : Math.abs(angle) > 45 ? 34 : 13
         : Math.abs(angle) > 45 && Math.abs(angle) < 135 ? -11 : 22
     const label = `${part.id} · ${formatValue(part.value, part.kind)}`
-    const labelWidth = dipPackage ? Math.max(110, label.length * 6 + 12) : part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
+    const labelWidth = part.kind === 'ssd1306' ? 145 : dipPackage ? Math.max(110, label.length * 6 + 12) : part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
     const labelX = terminals.length === 2 && Math.abs(angle) > 45 && Math.abs(angle) < 135 ? 54 : 0
     return <g key={part.id}
       data-part={preview ? undefined : part.id}
@@ -373,7 +373,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       <title>{label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
       <g transform={`rotate(${angle})`}>
         <rect {...bounds} fill="transparent" />
-        {part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />}
+        {part.kind === 'ssd1306' && !preview ? <RecordedOled partId={part.id} kind={part.kind} pins={pins} selected={selectedId === part.id} /> : part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />}
       </g>
       {!preview && <g pointerEvents="none">
         <rect x={labelX - labelWidth / 2} y={labelY} width={labelWidth} height={17} rx={4} fill="#eeeee3" fillOpacity={0.95} />

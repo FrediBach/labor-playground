@@ -1,7 +1,7 @@
 import { PICO_PINS } from './pico/profile'
 import { PicoClient } from './pico/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { compileCircuit, type CircuitDocument } from './circuit'
+import { compileCircuit, oledConnections, type CircuitDocument } from './circuit'
 import { stopAllAudio } from './audio'
 import { SimulationClient, SupersededSimulation } from './simulation-client'
 import { SIMULATION_LIMITS, type Capture, type SimulationStatus } from './simulation-types'
@@ -69,7 +69,7 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
           setPicoState({ phase: 'Preparing Pico…', console: '', key })
           const trace = await picoClient.current!.run(snapshot.pico.source, currentRevision, (phase, text) => {
             if (!cancelled && revision.current === currentRevision) setPicoState(previous => ({ phase: phase === 'preparing' ? 'Preparing Pico…' : `Recording ${durationSeconds} s…`, console: text ?? previous.console, key }))
-          }, durationSeconds)
+          }, durationSeconds, oledConnections(snapshot, compiled.nodeByTerminal))
           picoTrace = trace
           if (cancelled) throw new SupersededSimulation()
           transient = compileCircuit(snapshot, 'transient', trace, durationSeconds)

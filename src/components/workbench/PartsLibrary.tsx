@@ -9,10 +9,12 @@ type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'passive', label: 'Passive', kinds: ['resistor', 'capacitor', 'electrolytic', 'inductor'] },
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
+  { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp'] },
   { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
+  ssd1306: 'oled screen display i2c ssd1306 128 64 monochrome graphics',
   resistor: 'resistance ohm', capacitor: 'ceramic non-polarized capacitance farad',
   electrolytic: 'polarized capacitance farad', inductor: 'coil inductance henry',
   diode: 'silicon rectifier', schottky: 'rectifier low forward voltage', zener: 'voltage breakdown clamp',

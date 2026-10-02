@@ -1,5 +1,6 @@
 import { PICO_PINS, PROJECT_LIMITS, picoGround, validatePico, type PicoConfiguration } from './pico/profile.ts'
 import { picoDriverLines } from './pico/electrical.ts'
+import type { OledConnection } from './ssd1306.ts'
 import type { PicoTrace } from './pico/runtime.ts'
 import { passiveExamples } from './passive-examples.ts'
 import { picoExamples } from './pico/examples.ts'
@@ -11,7 +12,7 @@ import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306'
 
 export interface Part {
   id: string
@@ -87,6 +88,13 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  ssd1306: {
+    pinNames: ['GND', 'VCC', 'SCL', 'SDA'],
+    label: 'SSD1306 OLED display', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'A 128×64 monochrome I²C display for Pico text and graphics. Address 0x3C.',
+    supplyHint: 'Connect GND to Pico GND, VCC to Pico 3V3, SCL to GP1 and SDA to GP0. Use machine.I2C(0).',
+    model: 'SSD1306 128×64 at 0x3C, with 4.7 kΩ bus pull-ups. Hardware I²C writes update pixels at transaction completion; recordings preserve display frames. Direct Pico 3V3/GND and a hardware I²C pin pair are required. Bus edges, supply current, charge-pump timing, hardware scrolling, SoftI2C and SPI are not modeled.',
+  },
   resistor: {
     pinNames: ['1', '2'],
     label: 'Resistor', unit: 'Ω', defaultValue: 10_000, min: 10, max: 10_000_000,
@@ -256,6 +264,11 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
     }
     return null
   }
+  if (kind === 'ssd1306') {
+    if (direction !== 0 && direction !== 2) return null
+    const pins = Array.from({ length: 4 }, (_, index) => `${match[1]}${column + (direction === 0 ? index : -index)}`)
+    return pins.every(pin => Object.hasOwn(terminalById, pin)) ? pins : null
+  }
   const threeLead = kind === 'potentiometer' || kind === 'npn' || kind === 'pnp'
   const span = kind === 'capacitor' || kind === 'electrolytic' || threeLead ? 1 : 3
   const count = threeLead ? 3 : 2
@@ -272,7 +285,7 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
 export function isValidFootprint(kind: ComponentKind, pins: string[]): boolean {
   if (!Object.hasOwn(PARTS, kind) || pins.length !== PARTS[kind].pinNames.length || new Set(pins).size !== pins.length) return false
   if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
-  if (!PARTS[kind].package && kind !== 'potentiometer' && kind !== 'npn' && kind !== 'pnp') return true
+  if (!PARTS[kind].package && kind !== 'potentiometer' && kind !== 'npn' && kind !== 'pnp' && kind !== 'ssd1306') return true
   return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation)?.every((pin, index) => pin === pins[index]))
 }
 
@@ -459,6 +472,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const activeNodes = new Set(usedTerminals.map((terminal) => nodeByTerminal[terminal]))
   if (activeNodes.size > 60) diagnostics.push({ severity: 'error', message: 'This workbench supports up to 60 connected circuit nodes. Simplify the circuit before capturing.' })
   if (doc.pico && nodeByTerminal[picoGround] !== '0') diagnostics.push({ severity: 'error', message: 'Connect a Pico GND pin to workbench GND before capturing.' })
+  try { oledConnections(doc, nodeByTerminal) }
+  catch (error) { diagnostics.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid OLED wiring.' }) }
   const idealSources = ['gnd', 'cv', 'vplus', 'vminus']
   for (let a = 0; a < idealSources.length; a++) {
     for (let b = a + 1; b < idealSources.length; b++) {
@@ -483,6 +498,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   for (const part of doc.parts) {
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
+    if (part.kind === 'ssd1306') { addEdge(nodes[2], b); addEdge(nodes[3], b); continue }
     if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
       if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
@@ -732,6 +748,9 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
     const safeId = spiceDeviceId(part)
+    if (part.kind === 'ssd1306') {
+      lines.push(`ROLED_${safeId}_scl ${nodeByTerminal[part.pins[2]]} ${b} 4700`, `ROLED_${safeId}_sda ${nodeByTerminal[part.pins[3]]} ${b} 4700`)
+    }
     if (part.kind === 'resistor') lines.push(`R_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
     if (part.kind === 'capacitor' || part.kind === 'electrolytic') lines.push(`C_${safeId} ${a} ${b} ${spiceNumber(part.value)}`)
     if (part.kind === 'inductor') {
@@ -835,6 +854,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
 }
 
 export function formatValue(value: number, kind: ComponentKind): string {
+  if (kind === 'ssd1306') return '128×64 · I²C'
   if (kind === 'diode') return 'Silicon'
   if (kind === 'schottky') return 'Low Vf'
   if (kind === 'npn') return 'NPN · C–B–E'
@@ -961,3 +981,20 @@ export const examples: CircuitExample[] = [
   ...icExamples,
   ...picoExamples,
 ]
+
+/** Resolve only directly wired, powered peripherals; never invent a device on a bus. */
+export function oledConnections(doc: CircuitDocument, nodes = resolveTopology(doc).nodeByTerminal): OledConnection[] {
+  const connections: OledConnection[] = []
+  for (const part of doc.parts.filter(part => part.kind === 'ssd1306')) {
+    const [ground, supply, sclNode, sdaNode] = part.pins.map(pin => nodes[pin])
+    if (!doc.pico || ground !== nodes[picoGround] || supply !== nodes['pico:36'] || ground === supply) throw new Error(`${part.id}: connect OLED GND to Pico GND and VCC directly to Pico 3V3.`)
+    const gpios = (node: string) => PICO_PINS.filter(pin => pin.gpio !== null && nodes[pin.id] === node).map(pin => pin.gpio!)
+    const sdas = gpios(sdaNode), scls = gpios(sclNode)
+    const sda = sdas[0], scl = scls[0]
+    if (sdas.length !== 1 || scls.length !== 1 || sda % 2 !== 0 || scl % 2 !== 1 || Math.floor(sda / 2) % 2 !== Math.floor(scl / 2) % 2 || [ground, supply].includes(sdaNode) || [ground, supply].includes(sclNode)) throw new Error(`${part.id}: connect SDA and SCL to a hardware I²C pair, for example SDA GP0 and SCL GP1.`)
+    const bus = Math.floor(sda / 2) % 2
+    if (connections.some(connection => connection.bus === bus)) throw new Error('Only one OLED at address 0x3C is supported on each I²C bus.')
+    connections.push({ partId: part.id, bus, sda, scl })
+  }
+  return connections
+}

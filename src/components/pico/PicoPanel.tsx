@@ -52,7 +52,7 @@ export default function PicoPanel(props: Props) {
   const durationLabel = duration < 1 ? `${duration * 1000} ms` : `${duration} s`
   return <section className="pico-panel" aria-label="Pico programming" onKeyDown={event => event.stopPropagation()}>
     <div className="pico-toolbar"><strong>RASPBERRY PI PICO</strong><span>main.py · MicroPython 1.20</span><button onClick={() => setCollapsed(value => !value)} aria-expanded={!collapsed} aria-controls="pico-editor-content">{collapsed ? 'Expand editor' : 'Collapse editor'}</button><button className="pico-remove" onClick={props.onRemove}>Remove Pico</button></div>
-    <p>Connect a Pico GND to workbench GND. Simulate runs your code and captures the first {durationLabel}. GPIO outputs only.</p>
+    <p>Connect a Pico GND to workbench GND. Simulate runs your code and captures the first {durationLabel}. GPIO/PWM outputs and SSD1306 hardware I²C.</p>
     <details className="pico-scope-help"><summary>Plot code values on the oscilloscope</summary><p>Import <code>scope</code>, then log a number wherever it changes. Open Results after Simulate to compare it with the circuit. Each name becomes a trace; units are optional.</p><pre>{'import scope\n\nscope.log("target", 2.5, unit="V")\nscope.log("duty", 50, unit="%")'}</pre><p>The scope holds each value until its next log. Use Show Pico logs or the trace buttons to hide readings. This helper is provided by the simulator.</p></details>
     <div id="pico-editor-content" style={{ display: collapsed ? 'none' : 'block' }}>
       {stub && <div className="pico-stub">{stub} · read only <button onClick={() => showLine(1)}>Back to main.py</button></div>}

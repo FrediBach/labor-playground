@@ -67,7 +67,7 @@ export function Inspector({ document, selectedId, onChange, onDelete, colors, op
               <NumberField label="Wiper percentage" value={(part.position ?? 0.5) * 100} min={0} max={100} unit="%" onCommit={position => updatePart({ position: position / 100 })} />
               <p className="micro-copy">0% is at CCW; 100% is at CW. Each end has a minimum 1 Ω resistance.</p>
             </div>}
-          </> : integratedCircuit ? (
+          </> : definition.supplyHint ? (
             <p className="muted-copy">{definition.supplyHint}</p>
           ) : <p className="muted-copy">Fixed generic {transistor ? `${part.kind.toUpperCase()} transistor` : definition.label.toLowerCase()} model.</p>}
         </div>

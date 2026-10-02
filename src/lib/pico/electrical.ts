@@ -30,6 +30,7 @@ export function samplePicoPin(trace: PicoTrace | undefined, gpio: number, second
 
 const n = (value: number) => Number(value.toPrecision(12)).toString()
 function conductance(state: PinState) {
+  if (state.function === 3) return { high: 0, low: 0, pullHigh: state.pullUp ? 1 / PICO_MODEL.pullOhms : 0, pullLow: state.pullDown ? 1 / PICO_MODEL.pullOhms : 0 }
   if (state.enabled && ![4, 5].includes(state.function)) throw new Error(`GP${state.gpio}: unsupported peripheral function.`)
   if (state.state === 5) throw new Error(`GP${state.gpio}: bus keeper mode is unsupported.`)
   return {

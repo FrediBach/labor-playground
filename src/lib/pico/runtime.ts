@@ -1,3 +1,4 @@
+import { SSD1306, type OledConnection, type OledTrace } from '../ssd1306.ts'
 import { Simulator, USBCDC, ConsoleLogger, LogLevel } from 'rp2040js'
 import { PICO_CAPTURE_DURATIONS_MS } from './profile.ts'
 import { PicoScopeRecorder, PICO_SCOPE_PRELUDE } from './scope-log.ts'
@@ -6,8 +7,8 @@ import type { PicoScopeChannel } from './scope-log.ts'
 export const PICO_LIMITS = { captureNs: 100_000_000, maxCaptureNs: 10_000_000_000, bootNs: 10_000_000_000, instructions: 1_500_000_000, wallMs: 60_000, events: 25_000, consoleBytes: 16_384, traceBytes: 4_000_000, sourceBytes: 32_768 } as const
 export interface PinState { gpio: number; state: number; function: number; enabled: boolean; pullUp: boolean; pullDown: boolean }
 export interface PinEvent extends PinState { ns: number }
-export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number; scopeLogs?: PicoScopeChannel[] }
-export interface RuntimeOptions { source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; durationSeconds?: number; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
+export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number; scopeLogs?: PicoScopeChannel[]; displays?: OledTrace[] }
+export interface RuntimeOptions { displays?: OledConnection[]; source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; durationSeconds?: number; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
 const MARKER = 0x20041ffc
 
 /** Strict UF2 loader: only the bundled profile's flash payload is accepted. */
@@ -38,6 +39,22 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   let initial: PinState[] = []
   const events: PinEvent[] = []
   const scope = new PicoScopeRecorder(captureNs)
+  const displays = (options.displays ?? []).map(connection => ({ connection, controller: new SSD1306() }))
+  for (const [index, bus] of mcu.i2c.entries()) {
+    let attached: typeof displays[number] | undefined
+    bus.onConnect = (address, mode) => {
+      attached = displays.find(display => display.connection.bus === index && address === 0x3c && mode === 0
+        && [display.connection.sda, display.connection.scl].every(gpio => mcu.gpio[gpio].functionSelect === 3))
+      attached?.controller.start()
+      bus.completeConnect(!!attached)
+    }
+    bus.onWriteByte = value => { attached?.controller.write(value); bus.completeWrite(!!attached) }
+    bus.onStop = () => {
+      if (zero !== undefined && sim.clock.nanos - zero < captureNs) attached?.controller.commit(sim.clock.nanos - zero)
+      attached = undefined
+      bus.completeStop()
+    }
+  }
   let consoleText = '', stderr = '', stream: 'stdout' | 'stderr' | 'done' = 'stdout', handshake = '', phase: 'boot' | 'raw' | 'submitted' = 'boot'
   let consoleBytes = 0, consoleTruncated = false, consoleDirty = false, lastConsoleUpdate = 0
   const displayConsole = () => consoleText + (consoleTruncated ? '\n[Console truncated]' : '')
@@ -130,7 +147,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
       const ns = sim.clock.nanos - zero
       if (ns >= captureNs) return
       if (events.length >= PICO_LIMITS.events) throw new Error('Pico event limit exceeded. Shorten the capture, reduce PWM frequency, or use fewer active outputs.')
-      if (![4, 5, 31].includes(pin.functionSelect)) throw new Error(`GP${pin.index}: unsupported output function ${pin.functionSelect}.`)
+      if (![4, 5, 31].includes(pin.functionSelect) && !(pin.functionSelect === 3 && displays.some(({ connection }) => connection.sda === pin.index || connection.scl === pin.index))) throw new Error(`GP${pin.index}: unsupported output function ${pin.functionSelect}.`)
       events.push({ ...snapshot(pin.index), ns })
     }
   }
@@ -158,6 +175,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   flushConsole(true)
   if (stderr.trim()) throw new Error(stderr.replace(/  File "<stdin>", line \d+, in <module>\r?\n/g, ''))
   const scopeLogs = scope.channels
-  if (encoder.encode(JSON.stringify({ initial, events, scopeLogs })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event or logging density.')
-  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started, scopeLogs }
+  const displayTraces = displays.map(({ connection, controller }) => ({ partId: connection.partId, frames: controller.frames }))
+  if (encoder.encode(JSON.stringify({ initial, events, scopeLogs, displays: displayTraces })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event or logging density.')
+  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started, scopeLogs, displays: displayTraces }
 }

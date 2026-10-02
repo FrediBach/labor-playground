@@ -1,3 +1,4 @@
+import { sampleOled } from '@/lib/ssd1306'
 import { useEffect, useMemo } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 import { Pause, Play, Repeat2, SkipBack, SkipForward } from 'lucide-react'
@@ -42,7 +43,7 @@ export function RecordingTransport({ probes, document }: { probes: ProbeNodes; d
     <div className="recording-readings">{(['CH1', 'CH2'] as const).map(channel => <div key={channel}><span className={channel === 'CH1' ? 'ch1-text' : 'ch2-text'}>{channel}</span><output aria-label={`${channel} recorded voltage`}>{formatElectrical(probes[channel] ? point?.nodeVoltages[probes[channel]] : undefined, 'V')}</output></div>)}<p>Select a component for pin voltages, current and power at this time. LED brightness follows forward current.</p></div>
     {picoTrace && <details className="recording-gpio"><summary>Pico GPIO states</summary><div>{activePins.map(gpio => {
       const pin = samplePicoPin(picoTrace, gpio, seconds)
-      const state = pin?.enabled ? pin.state === 1 ? 'High' : pin.state === 0 ? 'Low' : 'High impedance' : pin?.pullUp ? 'Input · pull up' : pin?.pullDown ? 'Input · pull down' : 'High impedance'
+      const state = pin?.function === 3 ? 'I²C · transaction model' : pin?.enabled ? pin.state === 1 ? 'High' : pin.state === 0 ? 'Low' : 'High impedance' : pin?.pullUp ? 'Input · pull up' : pin?.pullDown ? 'Input · pull down' : 'High impedance'
       return <span key={gpio}>GP{gpio}{gpio === 25 ? ' · LED' : ''}<output aria-label={`Recorded GP${gpio} state`}>{state}</output></span>
     })}</div><p>Firmware output and pull states. Connected pin voltages are measured by the circuit solver.</p></details>}
   </section>
@@ -73,5 +74,15 @@ export function RecordedPicoLed({ x, y }: { x: number; y: number }) {
     {on && <circle cx={x} cy={y} r={12} fill="#9aff75" opacity={0.3} />}
     <rect x={x - 4} y={y - 3} width={8} height={6} rx={1} fill={on ? '#c6ff91' : '#53734a'} stroke="#adbea1" />
     <text x={x + 9} y={y + 3} fill="#d9e9cf" fontSize={8}>LED</text>
+  </g>
+}
+
+export function RecordedOled({ partId, ...props }: ComponentProps<typeof PartGlyph> & { partId: string }) {
+  const { playback, seconds } = useRecording()
+  const frames = playback.capture?.picoTrace?.displays?.find(display => display.partId === partId)?.frames
+  const frame = sampleOled(frames, seconds)
+  return <g data-oled={partId} data-oled-state={frame?.pixels.some(Boolean) ? 'on' : 'off'}>
+    <title>SSD1306 OLED · {frames ? 'Recorded display' : 'Simulate to update display'}</title>
+    <PartGlyph {...props} oledFrame={frame} />
   </g>
 }

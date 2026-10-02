@@ -1,3 +1,4 @@
+import { oledPixelPath, type OledFrame } from '@/lib/ssd1306'
 import { PARTS, type ComponentKind } from '@/lib/circuit'
 
 interface PartGlyphProps {
@@ -7,13 +8,14 @@ interface PartGlyphProps {
   value?: number
   position?: number
   ledLevel?: number
+  oledFrame?: OledFrame
   /** Lead coordinates relative to the center, before the parent rotates the part. */
   pins?: { x: number; y: number }[]
   pinNames?: string[]
 }
 
 /** Original SVG component artwork, oriented from the first lead toward the last lead in its row. */
-export function PartGlyph({ kind, span = 72, selected = false, value = 0, position = 0.5, pins, pinNames, ledLevel }: PartGlyphProps) {
+export function PartGlyph({ kind, span = 72, selected = false, value = 0, position = 0.5, pins, pinNames, ledLevel, oledFrame }: PartGlyphProps) {
   const half = span / 2
   const resistance = value > 0 ? value : 10000
   let multiplier = Math.floor(Math.log10(resistance)) - 1
@@ -21,6 +23,23 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
   if (digits >= 100) { digits = 10; multiplier++ }
   const bandColors = ['#302d28', '#795037', '#b54934', '#d58236', '#d2b341', '#638553', '#456e99', '#86618e', '#929189', '#ebe5cf']
   const bands = [bandColors[Math.floor(digits / 10)], bandColors[digits % 10], multiplier < 0 ? '#c6aa53' : bandColors[multiplier]]
+  if (kind === 'ssd1306') {
+    const leads = pins ?? [-36, -12, 12, 36].map(x => ({ x, y: 0 }))
+    return <g>
+      {selected && <rect x={-78} y={-6} width={156} height={121} rx={7} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
+      <rect x={-73} y={9} width={146} height={101} rx={5} fill="#254e69" stroke="#17364c" strokeWidth={1.5} />
+      {[-65, 65].flatMap(x => [17, 102].map(y => <circle key={`${x}:${y}`} cx={x} cy={y} r={3} fill="#e8e7d7" stroke="#ae9c69" strokeWidth={1.5} />))}
+      {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
+        <title>{index + 1}: {PARTS.ssd1306.pinNames[index]}</title>
+        <path d={`M${pin.x} ${pin.y}V17`} stroke="#c8c9bd" strokeWidth={3} />
+        <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
+        <text x={pin.x} y={25} textAnchor="middle" fill="#d6e3e9" fontFamily="monospace" fontSize={6}>{PARTS.ssd1306.pinNames[index]}</text>
+      </g>)}
+      <rect x={-68} y={29} width={136} height={70} rx={3} fill="#060f17" stroke="#15232d" />
+      <path data-oled-pixels="true" d={oledPixelPath(oledFrame)} transform="translate(-64 32)" fill="#b7efff" opacity={oledFrame ? 0.25 + oledFrame.contrast / 340 : 0} shapeRendering="crispEdges" />
+      <text x={0} y={107} textAnchor="middle" fill="#bed8e7" fontFamily="monospace" fontSize={5.5}>SSD1306 · 128×64 · I²C 0x3C</text>
+    </g>
+  }
   if (PARTS[kind].package) {
     const labels = pinNames ?? PARTS[kind].pinNames
     const rowPins = labels.length / 2

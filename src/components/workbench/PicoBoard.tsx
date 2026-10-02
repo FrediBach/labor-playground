@@ -123,7 +123,7 @@ export function PicoBoard() {
         <title>{pin.number}: {pin.label}{pin.supported ? '' : ' · unsupported connection'}</title>
       </g>
     })}
-    <text x={0} y={535} fill="#b9cbbf" textAnchor="middle" fontSize={8} letterSpacing={.25}>USB POWER · 3.3 V · OUTPUTS ONLY</text>
+    <text x={0} y={535} fill="#b9cbbf" textAnchor="middle" fontSize={8} letterSpacing={.25}>USB POWER · 3.3 V · GPIO / I²C</text>
   </g>
 }
 
