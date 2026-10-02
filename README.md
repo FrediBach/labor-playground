@@ -78,6 +78,8 @@ Physical interface boards, advanced scope triggering, and continuous simulation/
 
 Read [the hardware specification](./docs/hardware-spec.md) for verified manual references and the virtual board's exact connections. Read [the performance analysis](./docs/performance.md) for measured bottlenecks and improvements. Read [the engine notes](./docs/engine-notes.md) for worker behavior, numerical assumptions, bounds, audio processing, and licensing provenance.
 
+The [custom components plan](./docs/custom-components-plan.md) records the architecture assessment and proposed implementation for user-defined resistance/current and capacitance/voltage curves.
+
 ## Checks and builds
 
 ```sh
