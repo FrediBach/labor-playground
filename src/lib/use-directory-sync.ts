@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState } from 'react'
 import { validateDocument, type CircuitDocument } from './circuit'
-import { PROJECT_LIMITS } from './pico/profile'
+import { PROJECT_LIMITS } from './project-limits'
 
 type DirectoryPicker = (options: { mode: 'readwrite' }) => Promise<FileSystemDirectoryHandle>
 const filename = 'circuit.json'

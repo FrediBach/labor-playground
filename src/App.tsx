@@ -1,4 +1,7 @@
-import { createPico, PROJECT_LIMITS, type PicoCaptureMs } from '@/lib/pico/profile'
+import { PROJECT_LIMITS } from '@/lib/project-limits'
+import { CustomComponentEditor } from '@/components/workbench/CustomComponentEditor'
+import { customTemplate, duplicateCustomComponent, deleteCustomComponent, type CustomComponent, type PartPlacement } from '@/lib/custom-components'
+import { createPico, type PicoCaptureMs } from '@/lib/pico/profile'
 const PicoPanel = lazy(() => import('@/components/pico/PicoPanel'))
 import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import { ArrowDownToLine, ArrowUpFromLine, Cable, ChevronDown, CircleHelp, CircuitBoard, FolderOpen, Hand, Info, LoaderCircle, Maximize2, Minus, MousePointer2, PanelLeftOpen, Play, Plus, Redo2, RotateCcw, RotateCw, SlidersHorizontal, Undo2, X } from 'lucide-react'
@@ -50,10 +53,16 @@ export default function App() {
       if (reveal || tab !== workspaceTab) workspaceHeader.current?.scrollIntoView({ block: 'nearest' })
     })
   }, [workspaceTab])
+  const [placementState, setPlacement] = useState<PartPlacement | undefined>()
+  const [modelEditor, setModelEditor] = useState<{ initial: CustomComponent; editing: boolean } | null>(null)
   const [tool, setToolState] = useState<Tool>('select')
   const [panEnabled, setPanEnabled] = useState(false)
   const [leadEdit, setLeadEdit] = useState<(LeadEdit & { document: CircuitDocument }) | null>(null)
-  const setTool = useCallback((next: Tool) => { setToolState(next); setPanEnabled(false); setLeadEdit(null); openTab('circuit') }, [openTab])
+  const setTool = useCallback((next: Tool) => { setToolState(next); setPlacement(undefined); setPanEnabled(false); setLeadEdit(null); openTab('circuit') }, [openTab])
+  const placement = placementState && tool === placementState.kind && (!placementState.customModelId || document.customComponents?.some(m => m.id === placementState.customModelId)) ? placementState : undefined
+  if (placementState?.customModelId && !placement) { setPlacement(undefined); setToolState('select') }
+  const placeModel = (selection: PartPlacement) => { setTool(selection.kind); setPlacement(selection); setRotation(0) }
+  const modelAction = (action: () => CircuitDocument) => { try { change(action()) } catch (e) { setNotice((e as Error).message) } }
   const [selectedId, setSelectedId] = useState<string | null>('C1')
   const [rotation, setRotation] = useState(0)
   const [wireColor, setWireColor] = useState(WIRE_COLORS[0])
@@ -205,9 +214,10 @@ export default function App() {
   }
   const updateInstrument = <K extends Exclude<keyof typeof document.instruments, 'envelope'>>(key: K, value: typeof document.instruments[K]) => change({ ...document, instruments: { ...document.instruments, [key]: value } })
 
-  const toolHint = editingLead ? `${editingLead.partId}: choose a free hole for lead ${editingLead.pinIndex + 1}. Escape cancels.` : panEnabled ? 'Drag the board to pan. Press Escape to return to selecting parts.' : tool === 'wire' ? 'Click a terminal to start a wire, then click its destination.' : tool === 'probe1' || tool === 'probe2' ? `Click a terminal to attach ${tool === 'probe1' ? 'CH1' : 'CH2'}.` : tool === 'select' ? 'Select a part to inspect it. Drag a part to move it.' : tool === 'ssd1306' ? 'Place four pins in adjacent columns. Press R for a 180° turn.' : isDipTool(tool) ? 'Place pin 1 on row E at the trench. Press R for a 180° turn to row F.' : `Click a hole to place a ${PARTS[tool].label.toLowerCase()}. Press R to rotate.`
+  const toolHint = editingLead ? `${editingLead.partId}: choose a free hole for lead ${editingLead.pinIndex + 1}. Escape cancels.` : panEnabled ? 'Drag the board to pan. Press Escape to return to selecting parts.' : tool === 'wire' ? 'Click a terminal to start a wire, then click its destination.' : tool === 'probe1' || tool === 'probe2' ? `Click a terminal to attach ${tool === 'probe1' ? 'CH1' : 'CH2'}.` : tool === 'select' ? 'Select a part to inspect it. Drag a part to move it.' : tool === 'ssd1306' ? 'Place four pins in adjacent columns. Press R for a 180° turn.' : isDipTool(tool) ? 'Place pin 1 on row E at the trench. Press R for a 180° turn to row F.' : `Click a hole to place ${placement?.customModelId ? document.customComponents?.find(m => m.id === placement.customModelId)?.name : `a ${PARTS[tool].label.toLowerCase()}`}. Press R to rotate.`
 
   return <RecordingProvider capture={simulation.status === 'ready' ? simulation.capture : null}><div className="app-shell dark">
+    {modelEditor && <CustomComponentEditor key={modelEditor.initial.id} initial={modelEditor.initial} editing={modelEditor.editing} document={document} onCancel={() => setModelEditor(null)} onSave={(next, model) => { change(next); setModelEditor(null); if (!modelEditor.editing) placeModel({ kind: model.baseKind, customModelId: model.id }) }} />}
     <header className="app-header">
       <div className="header-branding"><a className="brand" href="#" onClick={e => e.preventDefault()} aria-label="Pico Labor home"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></a><span className="brand-slogan">Circuit simulation &amp; Pico programming, inspired by the Erica Synths EDU Labor</span></div>
       <div className="header-right">
@@ -241,7 +251,7 @@ export default function App() {
       {folder.conflict && <div className="folder-conflict" role="alert"><span>Choose a version for circuit.json. Keeping the workbench overwrites the folder file; loading the folder replaces the workbench and can be undone.</span><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('local')}>Keep workbench</button><button className="subtle-button" disabled={folder.busy} onClick={() => void folder.sync('disk')}>Load folder version</button></div>}
     </div>}
     <main className={`workbench-layout ${!partsOpen ? 'parts-collapsed' : ''} ${!inspectorOpen ? 'inspector-collapsed' : ''}`}>
-      {partsOpen && <PartsLibrary tool={tool} onToolChange={setTool} onPlace={kind => { setTool(kind); setRotation(0) }} hasPico={!!document.pico} onAddPico={() => { change({ ...document, schemaVersion: 2, pico: createPico() }); openTab('code') }} wireColor={wireColor} wireColors={WIRE_COLORS} onWireColorChange={setWireColor} partCount={document.parts.length} onCollapse={() => setPartsOpen(false)} onClear={() => { change({ ...createEmptyDocument(), ...(document.pico ? { schemaVersion: 2 as const, pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }} />}
+      {partsOpen && <PartsLibrary tool={tool} placement={placement} customComponents={document.customComponents ?? []} onToolChange={setTool} onPlace={placeModel} onCreate={() => setModelEditor({ initial: customTemplate('resistor'), editing: false })} onEdit={initial => setModelEditor({ initial, editing: true })} onDuplicate={model => modelAction(() => duplicateCustomComponent(document, model.id).document)} onDeleteModel={model => modelAction(() => deleteCustomComponent(document, model.id))} modelInstances={id => document.parts.filter(p => p.customModelId === id).map(p => p.id)} hasPico={!!document.pico} onAddPico={() => { change({ ...document, schemaVersion: document.schemaVersion === 3 ? 3 : 2, pico: createPico() }); openTab('code') }} wireColor={wireColor} wireColors={WIRE_COLORS} onWireColorChange={setWireColor} partCount={document.parts.length} onCollapse={() => setPartsOpen(false)} onClear={() => { change({ ...createEmptyDocument(), schemaVersion: document.schemaVersion, ...(document.customComponents ? { customComponents: document.customComponents } : {}), ...(document.pico ? { pico: document.pico } : {}) }); setSelectedId(null); setTool('select'); message('Board cleared. Undo restores your circuit.') }} />}
       <div className="workspace">
         {simulationIssue && workspaceTab !== 'overview' && <div className="simulation-error" role="alert"><Info size={18} /><div><strong>Simulation needs your attention</strong><p>{simulationIssue}</p><button className="subtle-button" onClick={() => { openTab('overview', true); requestAnimationFrame(() => window.document.getElementById('workspace-tab-overview')?.focus({ preventScroll: true })) }}>View circuit details</button></div></div>}
         <div className="workspace-header" ref={workspaceHeader}>
@@ -267,7 +277,7 @@ export default function App() {
               </div>
               <div className="output-module hardware-panel"><div className="module-heading"><span>AUDIO / POWER</span><span>02</span></div><AudioMonitor capture={simulation.status === 'ready' ? simulation.capture : null} onMessage={message} /><div className="supply-indicators" aria-label="Power supplies: plus 12 volts and minus 12 volts available"><span><i />+12 V</span><span><i />−12 V</span><span className="supply-label">DC SUPPLY</span></div></div>
             </div>
-            <div className="breadboard-panel"><div className="board-silkscreen"><span>BREADBOARD / PATCH FIELD</span><span>30 COLUMNS · SPLIT RAILS</span></div><BoardViewport workbenchWidth={document.pico ? 1110 : 920} ref={viewport} zoom={zoom} onZoomChange={setZoom} panEnabled={panEnabled} onPanEnabledChange={setPanEnabled}><Breadboard document={document} selectedId={selectedId} onSelect={setSelectedId} onChange={change} tool={tool} rotation={rotation} wireColor={wireColor} showConnections={showConnections} highlightTerminal={highlightedChannel ? document.probes[highlightedChannel] : null} zoom={1} onMessage={message} editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit} /></BoardViewport></div>
+            <div className="breadboard-panel"><div className="board-silkscreen"><span>BREADBOARD / PATCH FIELD</span><span>30 COLUMNS · SPLIT RAILS</span></div><BoardViewport workbenchWidth={document.pico ? 1110 : 920} ref={viewport} zoom={zoom} onZoomChange={setZoom} panEnabled={panEnabled} onPanEnabledChange={setPanEnabled}><Breadboard placement={placement} document={document} selectedId={selectedId} onSelect={setSelectedId} onChange={change} tool={tool} rotation={rotation} wireColor={wireColor} showConnections={showConnections} highlightTerminal={highlightedChannel ? document.probes[highlightedChannel] : null} zoom={1} onMessage={message} editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit} /></BoardViewport></div>
             <ControlCarrier document={document} onChange={change} onSelect={id => { setSelectedId(id); setTool('select'); setInspectorOpen(true) }} onPlace={kind => { setTool(kind); setRotation(0); message(`Choose free breadboard holes for your ${kind}.`) }} />
             <div className="device-footer"><span>PICO LABOR / VIRTUAL-1</span><span>PATCH SUPPLIES TO RAILS WITH JUMPERS</span><span>EDU</span></div></div><div className="board-hint"><MousePointer2 size={12} /><span>{toolHint}</span><span className="board-count">{document.wires.length} wires</span></div>
         </section>
@@ -290,6 +300,8 @@ export default function App() {
       </div>
       {inspectorOpen && (
         <Inspector
+          onEditModel={model => setModelEditor({ initial: model, editing: true })}
+          onCreateModel={part => setModelEditor({ initial: customTemplate(part.kind as 'resistor' | 'capacitor', part.value), editing: false })}
           document={document} selectedId={selectedId} onChange={change} onDelete={deleteSelection}
           colors={WIRE_COLORS} operatingPoint={operatingPoint} nodeByTerminal={simulation.nodeByTerminal}
           editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit}

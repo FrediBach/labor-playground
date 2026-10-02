@@ -1,12 +1,12 @@
 # Custom components implementation plan
 
-Status: proposed implementation. Architecture inspected and small engine feasibility probes completed on 2026-10-02 against repository revision `6947c79`. The custom component feature is not implemented.
+Status: implemented on 2026-10-02. The architecture findings below record the pre-implementation audit against revision `6947c79`. Both custom characteristic families now use permanent engine fixtures, schema 3 definitions, the editor/library workflow, and portable project storage. Verification evidence is recorded at the end of this document.
 
 Let users create named, reusable components with their own electrical characteristics, beginning with resistance versus current and capacitance versus voltage. Definitions belong to the circuit project, appear in the parts library, and travel with exported circuits.
 
-**Architecture verdict: feasible with targeted extensions.** The existing ngspice engine can express these behaviors, and the worker, topology, placement, history, and persistence infrastructure can be reused. The application does not currently accept custom definitions: its schema, compiler, library, and measurement logic require changes. An engine replacement or general plugin runtime is not indicated by this audit.
+**Architecture verdict: feasible with targeted extensions.** The existing ngspice engine can express these behaviors, and the worker, topology, placement, history, and persistence infrastructure can be reused. The implementation extends the schema, compiler, library, and measurement logic to accept custom definitions. An engine replacement or general plugin runtime is not indicated by this audit.
 
-## Architecture findings
+## Pre-implementation architecture findings
 
 | Area | Verified current behavior | Consequence for implementation |
 | --- | --- | --- |
@@ -133,42 +133,54 @@ Cross-project reuse initially works through exporting/importing a circuit contai
 
 ### Milestone 1 Prove bounded characteristic models
 
-- [ ] Add permanent real-engine fixtures for both source arrangements through `runCircuitCapture`, including `.op`, transient recording, and saved current extraction.
-- [ ] Verify constant curves against built-in R/C behavior; verify increasing and valid decreasing R(I), both current signs, zero crossings, exact knots, and endpoint extension. Include multiple custom parts sharing a definition and parts whose terminals are bypassed onto one net.
-- [ ] Verify C(V) charge and energy integrals, both voltage signs, nonzero initial DC bias, charge/discharge, and breakpoint crossings. Compare integrated measured current to change in Q and integrated power to change in E with documented numerical tolerances.
-- [ ] Exercise minimum/maximum R/C, narrow segments, axis bounds, 64-point curves, and a 30-part mixed circuit. Select tested slope/axis/compiled-size limits and check shorter timesteps produce consistent results. Measure 100 ms and long captures against existing resource limits.
+- [x] Add permanent real-engine fixtures for both source arrangements through `runCircuitCapture`, including `.op`, transient recording, and saved current extraction.
+- [x] Verify constant curves against built-in R/C behavior; verify increasing and valid decreasing R(I), both current signs, zero crossings, exact knots, and endpoint extension. Include multiple custom parts sharing a definition and parts whose terminals are bypassed onto one net.
+- [x] Verify C(V) charge and energy integrals, both voltage signs, nonzero initial DC bias, charge/discharge, and breakpoint crossings. Compare integrated measured current to change in Q and integrated power to change in E with documented numerical tolerances.
+- [x] Exercise minimum/maximum R/C, narrow segments, axis bounds, 64-point curves, and a 30-part mixed circuit. Select tested slope/axis/compiled-size limits and check shorter timesteps produce consistent results. Measure 100 ms and long captures against existing resource limits.
 
 Gate: each first-release law has a working bounded model with reliable measurements. If one cannot meet this gate, document the actual limitation before proceeding with its editor; do not silently substitute a constant model or change the curve meaning.
 
 ### Milestone 2 Add definitions and model resolution
 
-- [ ] Implement schema 3, typed definitions, validation, model lookup, curve evaluation/integrals, and centralized limits.
-- [ ] Add tests for legacy schema 1/2 behavior, schema 3 with and without Pico, unsupported versions, bad references, malformed/oversized data, and prevention of schema downgrade.
-- [ ] Add atomic operations for definition creation/edit/duplication/deletion, instance assignment, and derived nominal values. Verify serialization and history round trips.
+- [x] Implement schema 3, typed definitions, validation, model lookup, curve evaluation/integrals, and centralized limits.
+- [x] Add tests for legacy schema 1/2 behavior, schema 3 with and without Pico, unsupported versions, bad references, malformed/oversized data, and prevention of schema downgrade.
+- [x] Add atomic operations for definition creation/edit/duplication/deletion, instance assignment, and derived nominal values. Verify serialization and history round trips.
 
 Gate: definitions survive every document boundary and invalid data cannot fall back to built-in behavior.
 
 ### Milestone 3 Integrate compilation and recordings
 
-- [ ] Implement custom adapters and compile saved vectors with measurement descriptors; update direct and automation capture paths.
-- [ ] Replace scalar assumptions for custom current, energy, model descriptions, and timing estimates. Verify DC topology, internal-name isolation, both pin orientations, and missing/nonfinite-vector failures.
-- [ ] Test revision invalidation, worker cancellation/recovery, resource limits, and a mixed circuit with built-in parts, Pico outputs, and automations. Automations continue to drive existing controls; editing a definition during a capture is not a new automation target.
+- [x] Implement custom adapters and compile saved vectors with measurement descriptors; update direct and automation capture paths.
+- [x] Replace scalar assumptions for custom current, energy, model descriptions, and timing estimates. Verify DC topology, internal-name isolation, both pin orientations, and missing/nonfinite-vector failures.
+- [x] Test revision invalidation, worker cancellation/recovery, resource limits, and a mixed circuit with built-in parts, Pico outputs, and automations. Automations continue to drive existing controls; editing a definition during a capture is not a new automation target.
 
 Gate: the workbench reports the same electrical behavior as the numerical fixtures in both operating-point and recorded views.
 
 ### Milestone 4 Build the editor and library workflow
 
-- [ ] Add the accessible table/graph editor, validation, shared placement state, custom library entries, and compatible instance assignment.
-- [ ] Update inspector, board labels, Overview, and measurement presentation. Implement shared edit versus independent copy and the definition deletion/clear-board rules.
-- [ ] Add browser tests for keyboard creation, invalid drafts, Cancel/Save/Undo, two same-kind models, click/drag placement, lead movement, long names, definition edits with stale results, and correct nonlinear readings.
+- [x] Add the accessible table/graph editor, validation, shared placement state, custom library entries, and compatible instance assignment.
+- [x] Update inspector, board labels, Overview, and measurement presentation. Implement shared edit versus independent copy and the definition deletion/clear-board rules.
+- [x] Add browser tests for keyboard creation, invalid drafts, Cancel/Save/Undo, two same-kind models, click/drag placement, lead movement, long names, definition edits with stale results, and correct nonlinear readings.
 
 Gate: a user can create the example R(I) curve, place and wire it, simulate it, edit it, and undo the edit without losing its identity or showing linear-model measurements.
 
 ### Milestone 5 Verify portability and document the feature
 
-- [ ] Verify export/import in a fresh browser, recovery, and folder synchronization preserve definitions and behavior, including conflicts, clear-board, and undo after project replacement.
-- [ ] Add educational examples for current-dependent resistance and voltage-dependent capacitance, with expected observations and visible model limits.
-- [ ] Run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`; run targeted Playwright coverage against the production bundle. Extend the existing parts-library, components, lead-editing, overview, project-tools, measurements, and inspector-signals suites where appropriate.
-- [ ] Update README, engine notes, and the user guide with the supported laws, units, endpoint behavior, sharing semantics, numerical bounds, and measured limitations.
+- [x] Verify export/import in a fresh browser, recovery, and folder synchronization preserve definitions and behavior, including conflicts, clear-board, and undo after project replacement.
+- [x] Add educational examples for current-dependent resistance and voltage-dependent capacitance, with expected observations and visible model limits.
+- [x] Run `npm test`, `npm run lint`, `npm run typecheck`, and `npm run build`; run targeted Playwright coverage against the production bundle. Extend the existing parts-library, components, lead-editing, overview, project-tools, measurements, and inspector-signals suites where appropriate.
+- [x] Update README, engine notes, and the user guide with the supported laws, units, endpoint behavior, sharing semantics, numerical bounds, and measured limitations.
 
 Release is complete when both characteristic families pass these gates, legacy circuits retain their behavior, and exported projects reproduce the custom models without external dependencies.
+
+
+## Implementation evidence
+
+- Definition validation and atomic lifecycle operations: `src/lib/custom-components.ts`; shared project budget: `src/lib/project-limits.ts`.
+- Shared interpolation, charge and energy integrals: `src/lib/characteristic-curves.ts`; solver fragments, current vectors and frozen measurement descriptors: `src/lib/component-models.ts`.
+- Permanent real-engine and boundary fixtures: `tests/custom-components.test.ts`, including 30 mixed shared instances, 64-point curves, minimum/maximum R/C, bounded slopes/axes, signed integration, timestep refinement, and Pico output with automation recompilation. Existing worker scheduling, timeout and recording tests cover the unchanged transport.
+- Production browser coverage: `tests/e2e/custom-components.spec.ts` and the custom folder-conflict case in `tests/e2e/project-tools.spec.ts`; regression coverage includes components, parts library, lead editing, overview, measurements and inspector signals.
+- Educational examples: **Current-sensitive resistor** and **Voltage-sensitive capacitor**. Supported laws, limits, sharing and recovery are documented in README, the in-app guide and `docs/engine-notes.md`.
+- The 30-part, two-definition fixture generates 335,352 netlist bytes. A measured 100 ms capture used 1,044 samples (~421 ms); a 10 s capture used 18,454 samples (~7.2 s). These are local measurements, not worst-case guarantees. Existing deadlines and recording budgets remain enforced; netlist expansion is capped at 1 MB, 1,000 devices and 300 internal nodes.
+
+Final verification: `npm test` passed 209 tests; `npm run lint`, `npm run typecheck`, and `npm run build` passed. All 37 targeted production Playwright checks passed (36 in the regression run, with the remaining nonlinear-DC test passing after correcting its selection action). Desktop and mobile editor screenshots were inspected. The build retains the existing large-chunk advisory for the editor bundle.

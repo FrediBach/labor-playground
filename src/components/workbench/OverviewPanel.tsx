@@ -1,5 +1,6 @@
+import { partDisplayName, partValueSummary } from '@/lib/custom-components'
 import { Activity, ArrowUpRight, CircleCheck, CircuitBoard, RotateCcw, TriangleAlert } from 'lucide-react'
-import { PARTS, formatValue, type CircuitDocument, type CircuitExample, type Diagnostic, type Part } from '@/lib/circuit'
+import { type CircuitDocument, type CircuitExample, type Diagnostic, type Part } from '@/lib/circuit'
 import type { SimulationStatus } from '@/lib/simulation-types'
 import './OverviewPanel.css'
 
@@ -24,8 +25,8 @@ const CAPTURE_STATUS: Record<SimulationStatus, { label: string; detail: string }
   error: { label: 'Capture failed', detail: 'Open the circuit to review its settings and try another capture.' },
 }
 
-function partValue(part: Part) {
-  const value = formatValue(part.value, part.kind)
+function partValue(document: CircuitDocument, part: Part) {
+  const value = partValueSummary(document, part)
   return part.kind === 'potentiometer' ? `${value} · ${Math.round((part.position ?? 0.5) * 100)}% wiper` : value
 }
 
@@ -111,8 +112,8 @@ export function OverviewPanel({ document, example, onRestore, status, diagnostic
           <thead><tr><th scope="col">ID</th><th scope="col">Component</th><th scope="col">Value / model</th><th scope="col"><span className="overview-visually-hidden">Actions</span></th></tr></thead>
           <tbody>{document.parts.map(part => <tr key={part.id}>
             <th scope="row">{part.id}</th>
-            <td>{PARTS[part.kind].label}</td>
-            <td className="overview-part-value">{partValue(part)}</td>
+            <td>{partDisplayName(document, part)}</td>
+            <td className="overview-part-value">{partValue(document, part)}</td>
             <td><button type="button" className="overview-inspect" aria-label={`Inspect ${part.id}`} onClick={() => onInspect(part.id)}>Inspect<ArrowUpRight size={13} aria-hidden="true" /></button></td>
           </tr>)}</tbody>
         </table>

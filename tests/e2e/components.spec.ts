@@ -21,8 +21,9 @@ async function peakToPeak(page: Page, channel: 'CH1' | 'CH2') {
   const table = scope.getByRole('table', { name: 'Channel measurements' })
   if (!await table.isVisible()) await scope.locator('.scope-measurements > summary').click()
   const value = table.getByRole('row').filter({ has: page.getByRole('rowheader', { name: 'Peak to peak', exact: true }) }).getByRole('cell').nth(channel === 'CH1' ? 0 : 1)
-  await expect(value).toHaveText(/[\d.]+ V/)
-  return parseFloat(await value.innerText())
+  let reading = NaN
+  await expect(async () => { reading = parseFloat(await value.innerText()); expect(Number.isFinite(reading)).toBe(true) }).toPass()
+  return reading
 }
 
 async function screenshot(page: Page, name: string) {

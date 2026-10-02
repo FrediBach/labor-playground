@@ -1,3 +1,4 @@
+import { parsePlacement, resolvePartModel, nominalValue, partDisplayName, partValueSummary, type PartPlacement } from '@/lib/custom-components'
 import { PICO_PINS } from '@/lib/pico/profile'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
@@ -20,6 +21,7 @@ export interface BreadboardProps {
   selectedId: string | null
   onSelect: (id: string | null) => void
   onChange: (document: CircuitDocument) => void
+  placement?: PartPlacement
   tool: Tool
   rotation: number
   wireColor: string
@@ -87,7 +89,7 @@ function makeId(prefix: string, document: CircuitDocument) {
 
 const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
 
-export function Breadboard({ document, selectedId, onSelect, onChange, tool, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
+export function Breadboard({ document, selectedId, onSelect, onChange, tool, placement, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const svg = useRef<SVGSVGElement>(null)
   const terminalElements = useRef(new Map<string, SVGCircleElement>())
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -171,7 +173,9 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     return { x: position.x, y: position.y }
   }
 
-  function place(kind: ComponentKind, terminal: Terminal) {
+  function place(selection: PartPlacement, terminal: Terminal) {
+    const { kind, customModelId } = selection
+    const model = resolvePartModel(document, selection)
     if (document.parts.length >= 30) {
       onMessage('This workbench supports up to 30 components. Remove a component before adding another.')
       return
@@ -183,10 +187,10 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
         : `Choose ${PARTS[kind].pinNames.length} free holes for the component. Press R to rotate.`)
       return
     }
-    const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: PARTS[kind].defaultValue, pins, ...(kind === 'potentiometer' ? { position: 0.5 } : {}) }
+    const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: model ? nominalValue(model) : PARTS[kind].defaultValue, pins, ...(customModelId ? { customModelId } : {}), ...(kind === 'potentiometer' ? { position: 0.5 } : {}) }
     onChange({ ...document, parts: [...document.parts, part] })
     onSelect(part.id)
-    onMessage(`${part.id} placed. Select it to ${PARTS[kind].package ? 'inspect its pins and model' : 'change its value'}.`)
+    onMessage(`${part.id}${model ? ` (${model.name})` : ''} placed. Select it to ${PARTS[kind].package ? 'inspect its pins and model' : 'change its value'}.`)
   }
 
   function clickTerminal(terminal: Terminal) {
@@ -202,7 +206,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       onFinishLeadEdit?.()
       return
     }
-    if (isPart(tool) && !wireStart) { place(tool, terminal); return }
+    if (isPart(tool) && !wireStart) { place(placement ?? { kind: tool }, terminal); return }
     if (tool === 'probe1' || tool === 'probe2') {
       const channel = tool === 'probe1' ? 'CH1' : 'CH2'
       onChange({ ...document, probes: { ...document.probes, [channel]: terminal.id } })
@@ -327,8 +331,8 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     const labelY = part.kind === 'ssd1306' ? Math.abs(angle) > 135 ? -138 : 118 : dipPackage ? 43
       : threeLeadPackage ? Math.abs(angle) > 135 ? 48 : Math.abs(angle) > 45 ? 34 : 13
         : Math.abs(angle) > 45 && Math.abs(angle) < 135 ? -11 : 22
-    const label = `${part.id} · ${formatValue(part.value, part.kind)}`
-    const labelWidth = part.kind === 'ssd1306' ? 145 : dipPackage ? Math.max(110, label.length * 6 + 12) : part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
+    const label = part.customModelId ? `${part.id} ◆ ${formatValue(part.value, part.kind)} nom.` : `${part.id} · ${partValueSummary(document, part)}`
+    const labelWidth = part.customModelId ? Math.max(110, label.length * 5.8 + 12) : part.kind === 'ssd1306' ? 145 : dipPackage ? Math.max(110, label.length * 6 + 12) : part.kind === 'npn' || part.kind === 'pnp' ? 110 : 68
     const labelX = terminals.length === 2 && Math.abs(angle) > 45 && Math.abs(angle) < 135 ? 54 : 0
     return <g key={part.id}
       data-part={preview ? undefined : part.id}
@@ -336,7 +340,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
       transform={`translate(${center.x} ${center.y})`}
       opacity={preview ? 0.7 : leadPart?.id === part.id || move?.dragging && move.part.id === part.id ? 0.28 : 1}
       role={preview ? undefined : 'button'} tabIndex={preview || leadPart ? undefined : 0}
-      aria-label={preview ? undefined : `${label}. Drag to move or select to edit.`}
+      aria-label={preview ? undefined : `${partDisplayName(document, part)}. ${part.id} · ${partValueSummary(document, part)}. Drag to move or select to edit.`}
       style={{ cursor: preview ? 'none' : tool === 'select' ? 'grab' : 'pointer', outline: 'none', pointerEvents: preview || leadPart ? 'none' : 'auto' }}
       onPointerDown={preview ? undefined : event => {
         event.stopPropagation()
@@ -370,7 +374,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
           onChange({ ...document, parts: document.parts.map(item => item.id === part.id ? { ...item, pins } : item) })
         } else onMessage('No free placement in that direction.')
       }}>
-      <title>{label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
+      <title>{partDisplayName(document, part)} · {label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
       <g transform={`rotate(${angle})`}>
         <rect {...bounds} fill="transparent" />
         {part.kind === 'ssd1306' && !preview ? <RecordedOled partId={part.id} kind={part.kind} pins={pins} selected={selectedId === part.id} /> : part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />}
@@ -402,9 +406,9 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     onDrop={event => {
       event.preventDefault()
       if (leadPart) { onFinishLeadEdit?.(); return }
-      const kind = event.dataTransfer.getData('application/labor-part')
+      const selection = parsePlacement(event.dataTransfer.getData('application/labor-part'), document)
       const terminal = nearestTerminal(localPoint(event.clientX, event.clientY))
-      if (isPart(kind) && terminal) place(kind, terminal)
+      if (selection && terminal) place(selection, terminal)
     }}>
     <defs>
       <filter id="wire-shadow" x="-30%" y="-60%" width="160%" height="240%"><feDropShadow dx="0" dy="2" stdDeviation="1" floodColor="#171713" floodOpacity="0.3" /></filter>
@@ -561,7 +565,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, rot
     </g>}
     {previewPins && previewKind && <g pointerEvents="none" data-lead-preview={leadPart ? placementValid ? 'valid' : 'invalid' : undefined}>
       {previewPins.map((id, index) => { const terminal = terminalById[id]; return terminal && <circle key={`${id}-${index}`} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
-      {renderPart({ ...(leadPart ?? (move?.dragging ? move.part : { kind: previewKind, value: PARTS[previewKind].defaultValue })), id: 'preview', pins: previewPins }, true)}
+      {renderPart({ ...(leadPart ?? (move?.dragging ? move.part : { kind: previewKind, ...(placement?.customModelId ? { customModelId: placement.customModelId } : {}), value: placement && resolvePartModel(document, placement) ? nominalValue(resolvePartModel(document, placement)!) : PARTS[previewKind].defaultValue })), id: 'preview', pins: previewPins }, true)}
     </g>}
     {highlightSource && <RecordedTerminalVoltage node={graph.nodeByTerminal[highlightSource]} x={770} y={546} />}
     {isPart(tool) && hover && !previewPins && <circle cx={hover.x} cy={hover.y} r={10} fill="#df7662" fillOpacity={0.24} stroke="#c04e3e" strokeWidth={1.8} pointerEvents="none" />}

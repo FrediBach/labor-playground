@@ -1,4 +1,8 @@
-import { PICO_PINS, PROJECT_LIMITS, picoGround, validatePico, type PicoConfiguration } from './pico/profile.ts'
+import { customExamples } from './custom-examples.ts'
+import { PROJECT_LIMITS } from './project-limits.ts'
+import { CUSTOM_LIMITS, validateCustomComponents, resolvePartModel, nominalValue, minimumModelValue, type CustomComponent } from './custom-components.ts'
+import { compileCustomModel } from './component-models.ts'
+import { PICO_PINS, picoGround, validatePico, type PicoConfiguration } from './pico/profile.ts'
 import { picoDriverLines } from './pico/electrical.ts'
 import type { OledConnection } from './ssd1306.ts'
 import type { PicoTrace } from './pico/runtime.ts'
@@ -21,6 +25,7 @@ export interface Part {
   /** Physical terminals in the order named by the component definition. */
   pins: string[]
   /** Potentiometer wiper position: 0 at CCW, 1 at CW; omitted means 0.5. */
+  customModelId?: string
   position?: number
 }
 
@@ -41,7 +46,8 @@ export interface EnvelopeSettings {
 export const DEFAULT_ENVELOPE: Readonly<EnvelopeSettings> = Object.freeze({ mode: 'envelope', gateHigh: false, decayMs: 20 })
 
 export interface CircuitDocument {
-  schemaVersion: 1 | 2
+  schemaVersion: 1 | 2 | 3
+  customComponents?: CustomComponent[]
   pico?: PicoConfiguration
   boardVersion: 'virtual-1'
   title: string
@@ -317,11 +323,13 @@ export function validateDocument(input: unknown): CircuitDocument {
   try { serialized = JSON.stringify(input) } catch { throw new Error('The circuit must contain valid JSON data.') }
   if (!serialized || new TextEncoder().encode(serialized).length > PROJECT_LIMITS.bytes) throw new Error('Project files must be smaller than 200 kB.')
   const raw = object(input, 'Circuit')
-  if (![1, 2].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
+  if (![1, 2, 3].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
   if (typeof raw.title !== 'string' || raw.title.length > 100) throw new Error('Circuit title must contain at most 100 characters.')
   if (!Array.isArray(raw.parts) || raw.parts.length > 30) throw new Error('A circuit may contain up to 30 components.')
   if (!Array.isArray(raw.wires) || raw.wires.length > 120) throw new Error('A circuit may contain up to 120 wires.')
-  if (raw.pico !== undefined && raw.schemaVersion !== 2) throw new Error('Pico projects require schema version 2.')
+  if (raw.pico !== undefined && raw.schemaVersion === 1) throw new Error('Pico projects require schema version 2 or 3.')
+  if (raw.schemaVersion !== 3 && (raw.customComponents !== undefined || raw.parts.some(p => p && typeof p === 'object' && 'customModelId' in p))) throw new Error('Custom components require schema version 3.')
+  const customComponents = raw.customComponents === undefined ? undefined : validateCustomComponents(raw.customComponents)
   const pico = raw.pico === undefined ? undefined : validatePico(raw.pico)
   const ids = new Set<string>()
   const occupied = new Set<string>()
@@ -348,14 +356,16 @@ export function validateDocument(input: unknown): CircuitDocument {
     if (typeof part.kind !== 'string' || !Object.hasOwn(PARTS, part.kind)) throw new Error(`Unknown component type on ${id}.`)
     const kind = part.kind as ComponentKind
     const definition = PARTS[kind]
-    const value = finiteNumber(part.value, `${id} value`, definition.min, definition.max)
+    let value = finiteNumber(part.value, `${id} value`, definition.min, definition.max)
+    const model = resolvePartModel({ customComponents }, { kind, customModelId: part.customModelId as string | undefined })
+    if (model) value = nominalValue(model)
     if (kind === 'switch' && value !== 0 && value !== 1) throw new Error(`${id} must be either open (0) or closed (1).`)
     if (!Array.isArray(part.pins) || part.pins.length !== definition.pinNames.length) throw new Error(`${id} requires exactly ${definition.pinNames.length} pins.`)
     const pins = part.pins.map(readTerminal)
     if (!isValidFootprint(kind, pins)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
-    return { id, kind, value, pins, ...(position === undefined ? {} : { position }) }
+    return { id, kind, value, pins, ...(model ? { customModelId: model.id } : {}), ...(position === undefined ? {} : { position }) }
   })
   const wires: Wire[] = raw.wires.map((entry, index) => {
     const wire = object(entry, `Wire ${index + 1}`)
@@ -382,8 +392,9 @@ export function validateDocument(input: unknown): CircuitDocument {
   }
   const probes = object(raw.probes, 'Probes')
   if (raw.stimulus !== undefined && raw.stimulus !== 'periodic' && raw.stimulus !== 'step') throw new Error('Unsupported capture stimulus.')
-  return {
-    schemaVersion: raw.schemaVersion as 1 | 2, boardVersion: 'virtual-1', title: raw.title,
+  const result: CircuitDocument = {
+    schemaVersion: raw.schemaVersion as 1 | 2 | 3,
+    ...(customComponents === undefined ? {} : { customComponents }), boardVersion: 'virtual-1', title: raw.title,
     ...(pico ? { pico } : {}),
     parts, wires,
     ...(raw.automations === undefined ? {} : { automations: validateAutomations(raw.automations, parts) }),
@@ -391,6 +402,8 @@ export function validateDocument(input: unknown): CircuitDocument {
     instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'], ...(envelope === undefined ? {} : { envelope }) },
     probes: { CH1: probes.CH1 === null ? null : readTerminal(probes.CH1), CH2: probes.CH2 === null ? null : readTerminal(probes.CH2) },
   }
+  if (new TextEncoder().encode(JSON.stringify(result, null, 2)).length > PROJECT_LIMITS.bytes) throw new Error('Formatted project files must be smaller than 200 kB.')
+  return result
 }
 
 export interface Diagnostic {
@@ -748,6 +761,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
     const safeId = spiceDeviceId(part)
+    const custom = compileCustomModel(doc, part, part.pins.map(pin => nodeByTerminal[pin]))
+    if (custom) { lines.push(...custom.lines); continue }
     if (part.kind === 'ssd1306') {
       lines.push(`ROLED_${safeId}_scl ${nodeByTerminal[part.pins[2]]} ${b} 4700`, `ROLED_${safeId}_sda ${nodeByTerminal[part.pins[3]]} ${b} 4700`)
     }
@@ -814,7 +829,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     // Behavioral latch thresholds need explicit resolution as well as LTE
     // control. Slow blinkers can still take proportionally larger steps.
     timerStep = Math.min(timerStep, capacitors.length && resistors.length
-      ? Math.min(...capacitors.map(part => part.value)) * Math.min(...resistors.map(part => part.value)) / 50
+      ? Math.min(...capacitors.map(part => minimumModelValue(doc, part))) * Math.min(...resistors.map(part => minimumModelValue(doc, part))) / 50
       : 1e-5)
   }
   const maximumFrequency = Math.max(frequency, ...(timelines.get('frequency') ?? []).map(point => point.value))
@@ -823,6 +838,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     activeNodes.has(nodeByTerminal.eg) && envelope.mode === 'envelope' ? envelope.decayMs / 200_000 : Infinity, timerStep)
   const step = spiceNumber(maximumStep)
   const savedCurrents = [...doc.parts].sort((a, b) => a.id.localeCompare(b.id)).flatMap((part) => {
+    const custom = compileCustomModel(doc, part, part.pins.map(pin => nodeByTerminal[pin]))
+    if (custom) return custom.savedVectors
     const safeId = spiceDeviceId(part)
     if (timelines.has(`switch:${part.id}`)) return [`@BA_${safeId}[i]`]
     if (timelines.has(`potentiometer:${part.id}`)) return [`@BA_${safeId}_ccw[i]`, `@BA_${safeId}_cw[i]`]
@@ -850,7 +867,14 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   // Tighter truncation-error control retains useful interpolation accuracy at
   // fast RC transitions even when the baseline grid spans a long recording.
   lines.push(`.options reltol=0.001 abstol=1e-12 vntol=1e-6 trtol=${timers.length ? 7 : 0.01}`, ['.save', ...savedVectors].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} ${durationSeconds} 0 ${step}`, '.end')
-  return { netlist: lines.join('\n') + '\n', diagnostics, nodeByTerminal, nets }
+  const netlist = lines.join('\n') + '\n'
+  const externalNodes = new Set(Object.values(nodeByTerminal))
+  const internalNodes = new Set(lines.slice(1).filter(line => /^[RCLVIBDQ]/i.test(line)).flatMap(line => {
+    const fields = line.split(/\s+/)
+    return fields.slice(1, fields[0].startsWith('Q') ? 4 : 3).filter(node => !externalNodes.has(node))
+  }))
+  if (new TextEncoder().encode(netlist).length > CUSTOM_LIMITS.netlistBytes || lines.filter(line => /^[a-z]/i.test(line)).length > CUSTOM_LIMITS.devices || internalNodes.size > CUSTOM_LIMITS.internalNodes) diagnostics.push({ severity: 'error', message: 'Expanded circuit exceeds the netlist resource limit. Reduce curve points or components.' })
+  return { netlist, diagnostics, nodeByTerminal, nets }
 }
 
 export function formatValue(value: number, kind: ComponentKind): string {
@@ -976,6 +1000,7 @@ export const examples: CircuitExample[] = [
     },
   },
   ...passiveExamples,
+  ...customExamples,
   ...automationExamples,
   ...activeExamples,
   ...icExamples,

@@ -128,3 +128,13 @@ Use `@/` to import from `src/`. The document format only accepts supported compo
 The public site is **https://picolabor.com**. Import this repository into Vercel and use Node.js 24. The checked-in `vercel.json` configures the Vite build, `dist` output, security headers, and immutable caching for fingerprinted assets. Add `picolabor.com` in the Vercel project's Domains settings and configure the DNS records Vercel provides. If adding `www.picolabor.com`, redirect it to the apex domain there.
 
 The canonical URL, Open Graph and Twitter metadata live in `index.html`; crawler files and branding assets live in `public`. To regenerate the PNG sharing image and icons after changing the vector artwork, run `node scripts/generate-branding.mjs` (requires Playwright Chromium).
+
+### Custom components
+
+Create project-local **resistors with R(|I|)** and **non-polarized capacitors with differential C(V)** from the parts library. The keyboard-accessible table includes engineering units, curve preview and validation. Definitions can be placed, assigned to compatible parts, duplicated, edited across shared instances, or copied independently. Save is one undoable transaction; Cancel leaves the circuit unchanged. Clear board preserves definitions; in-use definitions must be reassigned or removed before deletion.
+
+Curves interpolate linearly and extend at constant endpoint values. Resistors obey `V = I × R(abs(I))`; capacitors use integrated charge `Q(V) = ∫ C(u) du` and stored energy `E(V) = ∫ u C(u) du`. Current and power come from the solver. Captures warn when endpoint extension was used. Nominal values and resistor bands represent R(0) or C(0), not a live reading. Each capture starts at its DC operating point.
+
+Schema 3 embeds definitions in exports, browser recovery, folder sync and history, including Pico projects. Schemas 1 and 2 remain supported. Limits: 32 definitions, 2–64 points each, 30 placed parts, 200 kB formatted project JSON; current axis 0–1 A with ≥1 µA spacing, voltage axis −100–100 V with ≥1 mV spacing and an explicit zero point. R spans 10 Ω–10 MΩ, C spans 100 pF–10 mF. Slopes are bounded at 10⁹ Ω/A or 1 F/V, and differential resistance must stay positive. Models are instantaneous and lossless where applicable; thermal memory and hysteresis are outside this release.
+
+Try the **Current-sensitive resistor** and **Voltage-sensitive capacitor** examples. See [engine notes](docs/engine-notes.md) for numerical tests and resource measurements.

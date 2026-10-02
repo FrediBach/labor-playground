@@ -1,3 +1,4 @@
+import { compileCustomModel } from './component-models.ts'
 import { spiceDeviceId, type CircuitDocument } from './circuit.ts'
 import type { OperatingPointBranch, OperatingPointPartDescriptor } from './simulation-types.ts'
 import { automationIssue } from './automations.ts'
@@ -6,6 +7,8 @@ import { automationIssue } from './automations.ts'
 export function operatingPointDescriptors(document: CircuitDocument, nodeByTerminal: Record<string, string>, automatedTransient = false, durationSeconds = 10): OperatingPointPartDescriptor[] {
   return document.parts.map((part) => {
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
+    const custom = compileCustomModel(document, part, nodes)
+    if (custom) return custom.descriptor
     const [a, b, c] = nodes
     const branches: OperatingPointBranch[] = []
     const automated = automatedTransient && document.automations?.some(row => row.enabled && row.action.partId === part.id && !automationIssue(row, document, durationSeconds))

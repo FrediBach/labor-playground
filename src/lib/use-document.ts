@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useReducer, useState } from 'react'
-import { PROJECT_LIMITS } from './pico/profile'
+import { PROJECT_LIMITS } from './project-limits'
 import { examples, validateDocument, type CircuitDocument } from './circuit'
 
 const STORAGE_KEY = 'labor-playground.document.v1'

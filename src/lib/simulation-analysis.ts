@@ -4,7 +4,7 @@ import type { Capture, SimulationRequest } from './simulation-types.ts'
 import { extractCapture, extractOperatingPoint, fatalSimulationMessages, requireAnalysisCompletion, requireCompleteCapture } from './simulation-results.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { extractRecording } from './recording.ts'
-import { compileCircuit, validateDocument } from './circuit.ts'
+import { compileCircuit, validateDocument, spiceDeviceId } from './circuit.ts'
 import { automationCrossing, automationIssue, scheduledAutomationEvents } from './automations.ts'
 import { operatingPointDescriptors } from './simulation-descriptors.ts'
 
@@ -34,7 +34,7 @@ async function executeAnalysis(engine: Engine, netlist: string) {
 }
 
 /** Both analyses belong to one worker request, timeout, and circuit revision. */
-export async function runCircuitCapture(engine: Engine, request: SimulationRequest): Promise<Capture> {
+async function captureCircuit(engine: Engine, request: SimulationRequest): Promise<Capture> {
   const started = performance.now()
   const durationSeconds = request.durationSeconds ?? 0.1
   if (!Number.isFinite(durationSeconds) || durationSeconds < 0.001 || durationSeconds > SIMULATION_LIMITS.maxDurationSeconds) throw new Error('The requested recording duration is outside the supported 1 ms to 10 s range.')
@@ -79,6 +79,31 @@ export async function runCircuitCapture(engine: Engine, request: SimulationReque
     if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
     const descriptors = document && compiled ? operatingPointDescriptors(document, compiled.nodeByTerminal, true, durationSeconds) : request.operatingPoint?.parts ?? []
     const recording = extractRecording(result, descriptors)
+    for (const descriptor of descriptors) {
+      const model = descriptor.customModel
+      if (!model) continue
+      const branch = descriptor.branches[0]
+      let low = Infinity, high = -Infinity
+      const currents = branch.kind === 'saved-current' ? recording.currents[branch.vector] : undefined
+      for (let i = 0; i < capture.time.length; i++) {
+        const voltage = (branch.fromNode === '0' ? 0 : recording.nodeVoltages[branch.fromNode][i]) - (branch.toNode === '0' ? 0 : recording.nodeVoltages[branch.toNode][i])
+        const axis = model.baseKind === 'resistor' ? Math.abs(currents![i]) : voltage
+        low = Math.min(low, axis); high = Math.max(high, axis)
+      }
+      const points = model.characteristic.points
+      if (low < points[0].x - 1e-12 || high > points.at(-1)!.x + 1e-12) (capture.diagnostics ??= []).push({ severity: 'warning', partId: descriptor.partId, message: `${descriptor.partId} (${model.name}) used constant endpoint values: observed ${low.toPrecision(4)} to ${high.toPrecision(4)} ${model.baseKind === 'resistor' ? 'A' : 'V'}; supplied range ${points[0].x} to ${points.at(-1)!.x}.` })
+    }
     return { ...capture, recording, elapsedMs: performance.now() - started, ...(operatingPoint ? { operatingPoint } : {}), ...(document ? { automationEvents: events.sort((a, b) => a.time - b.time) } : {}) }
+  }
+}
+
+/** Keep circuit-level recovery advice when ngspice cannot identify a device. */
+export async function runCircuitCapture(engine: Engine, request: SimulationRequest): Promise<Capture> {
+  try { return await captureCircuit(engine, request) } catch (error) {
+    const custom = request.operatingPoint?.parts.filter(part => part.customModel) ?? []
+    if (!custom.length || !(error instanceof Error)) throw error
+    const matching = custom.filter(part => error.message.toLowerCase().includes(spiceDeviceId({ id: part.partId }).toLowerCase()))
+    const affected = (matching.length ? matching : custom).map(part => `${part.partId} (${part.customModel!.name})`).join(', ')
+    throw new Error(`${error.message} Check custom component curves and their connections: ${affected}. Try a shorter capture or gentler curve slopes.`)
   }
 }

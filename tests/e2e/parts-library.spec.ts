@@ -15,7 +15,8 @@ function terminal(page: Page, id: string) {
 }
 
 async function recovered(page: Page): Promise<CircuitDocument> {
-  return page.evaluate(() => JSON.parse(localStorage.getItem('labor-playground.document.v1') ?? 'null'))
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('labor-playground.document.v1'))).not.toBeNull()
+  return page.evaluate(() => JSON.parse(localStorage.getItem('labor-playground.document.v1')!))
 }
 
 async function captured(page: Page) {

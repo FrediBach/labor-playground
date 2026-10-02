@@ -18,7 +18,7 @@ test('breadboard strips, trench, and split rails have explicit connectivity', ()
 })
 
 test('all bundled examples validate and compile without structural errors', () => {
-  assert.equal(examples.length, 24)
+  assert.equal(examples.length, 26)
   assert.equal(new Set(examples.map(example => example.id)).size, examples.length)
   assert.deepEqual(new Set(examples.map(example => example.level)), new Set(['Basic', 'Intermediate', 'Advanced']))
   for (const example of examples) {
@@ -96,7 +96,7 @@ test('placement rotates, crosses the trench, and rejects outside holes', () => {
 
 test('malformed imports and unbounded values fail before compilation', () => {
   const cases: [string, (doc: any) => void][] = [
-    ['version', (doc) => { doc.schemaVersion = 3 }],
+    ['version', (doc) => { doc.schemaVersion = 4 }],
     ['terminal', (doc) => { doc.parts[0].pins[0] = 'missing' }],
     ['occupancy', (doc) => { doc.wires[0].to = 'a6' }],
     ['duplicate ID', (doc) => { doc.wires[0].id = 'r1' }],

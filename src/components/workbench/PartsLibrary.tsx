@@ -3,6 +3,7 @@ import { Cable, Check, ChevronDown, CircuitBoard, Crosshair, PanelLeftClose, Plu
 import { PARTS, formatValue, type ComponentKind } from '@/lib/circuit'
 import { PartIcon } from './PartIcon'
 import './PartsLibrary.css'
+import { nominalValue, type PartPlacement, type CustomComponent } from '@/lib/custom-components'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 
@@ -24,10 +25,17 @@ const keywords: Partial<Record<ComponentKind, string>> = {
   lm13700: 'ota operational transconductance amplifier dual dip16 vca voltage controlled amplifier filter buffer bias',
 }
 
-export function PartsLibrary({ tool, onToolChange, onPlace, hasPico, onAddPico, wireColor, wireColors, onWireColorChange, partCount, onClear, onCollapse }: {
+export function PartsLibrary({ tool, onToolChange, onPlace, placement, customComponents, onCreate, onEdit, onDuplicate, onDeleteModel, modelInstances, hasPico, onAddPico, wireColor, wireColors, onWireColorChange, partCount, onClear, onCollapse }: {
   tool: Tool
   onToolChange: (tool: Tool) => void
-  onPlace: (kind: ComponentKind) => void
+  onPlace: (placement: PartPlacement) => void
+  placement?: PartPlacement
+  customComponents: CustomComponent[]
+  onCreate: () => void
+  onEdit: (model: CustomComponent) => void
+  onDuplicate: (model: CustomComponent) => void
+  onDeleteModel: (model: CustomComponent) => void
+  modelInstances: (id: string) => string[]
   hasPico: boolean
   onAddPico: () => void
   wireColor: string
@@ -49,7 +57,8 @@ export function PartsLibrary({ tool, onToolChange, onPlace, hasPico, onAddPico, 
       return terms.every(term => text.includes(term))
     }),
   })).filter(group => group.kinds.length > 0)
-  const count = groups.reduce((sum, group) => sum + group.kinds.length, 0)
+  const custom = (category === 'all' || category === 'custom') ? customComponents.filter(model => terms.every(term => `${model.name} ${model.description ?? ''} ${model.baseKind}`.toLowerCase().includes(term))) : []
+  const count = custom.length + groups.reduce((sum, group) => sum + group.kinds.length, 0)
   const resetScroll = () => catalog.current?.scrollTo({ top: 0, left: 0 })
   const clearSearch = () => { setSearch(''); resetScroll(); searchInput.current?.focus() }
 
@@ -61,12 +70,18 @@ export function PartsLibrary({ tool, onToolChange, onPlace, hasPico, onAddPico, 
       <div className="wire-palette" role="group" aria-label="Wire colors">{wireColors.map(color => <button key={color} aria-label={`Wire color ${color}`} aria-pressed={wireColor === color} style={{ backgroundColor: color }} onClick={() => onWireColorChange(color)}>{wireColor === color && <Check size={12} />}</button>)}</div>
       <div className="library-probes">{(['probe1', 'probe2'] as const).map((probe, index) => <button key={probe} className={`connection-item ${tool === probe ? 'active' : ''}`} aria-label={`Scope probe CH${index + 1}`} title={`Attach scope probe CH${index + 1}`} aria-pressed={tool === probe} onClick={() => onToolChange(probe)}><Crosshair size={17} className={`ch${index + 1}-text`} /><span className={`ch${index + 1}-text`}>CH{index + 1}</span><small>Probe</small></button>)}</div>
     </div>
+    <button className="subtle-button custom-create" onClick={onCreate}><Plus size={14} />Create custom component</button>
     <div className="library-filters">
       <div className="parts-search"><Search size={15} /><input ref={searchInput} placeholder="Find a component…" aria-label="Find a component" value={search} onChange={e => { setSearch(e.target.value); resetScroll() }} />{search && <button type="button" className="icon-button" aria-label="Clear component search" onClick={clearSearch}><X size={14} /></button>}</div>
-      <label className="library-category"><select aria-label="Component category" value={category} onChange={e => { setCategory(e.target.value); resetScroll() }}><option value="all">All components</option>{categories.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select><ChevronDown size={14} /><span aria-live="polite">{count} parts</span></label>
+      <label className="library-category"><select aria-label="Component category" value={category} onChange={e => { setCategory(e.target.value); resetScroll() }}><option value="all">All components</option><option value="custom">Custom components</option>{categories.map(group => <option key={group.id} value={group.id}>{group.label}</option>)}</select><ChevronDown size={14} /><span aria-live="polite">{count} parts</span></label>
     </div>
     <div className="parts-catalog" ref={catalog} tabIndex={0} role="region" aria-label="Components" key={category}>
-      {groups.map(group => <section key={group.id} className="parts-category" aria-labelledby={`parts-${group.id}`}><h3 id={`parts-${group.id}`} className="tray-category">{group.label}<span>{group.kinds.length}</span></h3><div className="parts-list">{group.kinds.map(kind => <button key={kind} className={`part-item ${tool === kind ? 'active' : ''}`} aria-label={PARTS[kind].label} title={`${PARTS[kind].description} Click or drag to place.`} aria-pressed={tool === kind} draggable onDragStart={e => { e.dataTransfer.setData('application/labor-part', kind); onPlace(kind) }} onClick={() => { if (tool === kind) onToolChange('select'); else onPlace(kind) }}><span className="part-thumbnail"><PartIcon kind={kind} /></span><span><strong>{PARTS[kind].label}</strong><small>{formatValue(PARTS[kind].defaultValue, kind)}</small></span><Plus size={13} /></button>)}</div></section>)}
+      {groups.map(group => <section key={group.id} className="parts-category" aria-labelledby={`parts-${group.id}`}><h3 id={`parts-${group.id}`} className="tray-category">{group.label}<span>{group.kinds.length}</span></h3><div className="parts-list">{group.kinds.map(kind => <button key={kind} className={`part-item ${tool === kind && !placement?.customModelId ? 'active' : ''}`} aria-label={PARTS[kind].label} title={`${PARTS[kind].description} Click or drag to place.`} aria-pressed={tool === kind && !placement?.customModelId} draggable onDragStart={e => { e.dataTransfer.setData('application/labor-part', JSON.stringify({ kind })); onPlace({ kind }) }} onClick={() => { if (tool === kind && !placement?.customModelId) onToolChange('select'); else onPlace({ kind }) }}><span className="part-thumbnail"><PartIcon kind={kind} /></span><span><strong>{PARTS[kind].label}</strong><small>{formatValue(PARTS[kind].defaultValue, kind)}</small></span><Plus size={13} /></button>)}</div></section>)}
+      {custom.length > 0 && <section className="parts-category custom-library" aria-label="Custom components"><h3 className="tray-category">Custom components<span>{custom.length}</span></h3>{custom.map(model => <div key={model.id}>
+        <button className={`part-item ${placement?.customModelId === model.id ? 'active' : ''}`} aria-label={model.name} aria-pressed={placement?.customModelId === model.id} draggable onDragStart={e => { const selection = { kind: model.baseKind, customModelId: model.id }; e.dataTransfer.setData('application/labor-part', JSON.stringify(selection)); onPlace(selection) }} onClick={() => placement?.customModelId === model.id ? onToolChange('select') : onPlace({ kind: model.baseKind, customModelId: model.id })}><span className="part-thumbnail"><PartIcon kind={model.baseKind} /></span><span><strong>{model.name}</strong><small>{formatValue(nominalValue(model), model.baseKind)} nominal · custom</small></span></button>
+        <div className="custom-library-actions"><button aria-label={`Edit ${model.name}`} onClick={() => onEdit(model)}>Edit</button><button aria-label={`Duplicate ${model.name}`} onClick={() => onDuplicate(model)}>Duplicate</button><button aria-label={`Delete ${model.name}`} disabled={modelInstances(model.id).length > 0} title={modelInstances(model.id).length ? `Reassign or remove ${modelInstances(model.id).join(', ')} first` : 'Delete unused definition'} onClick={() => onDeleteModel(model)}>Delete</button></div>
+        {modelInstances(model.id).length > 0 && <p className="custom-library-note">Used by {modelInstances(model.id).join(', ')}. Reassign or remove these instances before deleting.</p>}
+      </div>)}</section>}
       {count === 0 && <div className="parts-empty" role="status"><p>No components match “{search}”{category !== 'all' ? ` in ${categories.find(group => group.id === category)?.label}` : ''}.</p><button className="subtle-button" onClick={clearSearch}>Clear search</button>{category !== 'all' && <button className="subtle-button" onClick={() => { setCategory('all'); resetScroll() }}>Show all categories</button>}</div>}
     </div>
     <div className="tray-bottom"><span>{partCount} / 30 parts placed</span><button className="subtle-button" onClick={onClear}>Clear board</button></div>

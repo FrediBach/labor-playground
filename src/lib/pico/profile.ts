@@ -1,7 +1,8 @@
 // Center the dock between the breadboard panel edge and the workbench edge.
 export const PICO_DOCK_CENTER_X = (917 + 1110) / 2
 export const PICO_PROFILE = 'rp2-pico-1.20.0-v1'
-export const PROJECT_LIMITS = { bytes: 200_000, sourceBytes: 32_768 } as const
+export { PROJECT_LIMITS } from '../project-limits.ts'
+import { PROJECT_LIMITS } from '../project-limits.ts'
 export const PICO_CAPTURE_DURATIONS_MS = [100, 500, 1000, 5000, 10000] as const
 export type PicoCaptureMs = typeof PICO_CAPTURE_DURATIONS_MS[number]
 export interface PicoConfiguration { board: 'pico'; profile: typeof PICO_PROFILE; source: string; captureMs: PicoCaptureMs }

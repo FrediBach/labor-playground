@@ -1,3 +1,6 @@
+import { useState } from 'react'
+import { resolvePartModel, partDisplayName, partValueSummary, assignCustomComponent, duplicateCustomComponent, type CustomComponent } from '@/lib/custom-components'
+import { CurvePreview } from './CustomComponentEditor'
 import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2 } from 'lucide-react'
 import { PARTS, type CircuitDocument } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
@@ -8,6 +11,8 @@ import { hasEditableLeads, type LeadEdit } from '@/lib/part-editing'
 import { RecordedMeasurements, RecordedWireVoltage } from './RecordedMeasurements'
 
 interface InspectorProps {
+  onEditModel: (model: CustomComponent) => void
+  onCreateModel: (part: import('@/lib/circuit').Part) => void
   document: CircuitDocument
   selectedId: string | null
   onChange: (document: CircuitDocument) => void
@@ -20,10 +25,13 @@ interface InspectorProps {
   onFinishLeadEdit: () => void
 }
 
-export function Inspector({ document, selectedId, onChange, onDelete, colors, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
+export function Inspector({ onEditModel, onCreateModel, document, selectedId, onChange, onDelete, colors, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
+  const [modelError, setModelError] = useState('')
+  const modelAction = (action: () => CircuitDocument) => { try { onChange(action()); setModelError('') } catch (e) { setModelError((e as Error).message) } }
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
   const definition = part ? PARTS[part.kind] : null
+  const model = part ? resolvePartModel(document, part) : undefined
   const integratedCircuit = !!definition?.package
   const resistive = part?.kind === 'resistor' || part?.kind === 'potentiometer'
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
@@ -46,11 +54,11 @@ export function Inspector({ document, selectedId, onChange, onDelete, colors, op
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
           <span className="eyebrow">{part.id} · {integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · C / B / E` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
-          <h2>{definition.label}</h2><p>{definition.description}</p>
+          <h2>{partDisplayName(document, part)}</h2><p>{model ? model.description || `Custom ${model.baseKind} characteristic` : definition.description}</p>
         </div>
         <div className="inspector-section">
           <div className="section-overline">{integratedCircuit ? 'POWER & MODEL' : 'COMPONENT VALUE'}</div>
-          {part.kind === 'switch' ? (
+          {model ? <p>{partValueSummary(document, part)}. Resistor bands show the nominal value.</p> : part.kind === 'switch' ? (
             <label className="switch-value"><input type="checkbox" checked={!!part.value} onChange={event => updatePart({ value: event.target.checked ? 1 : 0 })} />{part.value ? 'Closed (on)' : 'Open (off)'}</label>
           ) : resistive || capacitive || inductive || zener ? <>
             <NumberField
@@ -71,6 +79,11 @@ export function Inspector({ document, selectedId, onChange, onDelete, colors, op
             <p className="muted-copy">{definition.supplyHint}</p>
           ) : <p className="muted-copy">Fixed generic {transistor ? `${part.kind.toUpperCase()} transistor` : definition.label.toLowerCase()} model.</p>}
         </div>
+        {(part.kind === 'resistor' || part.kind === 'capacitor') && <div className="inspector-section custom-model">
+          <label>Component model<select aria-label="Component model" value={part.customModelId ?? ''} onChange={e => modelAction(() => assignCustomComponent(document, part.id, e.target.value || undefined))}><option value="">Linear built-in at nominal value</option>{document.customComponents?.filter(m => m.baseKind === part.kind).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+          {model ? <><CurvePreview points={model.characteristic.points} xLabel={model.baseKind === 'resistor' ? '|Current| (A)' : 'Voltage (V)'} yLabel={model.baseKind === 'resistor' ? 'Resistance (Ω)' : 'Capacitance (F)'} /><button onClick={() => onEditModel(model)}>Edit model</button><button onClick={() => modelAction(() => duplicateCustomComponent(document, model.id, part.id).document)}>Make independent copy</button></> : <button onClick={() => onCreateModel(part)}>Create custom model from this value</button>}
+          {modelError && <p role="alert">{modelError}</p>}
+        </div>}
         <RecordedMeasurements key={part.id} part={part} nodeByTerminal={nodeByTerminal} />
         <div className="inspector-section">
           <div className="section-overline">{integratedCircuit || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
@@ -99,7 +112,7 @@ export function Inspector({ document, selectedId, onChange, onDelete, colors, op
           </> : <p className="micro-copy">Capture the current circuit to read DC current and power.</p>}
         </div>
         <div className="inspector-section">
-          <details className="model-details"><summary>Model details <Info size={13} /></summary><p>{definition.model}</p></details>
+          <details className="model-details"><summary>Model details <Info size={13} /></summary><p>{model ? `${model.baseKind === 'resistor' ? 'V = I × R(|I|), an instantaneous law without thermal memory.' : 'C(V) = dQ/dV. Charge and energy are integrated from zero voltage; each capture starts at its DC operating point.'} Linear interpolation and constant endpoint extension. Shared by ${document.parts.filter(p => p.customModelId === model.id).length} placed instances.` : definition.model}</p></details>
         </div>
         <button className="delete-part" onClick={onDelete}><Trash2 size={14} />Remove component<kbd>⌫</kbd></button>
       </> : wire ? <>
