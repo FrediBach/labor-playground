@@ -80,6 +80,8 @@ Read [the hardware specification](./docs/hardware-spec.md) for verified manual r
 
 The [custom components plan](./docs/custom-components-plan.md) records the architecture assessment and proposed implementation for user-defined resistance/current and capacitance/voltage curves.
 
+The [automation flows and circuit tests plan](./docs/automation-flows-plan.md) proposes a React Flow editor, dependent automations, and repeatable project tests while preserving simple setup.
+
 ## Checks and builds
 
 ```sh
