@@ -37,7 +37,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
   const inductive = part?.kind === 'inductor'
   const zener = part?.kind === 'zener'
-  const fet = part?.kind === 'njfet' || part?.kind === 'nmos'
+  const fet = part?.kind === 'njfet' || part?.kind === 'nmos' || part?.kind === 'pmos'
   const transistor = fet || part?.kind === 'npn' || part?.kind === 'pnp'
   const polarized = part?.kind === 'electrolytic' || part?.kind === 'diode' || part?.kind === 'schottky' || zener || part?.kind === 'led'
   const dc = part ? operatingPoint?.parts[part.id] : undefined
@@ -107,7 +107,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
         </div>
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
-          {integratedCircuit ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{part.kind === 'timer555' && ' DC voltages show the initial 1 µs reset state; use the scope to inspect timing.'}</p> : dc ? <>
+          {integratedCircuit && part.kind !== 'vactrol' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
             {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
             <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
             <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>

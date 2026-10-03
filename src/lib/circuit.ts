@@ -13,13 +13,15 @@ import { activeExamples } from './active-examples.ts'
 import { icExamples } from './ic-examples.ts'
 import { automationExamples } from './automation-examples.ts'
 import { synthIcLines, SYNTH_IC_LAYOUTS } from './synth-models.ts'
+import { synthUtilityLines, SCHMITT_SECTIONS, MULTIPLEXER_SECTIONS } from './synth-utilities.ts'
+import { synthUtilityExamples } from './synth-utility-examples.ts'
 import { synthExamples } from './synth-examples.ts'
 import { timer555Lines } from './timer555.ts'
 import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053'
 
 export interface Part {
   id: string
@@ -85,7 +87,7 @@ export interface Terminal {
 }
 
 export interface PartDefinition {
-  package?: 'DIP-8' | 'DIP-14' | 'DIP-16'
+  package?: 'DIP-4' | 'DIP-8' | 'DIP-14' | 'DIP-16'
   supplyHint?: string
   label: string
   unit: string
@@ -98,6 +100,33 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  pmos: {
+    pinNames: ['Drain', 'Gate', 'Source'],
+    label: 'P-channel MOSFET', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'A high-side switch that conducts when its gate is below its source. Useful for switched rails and gate drivers.',
+    model: 'Generic level-1 PMOS, virtual D–G–S pinout, body tied to source: VTO=−2 V, KP=10 mA/V², W/L=1, lambda=0.02/V, RD=RS=2 Ω. Includes body diode, 30 pF gate–source and 5 pF gate–drain capacitance, and 1 TΩ gate leakage. No avalanche, gate breakdown, noise, temperature drift, or thermal damage. Physical device pinouts vary.',
+  },
+  vactrol: {
+    package: 'DIP-4', pinNames: ['LED A', 'LED K', 'LDR 2', 'LDR 1'],
+    label: 'LED/LDR optocoupler', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'An LED illuminates an electrically isolated photoresistor for optical gain control and low-pass gates.',
+    supplyHint: 'Virtual four-pin carrier: 1 LED anode, 2 cathode, 3/4 photoresistor. Add an LED current-limiting resistor. Either LDR direction works. Each side needs its own DC return.',
+    model: 'Generic optical resistor, not a calibrated VTL5C device. LED Is=1e−18 A, N=2, Rs=10 Ω. Optical state follows LED current with 2 ms attack and 20 ms release time constants. R=500+9999500/(1+light_mA/0.05)² Ω: 10 MΩ dark, about 1.48 kΩ at 5 mA. The LDR is bilateral and electrically isolated. DC starts at equilibrium light; no temperature, light-history aging, voltage dependence, noise, or damage model. DIP-4 is a virtual adapter, not a manufacturer footprint.',
+  },
+  cd40106: {
+    package: 'DIP-14', pinNames: ['IN A', 'OUT A', 'IN B', 'OUT B', 'IN C', 'OUT C', 'VSS', 'OUT D', 'IN D', 'OUT E', 'IN E', 'OUT F', 'IN F', 'VDD'],
+    label: 'CD40106-style Schmitt inverter', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Six inverters with hysteresis for RC oscillators, clean clocks, and pulse shaping.',
+    supplyHint: 'Pin 14 to VDD, pin 7 to VSS (3–18 V). Keep inputs within the rails and tie unused inputs low. Outputs may be left open. One resistor and capacitor make an oscillator.',
+    model: 'Approximate six-section Schmitt inverter with standard CD40106B pinout. Thresholds are 0.58 and 0.38 of supply, with state retained between them. 100 ns state pole, 5 pF input capacitance, 1 TΩ input leakage; output resistance is 500 Ω at 5 V, falling to 167 Ω at 15 V. A deterministic 1 µs high-output initialization starts each capture; DC readings describe that initial state. No protection diodes, supply current, noise, threshold spread, or thermal model. Not a manufacturer macromodel.',
+  },
+  cd4053: {
+    package: 'DIP-16', pinNames: ['BY', 'BX', 'CY', 'COM C', 'CX', 'INH', 'VEE', 'VSS', 'SEL C', 'SEL B', 'SEL A', 'AX', 'AY', 'COM A', 'COM B', 'VDD'],
+    label: 'CD4053-style signal selector', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Three independent bilateral SPDT switches select between audio or CV sources. Inhibit disconnects all channels.',
+    supplyHint: 'Pin 16 VDD, 8 logic ground VSS, 7 analog negative rail VEE. Use 3–18 V logic supply, VEE ≤ VSS, and at most 20 V total span. Select low chooses X; high chooses Y. INH high opens all paths. Define unused logic and analog pins.',
+    model: 'Approximate CD4053B pinout with independent A/B/C selectors and inhibit. Bilateral on resistance scales from 470 Ω at 5 V total span to 125 Ω at 15 V, with signal dependence; each off path is 1 GΩ. 5 pF branch/9 pF common capacitances; 100 ns control filters and a 45–55% dead band give break-before-make. No charge injection, protection diodes, noise, chip supply current, or damage model. Not a manufacturer macromodel.',
+  },
   njfet: {
     pinNames: ['Drain', 'Gate', 'Source'],
     label: 'N-channel JFET', unit: '', defaultValue: 1, min: 1, max: 1,
@@ -547,11 +576,12 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
     if (part.kind === 'ssd1306') { addEdge(nodes[2], b); addEdge(nodes[3], b); continue }
-    if (part.kind === 'njfet' || part.kind === 'nmos') {
+    if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') {
       addEdge(a, c) // Insulated/reverse-biased gates still require an external return.
       if (new Set(nodes).size < 3) diagnostics.push({ severity: 'warning', message: `${part.id} has transistor terminals on the same net. Check the D–G–S connections.`, partId: part.id })
       continue
     }
+    if (part.kind === 'vactrol') { addEdge(a, b); addEdge(nodes[2], nodes[3]); continue }
     if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
       if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
@@ -592,9 +622,15 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
         if (!doc.parts.some(p => p.kind === 'resistor' && p.pins.some(pin => nodeByTerminal[pin] === nodes[output]))) diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS.lm393.pinNames[output]} needs an external pull-up resistor to produce a high output.`, partId: part.id })
       }
     }
+    if (part.kind === 'cd40106' && powered) for (const [, output] of SCHMITT_SECTIONS) addEdge(nodes[output], low)
+    if (part.kind === 'cd4053') {
+      const vee = nodes[6], negativeVoltage = fixedVoltages.get(vee), logicLow = fixedVoltages.get(low), logicHigh = fixedVoltages.get(high)
+      if (!referenced.has(vee) || negativeVoltage !== undefined && logicLow !== undefined && negativeVoltage > logicLow || negativeVoltage !== undefined && logicHigh !== undefined && logicHigh - negativeVoltage > 20) diagnostics.push({ severity: 'error', message: `${part.id}: connect VEE at or below VSS, with VDD − VEE no greater than 20 V.`, partId: part.id })
+      for (const [common, x, y] of MULTIPLEXER_SECTIONS) { addEdge(nodes[common], nodes[x]); addEdge(nodes[common], nodes[y]) }
+    }
     if (part.kind === 'cd4066') for (const [a, b] of [[0, 1], [2, 3], [7, 8], [9, 10]]) addEdge(nodes[a], nodes[b])
     if (span !== undefined) {
-      const indices = part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+      const indices = part.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : part.kind === 'cd4053' ? [5, 8, 9, 10] : part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
       for (const index of indices) {
         const voltage = fixedVoltages.get(nodes[index])
         if (voltage !== undefined && (voltage < fixedVoltages.get(low)! || voltage > fixedVoltages.get(high)! - (part.kind === 'lm393' ? 1.5 : 0))) diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS[part.kind].pinNames[index]} is outside the modeled operating input range.`, partId: part.id })
@@ -842,12 +878,13 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       lines.push(`D_${safeId} ${a} ${b} DZ_${safeId}`)
     }
     if (part.kind === 'npn' || part.kind === 'pnp') lines.push(`Q_${safeId} ${a} ${b} ${nodeByTerminal[part.pins[2]]} ${part.kind === 'npn' ? 'Q_NPN' : 'Q_PNP'}`)
-    if (part.kind === 'njfet' || part.kind === 'nmos') {
+    if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') {
       const c = nodeByTerminal[part.pins[2]]
       lines.push(`VFD_${safeId} ${a} fd_${safeId} 0`, `VFG_${safeId} ${b} fg_${safeId} 0`)
       if (part.kind === 'njfet') lines.push(`.model JF_${safeId} NJF(Vto=-2 Beta=1m Lambda=0.01 Rd=10 Rs=10 Cgs=5p Cgd=2p Is=1p)`, `J_${safeId} fd_${safeId} fg_${safeId} ${c} JF_${safeId}`)
-      else lines.push(`.model MF_${safeId} NMOS(Level=1 Vto=2 Kp=20m Lambda=0.02 Rd=2 Rs=2 Cbd=10p Is=1p)`, `M_${safeId} fd_${safeId} fg_${safeId} ${c} ${c} MF_${safeId} W=10u L=10u`, `CGS_${safeId} fg_${safeId} ${c} 30p`, `CGD_${safeId} fg_${safeId} fd_${safeId} 5p`, `RG_${safeId} fg_${safeId} ${c} 1e12`)
+      else lines.push(`.model MF_${safeId} ${part.kind === 'pmos' ? 'PMOS(Level=1 Vto=-2 Kp=10m' : 'NMOS(Level=1 Vto=2 Kp=20m'} Lambda=0.02 Rd=2 Rs=2 Cbd=10p Is=1p)`, `M_${safeId} fd_${safeId} fg_${safeId} ${c} ${c} MF_${safeId} W=10u L=10u`, `CGS_${safeId} fg_${safeId} ${c} 30p`, `CGD_${safeId} fg_${safeId} fd_${safeId} 5p`, `RG_${safeId} fg_${safeId} ${c} 1e12`)
     }
+    if (part.kind === 'cd40106' || part.kind === 'cd4053' || part.kind === 'vactrol') lines.push(...synthUtilityLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm393' || part.kind === 'cd4066') lines.push(...synthIcLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'switch') lines.push(timelines.has(`switch:${part.id}`)
       ? `BA_${safeId} ${a} ${b} I = v(${a},${b})/(1+(1-${control(`switch:${part.id}`, part.value)})*999999999)`
@@ -891,10 +928,10 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   // Bound the interpolation error of periodic inputs; otherwise let ngspice's
   // local-error control and source breakpoints refine a modest baseline grid.
   // Unconnected instruments must not force tiny steps for a slow/DC circuit.
-  const timers = doc.parts.filter(part => part.kind === 'timer555')
+  const timers = doc.parts.filter(part => part.kind === 'timer555' || part.kind === 'cd40106')
   let timerStep = Infinity
   for (const timer of timers) {
-    const timingNodes = new Set([1, 5, 6].map(index => nodeByTerminal[timer.pins[index]]))
+    const timingNodes = new Set((timer.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : [1, 5, 6]).map(index => nodeByTerminal[timer.pins[index]]))
     const capacitors = doc.parts.filter(part => (part.kind === 'capacitor' || part.kind === 'electrolytic') && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
     const resistors = doc.parts.filter(part => part.kind === 'resistor' && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
     // Behavioral latch thresholds need explicit resolution as well as LTE
@@ -916,7 +953,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     if (timelines.has(`potentiometer:${part.id}`)) return [`@BA_${safeId}_ccw[i]`, `@BA_${safeId}_cw[i]`]
     if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
     if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
-    if (part.kind === 'njfet' || part.kind === 'nmos') return [`i(VFD_${safeId})`, `i(VFG_${safeId})`]
+    if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') return [`i(VFD_${safeId})`, `i(VFG_${safeId})`]
+    if (part.kind === 'vactrol') return [`i(VLED_${safeId})`, `@BLDR_${safeId}[i]`]
     if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
     if (analysis === 'transient' && (part.kind === 'capacitor' || part.kind === 'electrolytic')) return [`@C_${safeId}[i]`]
     return []
@@ -953,6 +991,10 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'ssd1306') return '128×64 · I²C'
   if (kind === 'diode') return 'Silicon'
   if (kind === 'schottky') return 'Low Vf'
+  if (kind === 'pmos') return 'PMOS · D–G–S'
+  if (kind === 'vactrol') return 'Optical · 4-pin'
+  if (kind === 'cd40106') return 'Hex Schmitt · DIP-14'
+  if (kind === 'cd4053') return 'Triple SPDT · DIP-16'
   if (kind === 'njfet') return 'JFET · D–G–S'
   if (kind === 'nmos') return 'NMOS · D–G–S'
   if (kind === 'lm393') return 'Comparator · DIP-8'
@@ -1081,6 +1123,7 @@ export const examples: CircuitExample[] = [
   ...activeExamples,
   ...icExamples,
   ...synthExamples,
+  ...synthUtilityExamples,
   ...picoExamples,
 ]
 

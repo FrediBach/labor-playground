@@ -11,10 +11,14 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'passive', label: 'Passive', kinds: ['resistor', 'capacitor', 'electrolytic', 'inductor'] },
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
-  { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066'] },
+  { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos', 'pmos'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4053', 'vactrol'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
+  pmos: 'fet mosfet enhancement p channel transistor high side switch source gate drain',
+  vactrol: 'optical led ldr photoresistor optocoupler vactrol low pass gate lpg vca',
+  cd40106: 'cmos hex schmitt inverter hysteresis oscillator clock pulse lfo dip14',
+  cd4053: 'analog multiplexer demultiplexer mux selector triple spdt routing switch dip16',
   njfet: 'fet jfet depletion transistor drain gate source buffer voltage controlled resistor',
   nmos: 'fet mosfet enhancement transistor drain gate source driver inverter discharge',
   lm393: 'comparator dual threshold gate trigger pulse schmitt open collector dip8',

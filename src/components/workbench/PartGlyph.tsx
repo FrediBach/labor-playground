@@ -49,7 +49,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       y: index < rowPins ? -30 : 30,
     }))
     const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
-    const inscription = kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
+    const inscription = kind === 'cd40106' ? 'CD40106 STYLE' : kind === 'cd4053' ? 'CD4053 STYLE' : kind === 'vactrol' ? 'LED / LDR' : kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
     return <g>
       {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
@@ -59,11 +59,11 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
         <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
       </g>)}
       <rect x={-bodyHalf} y={-20} width={bodyHalf * 2} height={44} rx={4} fill="#28312a" opacity={0.2} transform="translate(1 2)" />
-      <rect x={-bodyHalf} y={-22} width={bodyHalf * 2} height={44} rx={4} fill="#343b37" stroke="#202a23" strokeWidth={1.4} />
+      <rect x={-bodyHalf} y={-22} width={bodyHalf * 2} height={44} rx={4} fill={kind === 'vactrol' ? '#344440' : '#343b37'} stroke="#202a23" strokeWidth={1.4} />
       <path d={`M${-bodyHalf + 4}-18H${bodyHalf - 4}`} stroke="#697068" strokeWidth={1.2} />
       <path d={`M${-bodyHalf}-7 A7 7 0 0 1 ${-bodyHalf} 7`} fill="#17231d" stroke="#657164" strokeWidth={0.8} />
       <circle cx={-bodyHalf + 4} cy={-17} r={2} fill="#c3c9b7" />
-      <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={0.4}>{inscription}</text>
+      <text x={3} y={3} fill="#d0d2c3" textAnchor="middle" fontFamily="monospace" fontSize={kind === 'vactrol' ? 6 : 8} fontWeight={700} letterSpacing={kind === 'vactrol' ? 0 : 0.4}>{inscription}</text>
       {leads.map((pin, index) => <g key={index} pointerEvents="none">
         <text x={pin.x} y={pin.y < 0 ? -25 : 36} textAnchor="middle" fill="#53604f" fontFamily="monospace" fontSize={6.5}>{index + 1}</text>
         <text x={pin.x} y={pin.y < 0 ? -10 : 15} textAnchor="middle" fill="#bac4af" fontFamily="monospace" fontSize={Math.min(5.4, 35 / labels[index].length)}>{labels[index]}</text>
@@ -91,8 +91,8 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       {leads.map((pin, index) => <text key={index} x={pin.x} y={-3} textAnchor="middle" fill="#576752" fontFamily="monospace" fontSize={6}>{['A', 'W', 'B'][index]}</text>)}
     </g>
   }
-  if (kind === 'npn' || kind === 'pnp' || kind === 'njfet' || kind === 'nmos') {
-    const fet = kind === 'njfet' || kind === 'nmos'
+  if (kind === 'npn' || kind === 'pnp' || kind === 'njfet' || kind === 'nmos' || kind === 'pmos') {
+    const fet = kind === 'njfet' || kind === 'nmos' || kind === 'pmos'
     const letters = fet ? ['D', 'G', 'S'] : ['C', 'B', 'E']
     const leads = pins ?? [{ x: -24, y: 0 }, { x: 0, y: 0 }, { x: 24, y: 0 }]
     const accent = fet ? '#cbbd91' : kind === 'npn' ? '#adc9ad' : '#cbbbd2'

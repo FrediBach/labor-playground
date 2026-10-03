@@ -1,6 +1,8 @@
 import type { ComponentKind } from './circuit.ts'
 
 export const SYNTH_IC_LAYOUTS: Partial<Record<ComponentKind, { negative: number; positive: number; min: number; max: number }>> = {
+  cd40106: { negative: 6, positive: 13, min: 3, max: 18 },
+  cd4053: { negative: 7, positive: 15, min: 3, max: 18 },
   lm393: { negative: 3, positive: 7, min: 2, max: 36 },
   cd4066: { negative: 6, positive: 13, min: 3, max: 18 },
 }
