@@ -14,6 +14,8 @@ import { icExamples } from './ic-examples.ts'
 import { automationExamples } from './automation-examples.ts'
 import { synthIcLines, SYNTH_IC_LAYOUTS } from './synth-models.ts'
 import { synthUtilityLines, SCHMITT_SECTIONS, MULTIPLEXER_SECTIONS } from './synth-utilities.ts'
+import { synthLogicLines, LOGIC_PINOUTS } from './synth-logic.ts'
+import { synthLogicExamples } from './synth-logic-examples.ts'
 import { synthUtilityExamples } from './synth-utility-examples.ts'
 import { synthExamples } from './synth-examples.ts'
 import { timer555Lines } from './timer555.ts'
@@ -21,7 +23,7 @@ import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817'
 
 export interface Part {
   id: string
@@ -100,6 +102,34 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  cd4013: {
+    package: 'DIP-14', pinNames: ['Q A', '/Q A', 'CLK A', 'RST A', 'D A', 'SET A', 'VSS', 'SET B', 'D B', 'RST B', 'CLK B', '/Q B', 'Q B', 'VDD'],
+    label: 'CD4013-style dual flip-flop', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Two rising-edge D flip-flops for clock division, sub-octaves, and latched gates.',
+    supplyHint: 'Pin 14 to VDD, pin 7 to VSS (3–18 V). Tie unused inputs low. Connect /Q to D for divide-by-two. SET and RESET are asynchronous and active high.',
+    model: 'Approximate CD4013B pinout with two independent master/slave latches, 100 ns state poles and non-overlapping clock phases below 45% / above 55% of supply. Inputs have 5 pF capacitance and 1 TΩ leakage; outputs have 500 Ω resistance at 5 V, falling to 167 Ω at 15 V. Each capture initializes Q low for 1 µs; DC describes initialization. Both SET/RESET high forces both outputs high; simultaneous release deterministically retains reset. No metastability, setup/hold violation, protection diodes, supply current, or thermal model. Intended for audio/LFO clocks, not high-speed timing validation.',
+  },
+  cd4070: {
+    package: 'DIP-14', pinNames: ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD'],
+    label: 'CD4070-style XOR gates', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Four exclusive-OR gates for pulse combining, selectable inversion, and digital ring modulation.',
+    supplyHint: 'Pin 14 to VDD, pin 7 to VSS (3–18 V). Each output is high when its inputs differ. Keep inputs within the rails and tie unused inputs low.',
+    model: 'Approximate CD4070B pinout and XOR truth table. Smooth input transition centered at half the supply, 100 ns output state pole, 5 pF input capacitance, 1 TΩ input leakage. Output resistance is 500 Ω at 5 V and 167 Ω at 15 V. No hysteresis, calibrated propagation delay, protection diodes, noise, chip supply current, or thermal behavior. This is logic-level pulse processing, not a four-quadrant analog multiplier.',
+  },
+  cd4081: {
+    package: 'DIP-14', pinNames: ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD'],
+    label: 'CD4081-style AND gates', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Four AND gates for clock enabling, trigger coincidence, and rhythmic logic.',
+    supplyHint: 'Pin 14 to VDD, pin 7 to VSS (3–18 V). Both inputs must be high for a high output. Keep inputs within the rails and tie unused inputs low.',
+    model: 'Approximate CD4081B pinout and AND truth table. Smooth input transition centered at half the supply, 100 ns output state pole, 5 pF input capacitance, 1 TΩ input leakage. Output resistance is 500 Ω at 5 V and 167 Ω at 15 V. No hysteresis, calibrated propagation delay, protection diodes, noise, chip supply current, or thermal behavior.',
+  },
+  pc817: {
+    package: 'DIP-4', pinNames: ['LED A', 'LED K', 'Emitter', 'Collector'],
+    label: 'PC817-style optocoupler', unit: '%', defaultValue: 100, min: 50, max: 600,
+    description: 'An infrared LED drives an isolated phototransistor for gate inputs and level conversion.',
+    supplyHint: 'Pin 1 LED anode, 2 cathode, 3 emitter, 4 collector. Add an LED series resistor and an output pull-up. Each side needs its own DC return. CTR sets nominal collector current relative to LED current before saturation.',
+    model: 'PC817-style DIP-4 pinout; generic IR diode and optically driven NPN model. Editable nominal CTR 50–600% (default 100%), not a particular device bin. LED Is=1e−15 A, N=1.6, Rs=10 Ω; optical attack/release poles 2/5 µs. The output includes saturation, Early effect, junction capacitance and storage (Bf=100, Vaf=100 V, Tf=0.5 µs, Tr=5 µs). Actual CTR depends on current, voltage and temperature; this model scales nominal optical drive only. No breakdown, isolation-voltage rating, safety certification, noise, or damage model. Not a high-speed MIDI receiver model.',
+  },
   pmos: {
     pinNames: ['Drain', 'Gate', 'Source'],
     label: 'P-channel MOSFET', unit: '', defaultValue: 1, min: 1, max: 1,
@@ -581,7 +611,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       if (new Set(nodes).size < 3) diagnostics.push({ severity: 'warning', message: `${part.id} has transistor terminals on the same net. Check the D–G–S connections.`, partId: part.id })
       continue
     }
-    if (part.kind === 'vactrol') { addEdge(a, b); addEdge(nodes[2], nodes[3]); continue }
+    if (part.kind === 'vactrol' || part.kind === 'pc817') { addEdge(a, b); addEdge(nodes[2], nodes[3]); continue }
     if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
       if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
@@ -622,6 +652,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
         if (!doc.parts.some(p => p.kind === 'resistor' && p.pins.some(pin => nodeByTerminal[pin] === nodes[output]))) diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS.lm393.pinNames[output]} needs an external pull-up resistor to produce a high output.`, partId: part.id })
       }
     }
+    if (LOGIC_PINOUTS[part.kind] && powered) for (const output of LOGIC_PINOUTS[part.kind]!.outputs) addEdge(nodes[output], low)
     if (part.kind === 'cd40106' && powered) for (const [, output] of SCHMITT_SECTIONS) addEdge(nodes[output], low)
     if (part.kind === 'cd4053') {
       const vee = nodes[6], negativeVoltage = fixedVoltages.get(vee), logicLow = fixedVoltages.get(low), logicHigh = fixedVoltages.get(high)
@@ -630,7 +661,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
     if (part.kind === 'cd4066') for (const [a, b] of [[0, 1], [2, 3], [7, 8], [9, 10]]) addEdge(nodes[a], nodes[b])
     if (span !== undefined) {
-      const indices = part.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : part.kind === 'cd4053' ? [5, 8, 9, 10] : part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12]
+      const indices = LOGIC_PINOUTS[part.kind]?.inputs ?? (part.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : part.kind === 'cd4053' ? [5, 8, 9, 10] : part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12])
       for (const index of indices) {
         const voltage = fixedVoltages.get(nodes[index])
         if (voltage !== undefined && (voltage < fixedVoltages.get(low)! || voltage > fixedVoltages.get(high)! - (part.kind === 'lm393' ? 1.5 : 0))) diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS[part.kind].pinNames[index]} is outside the modeled operating input range.`, partId: part.id })
@@ -884,6 +915,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       if (part.kind === 'njfet') lines.push(`.model JF_${safeId} NJF(Vto=-2 Beta=1m Lambda=0.01 Rd=10 Rs=10 Cgs=5p Cgd=2p Is=1p)`, `J_${safeId} fd_${safeId} fg_${safeId} ${c} JF_${safeId}`)
       else lines.push(`.model MF_${safeId} ${part.kind === 'pmos' ? 'PMOS(Level=1 Vto=-2 Kp=10m' : 'NMOS(Level=1 Vto=2 Kp=20m'} Lambda=0.02 Rd=2 Rs=2 Cbd=10p Is=1p)`, `M_${safeId} fd_${safeId} fg_${safeId} ${c} ${c} MF_${safeId} W=10u L=10u`, `CGS_${safeId} fg_${safeId} ${c} 30p`, `CGD_${safeId} fg_${safeId} fd_${safeId} 5p`, `RG_${safeId} fg_${safeId} ${c} 1e12`)
     }
+    if (part.kind === 'cd4013' || part.kind === 'cd4070' || part.kind === 'cd4081' || part.kind === 'pc817') lines.push(...synthLogicLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin]), part.value))
     if (part.kind === 'cd40106' || part.kind === 'cd4053' || part.kind === 'vactrol') lines.push(...synthUtilityLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm393' || part.kind === 'cd4066') lines.push(...synthIcLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'switch') lines.push(timelines.has(`switch:${part.id}`)
@@ -929,7 +961,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   // local-error control and source breakpoints refine a modest baseline grid.
   // Unconnected instruments must not force tiny steps for a slow/DC circuit.
   const timers = doc.parts.filter(part => part.kind === 'timer555' || part.kind === 'cd40106')
-  let timerStep = Infinity
+  let timerStep = doc.parts.some(part => part.kind === 'cd4013') ? 1e-5 : Infinity
   for (const timer of timers) {
     const timingNodes = new Set((timer.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : [1, 5, 6]).map(index => nodeByTerminal[timer.pins[index]]))
     const capacitors = doc.parts.filter(part => (part.kind === 'capacitor' || part.kind === 'electrolytic') && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
@@ -954,6 +986,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
     if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
     if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') return [`i(VFD_${safeId})`, `i(VFG_${safeId})`]
+    if (part.kind === 'pc817') return [`i(VLED_${safeId})`, `i(VCOL_${safeId})`]
     if (part.kind === 'vactrol') return [`i(VLED_${safeId})`, `@BLDR_${safeId}[i]`]
     if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
     if (analysis === 'transient' && (part.kind === 'capacitor' || part.kind === 'electrolytic')) return [`@C_${safeId}[i]`]
@@ -991,6 +1024,10 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'ssd1306') return '128×64 · I²C'
   if (kind === 'diode') return 'Silicon'
   if (kind === 'schottky') return 'Low Vf'
+  if (kind === 'cd4013') return 'Dual D-type · DIP-14'
+  if (kind === 'cd4070') return 'Quad XOR · DIP-14'
+  if (kind === 'cd4081') return 'Quad AND · DIP-14'
+  if (kind === 'pc817') return `CTR ${value}% · DIP-4`
   if (kind === 'pmos') return 'PMOS · D–G–S'
   if (kind === 'vactrol') return 'Optical · 4-pin'
   if (kind === 'cd40106') return 'Hex Schmitt · DIP-14'
@@ -1124,6 +1161,7 @@ export const examples: CircuitExample[] = [
   ...icExamples,
   ...synthExamples,
   ...synthUtilityExamples,
+  ...synthLogicExamples,
   ...picoExamples,
 ]
 

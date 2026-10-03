@@ -44,7 +44,7 @@ export function RecordedMeasurements({ part, nodeByTerminal }: { part: Part; nod
         {measured?.power != null && <div><span>Power absorbed</span><output aria-label="Recorded component power">{formatElectrical(measured.power, 'W')}</output></div>}
         {storedEnergy !== undefined && <div><span>Stored energy</span><output aria-label="Recorded stored energy">{formatElectrical(storedEnergy, 'J')}</output></div>}
       </div> : null}
-      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
+      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' && part.kind !== 'pc817' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
     </>}
   </InspectorSignals>
 }

@@ -12,9 +12,13 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos', 'pmos'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4053', 'vactrol'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4053', 'vactrol', 'cd4013', 'cd4070', 'cd4081', 'pc817'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
+  cd4013: 'dual d flip flop divider sub octave clock latch memory dip14',
+  cd4070: 'quad xor exclusive or logic gate digital ring modulator pulse combine dip14',
+  cd4081: 'quad and logic gate clock enable rhythm trigger coincidence dip14',
+  pc817: 'optocoupler optoisolator phototransistor isolated gate input ctr infrared dip4',
   pmos: 'fet mosfet enhancement p channel transistor high side switch source gate drain',
   vactrol: 'optical led ldr photoresistor optocoupler vactrol low pass gate lpg vca',
   cd40106: 'cmos hex schmitt inverter hysteresis oscillator clock pulse lfo dip14',

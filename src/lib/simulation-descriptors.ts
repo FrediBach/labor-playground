@@ -35,6 +35,10 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
       const id = spiceDeviceId(part).toLowerCase()
       branches.push({ kind: 'saved-current', label: 'Drain → Source', fromNode: a, toNode: c, vector: `i(vfd_${id})` })
       branches.push({ kind: 'saved-current', label: 'Gate → Source', fromNode: b, toNode: c, vector: `i(vfg_${id})` })
+    } else if (part.kind === 'pc817') {
+      const id = spiceDeviceId(part).toLowerCase()
+      branches.push({ kind: 'saved-current', label: 'LED A → K', fromNode: a, toNode: b, vector: `i(vled_${id})` })
+      branches.push({ kind: 'saved-current', label: 'Collector → Emitter', fromNode: nodes[3], toNode: nodes[2], vector: `i(vcol_${id})` })
     } else if (part.kind === 'vactrol') {
       const id = spiceDeviceId(part).toLowerCase()
       branches.push({ kind: 'saved-current', label: 'LED A → K', fromNode: a, toNode: b, vector: `i(vled_${id})` })
