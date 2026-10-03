@@ -62,7 +62,7 @@ export function customTemplate(kind: 'resistor' | 'capacitor', value = PARTS[kin
 }
 export function saveCustomComponent(document: CircuitDocument, model: CustomComponent): CircuitDocument {
   const definitions = document.customComponents ?? []
-  return validateDocument({ ...document, schemaVersion: 3, customComponents: definitions.some(d => d.id === model.id) ? definitions.map(d => d.id === model.id ? model : d) : [...definitions, model] })
+  return validateDocument({ ...document, schemaVersion: document.schemaVersion === 4 ? 4 : 3, customComponents: definitions.some(d => d.id === model.id) ? definitions.map(d => d.id === model.id ? model : d) : [...definitions, model] })
 }
 export function assignCustomComponent(document: CircuitDocument, partId: string, modelId?: string): CircuitDocument {
   return validateDocument({ ...document, parts: document.parts.map(part => {

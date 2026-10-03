@@ -117,7 +117,7 @@ test('build a divider with placement, wiring and probes, then undo a component m
 
   await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
   await page.getByRole('button', { name: 'Select tool', exact: true }).click()
-  const resistor = page.getByRole('button', { name: /^R2 · .*Drag to move or select to edit/ })
+  const resistor = page.locator('[data-part="R2"]')
   await resistor.focus()
   await resistor.press('ArrowRight')
   const inspector = page.getByRole('complementary', { name: 'Inspector' })
@@ -125,7 +125,7 @@ test('build a divider with placement, wiring and probes, then undo a component m
   await expect(inspector.getByText('C13', { exact: true })).toBeVisible()
   await expect(page.getByRole('tabpanel', { name: 'Circuit', exact: true }).getByText('2 wires', { exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
-  await expect(inspector.getByText('C9', { exact: true })).toBeVisible()
+  await expect(inspector.locator('code').filter({ hasText: /^C9$/ })).toBeVisible()
   await captured(page)
   await openMeasurements(page)
   await expect(channelMeasurement(page, 'CH2', 'Peak to peak')).toHaveText('0.000 V')
@@ -147,7 +147,7 @@ test('build a divider with placement, wiring and probes, then undo a component m
   await expect(page.getByRole('button', { name: 'W1, jumper from cv to b6', exact: true })).toBeVisible()
   await expect(page.getByRole('button', { name: 'W2, jumper from gnd to e12', exact: true })).toBeVisible()
   await page.getByRole('button', { name: 'Undo', exact: true }).click()
-  await expect(inspector.getByText('C9', { exact: true })).toBeVisible()
+  await expect(inspector.locator('code').filter({ hasText: /^C9$/ })).toBeVisible()
 })
 
 test('manual capture marks old results stale and Reset recovers the worker', async ({ page }) => {

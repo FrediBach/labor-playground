@@ -96,8 +96,9 @@ test('Pico cold readiness, completion, cancellation and worker memory measuremen
   const mainHeap = await main.send('Runtime.getHeapUsage')
   const cdp = await browser.newBrowserCDPSession()
   const { targetInfos } = await cdp.send('Target.getTargets')
+  const { targetInfo: pageTarget } = await main.send('Target.getTargetInfo')
   const workers = []
-  for (const target of targetInfos.filter(t => t.type === 'worker')) {
+  for (const target of targetInfos.filter(t => t.type === 'worker' && t.browserContextId === pageTarget.browserContextId)) {
     const { sessionId } = await cdp.send('Target.attachToTarget', { targetId: target.targetId, flatten: false })
     const heap = await new Promise<object>((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error('Worker heap measurement timed out')), 5000)

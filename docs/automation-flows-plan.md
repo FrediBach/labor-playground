@@ -1,6 +1,6 @@
 # Automation flows and circuit tests implementation plan
 
-Status: proposed. Based on the application at revision `afecb23`, reviewed on 2026-10-03. This document specifies the product experience, execution rules, architecture, migration, and release checks; it does not describe implemented features.
+Status: first-release implementation delivered, 2026-10-03. The shared schema, causal runtime, Simple/Flow editors, circuit test runner, report exports, and regression example are implemented. This design remains the target contract; see `docs/automations.md` for delivered behavior and measured budgets. Optional automatic checking remains deferred. Human usability timing targets have not been measured. The release checklist below must be treated as a verification checklist, not a claim that every item has been proven. Original baseline: revision `afecb23`.
 
 Build one automation system with two complementary editing views: **Simple** for the existing When → Then setup, and **Flow** for dependencies, measurements, and branching. Use the same flows as the stimulus and checks for repeatable circuit tests. React Flow supplies the graph editor, styled as part of LABOR; the circuit simulation remains responsible for electrical behavior.
 
@@ -398,6 +398,14 @@ Exit criteria: the release checklist below passes, saved projects are portable, 
 During implementation, run focused Node fixtures first, then the appropriate Playwright automation/project/recording cases, followed by the repository's typecheck, lint, build, and required regression suite. This planning change itself does not require application test execution.
 
 The feature is complete when simple automations remain easy to create, dependent flows can use both completion and measured results, and project tests reliably detect a deliberate circuit regression with an inspectable explanation. These capabilities must share the same saved definitions and execution rules.
+
+## Implementation verification — 2026-10-03
+
+- All 230 Node unit/integration tests passed, including real-engine migration, causal dependencies, regression verdicts, and resource limits.
+- The full production-browser run passed 109 of 111 cases. The two remaining test issues (an ambiguous inspector selector and worker-memory instrumentation inspecting other browser contexts) were corrected; all 15 affected automation, flow, workbench, and Pico cases passed on the final test build.
+- Type checking, lint, and production builds passed. Existing upstream eval/chunk-size build warnings remain.
+- The portable regression example passed through the local CLI with JSON/JUnit output; changing its capacitor to 2.2 µF produced the expected failing verdict and exit status 1.
+- Performance measurements and numerical consistency tolerances are documented in `docs/automations.md`. Human usability timing targets and the optional automatic-checking mode remain outside this verification.
 
 ## Deferred capabilities
 

@@ -1,3 +1,5 @@
+import { programFor } from '@/lib/automation-migration'
+import { simpleRows, saveSimple, toggleSimple, deleteSimple } from '@/lib/automation-editing'
 import { useEffect, useId, useRef, useState } from 'react'
 import { Activity, ArrowRight, Check, Clock3, Copy, Pencil, Plus, Trash2, Workflow, X } from 'lucide-react'
 import { AUTOMATION_LIMIT, automationIssue, automationTargetKey, type Automation } from '@/lib/automations'
@@ -11,7 +13,9 @@ type Draft = {
   id: string
   name: string
   enabled: boolean
-  triggerKind: 'time' | 'voltage'
+  triggerKind: 'time' | 'voltage' | 'after'
+  predecessor: string
+  delayMs: string
   atMs: string
   channel: 'CH1' | 'CH2'
   direction: 'rising' | 'falling'
@@ -57,7 +61,7 @@ function toDraft(automation: Automation): Draft {
   const { trigger, action } = automation
   return {
     id: automation.id, name: automation.name, enabled: automation.enabled,
-    triggerKind: trigger.kind, atMs: String(trigger.kind === 'time' ? trigger.atMs : 10),
+    predecessor: '', delayMs: '0', triggerKind: trigger.kind, atMs: String(trigger.kind === 'time' ? trigger.atMs : 10),
     channel: trigger.kind === 'voltage' ? trigger.channel : 'CH1',
     direction: trigger.kind === 'voltage' ? trigger.direction : 'rising',
     threshold: String(trigger.kind === 'voltage' ? trigger.threshold : 2.5),
@@ -72,7 +76,7 @@ function toDraft(automation: Automation): Draft {
 function fromDraft(draft: Draft): Automation {
   return {
     id: draft.id, name: draft.name.trim(), enabled: draft.enabled,
-    trigger: draft.triggerKind === 'time'
+    trigger: draft.triggerKind !== 'voltage'
       ? { kind: 'time', atMs: Number(draft.atMs) }
       : { kind: 'voltage', channel: draft.channel, direction: draft.direction, threshold: Number(draft.threshold), afterMs: Number(draft.afterMs) },
     action: {
@@ -90,6 +94,9 @@ function draftErrors(draft: Draft, document: CircuitDocument): string[] {
   if (!draft.name.trim()) errors.push('Give this automation a name.')
   if (draft.triggerKind === 'time') {
     if (!validNumber(draft.atMs, 0, 10_000)) errors.push('Start time must be between 0 and 10,000 ms.')
+  } else if (draft.triggerKind === 'after') {
+    if (!draft.predecessor) errors.push('Choose a predecessor automation.')
+    if (!validNumber(draft.delayMs, 0, 10000)) errors.push('Delay must be between 0 and 10,000 ms.')
   } else {
     if (!validNumber(draft.threshold, -1000, 1000)) errors.push('Voltage threshold must be between −1,000 and 1,000 V.')
     if (!validNumber(draft.afterMs, 0, 10_000)) errors.push('Start watching must be between 0 and 10,000 ms.')
@@ -113,15 +120,19 @@ function automationWarning(automation: Automation, document: CircuitDocument, du
   return issue
 }
 
-export function AutomationsPanel({ document, onChange, durationSeconds, capture, status, onViewResults }: {
+export function AutomationsPanel({ document, onChange, durationSeconds, capture, status, onViewResults, onFlow, onUseTest }: {
   document: CircuitDocument
   onChange: (document: CircuitDocument) => void
   durationSeconds: number
   capture: Capture | null
   status: SimulationStatus
   onViewResults?: () => void
+  onFlow?: (flowId?: string) => void
+  onUseTest?: (callId: string) => void
 }) {
-  const automations = document.automations ?? []
+  const program = programFor(document)
+  const rows = simpleRows(program)
+  const automations = rows.map(row => row.automation)
   const [draft, setDraft] = useState<Draft | null>(null)
   const [submitted, setSubmitted] = useState(false)
   const [notice, setNotice] = useState('')
@@ -145,11 +156,14 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
 
   function openEditor(automation?: Automation) {
     setSubmitted(false)
-    setDraft(toDraft(automation ?? {
+    const row = rows.find(r => r.automation.id === automation?.id)
+    const initial = toDraft(automation ?? {
       id: automationId(), name: `Automation ${automations.length + 1}`, enabled: true,
       trigger: { kind: 'time', atMs: Number(Math.min(10, durationSeconds * 250).toFixed(3)) },
       action: { target: 'cv', value: document.instruments.cv === 2.5 ? 5 : 2.5, durationMs: 0 },
-    }))
+    })
+    if (row?.predecessor) Object.assign(initial, { triggerKind: 'after', predecessor: row.predecessor, delayMs: String(row.delay * 1000) })
+    setDraft(initial)
   }
 
   function updateDraft(patch: Partial<Draft>) {
@@ -173,12 +187,9 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
       return
     }
     const automation = fromDraft(draft)
+    if (/^Automation \d+$/.test(automation.name)) automation.name = actionLabel(automation.action).slice(0, 80)
     const enableGate = automation.action.target === 'gate' && envelopeSettings(document).mode !== 'gate'
-    onChange({
-      ...document,
-      ...(enableGate ? { instruments: { ...document.instruments, envelope: { ...envelopeSettings(document), mode: 'gate' } } } : {}),
-      automations: editing ? automations.map(existing => existing.id === automation.id ? automation : existing) : [...automations, automation],
-    })
+    try { onChange(saveSimple({ ...document, ...(enableGate ? { instruments: { ...document.instruments, envelope: { ...envelopeSettings(document), mode: 'gate' } } } : {}) }, automation, draft.triggerKind === 'after' ? draft.predecessor : undefined, Number(draft.delayMs) / 1000)) } catch (error) { setNotice((error as Error).message); return }
     setNotice(`Automation ${editing ? 'saved' : 'added'}.${enableGate ? ' EG switched to Gate mode.' : ''} Simulate to run it.`)
     setDraft(null)
   }
@@ -203,16 +214,16 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
         const result = !automation.enabled ? 'Disabled' : warning ?? (event ? `Fired at ${numberLabel(event.time * 1000)} ms` : freshCapture ? automation.trigger.kind === 'voltage' ? 'Threshold not reached' : 'Did not fire' : 'Ready for next simulation')
         return <li key={automation.id} className={`automation-row${!automation.enabled ? ' is-disabled' : ''}${event && !upcoming ? ' has-fired' : ''}`}>
           <label className="automation-enable"><input type="checkbox" checked={automation.enabled} aria-label={`Enable ${automation.name}`} onChange={() => {
-            onChange({ ...document, automations: automations.map(existing => existing.id === automation.id ? { ...existing, enabled: !existing.enabled } : existing) })
+            onChange(toggleSimple(document, automation.id))
             setNotice(`${automation.name} ${automation.enabled ? 'disabled' : 'enabled'}.`)
           }} /><span aria-hidden="true"><Check size={12} /></span></label>
-          <div className="automation-description"><button className="automation-name" onClick={() => openEditor(automation)}>{automation.name}</button><div className="automation-recipe"><span>{automation.trigger.kind === 'time' ? <Clock3 size={12} /> : <Activity size={12} />}{triggerLabel(automation.trigger)}</span><ArrowRight className="automation-recipe-arrow" size={13} /><span>{actionLabel(automation.action)}</span></div><div className="automation-result-line">{event && !warning ? <button className={`automation-result fired${upcoming ? ' upcoming' : ''}`} title="Seek recording to this automation" onClick={() => { playback.seek(event.time); onViewResults?.() }}><Check size={12} />{result}<span>↗</span></button> : <span className={`automation-result${warning ? ' warning' : ''}`}>{result}</span>}{event && <span className="automation-playhead-state">{upcoming ? 'Ahead of playhead' : interrupted ? 'Superseded at playhead' : automation.action.durationMs > 0 && seconds < event.time + automation.action.durationMs / 1000 ? 'In progress at playhead' : 'Reached at playhead'}</span>}</div></div>
-          <div className="automation-row-actions"><button className="icon-button" aria-label={`Edit ${automation.name}`} title="Edit automation" onClick={() => openEditor(automation)}><Pencil size={14} /></button><button className="icon-button" aria-label={`Duplicate ${automation.name}`} title={atLimit ? 'Maximum 24 automations' : 'Duplicate automation'} disabled={atLimit} onClick={() => openEditor({ ...automation, id: automationId(), name: `${automation.name} copy`.slice(0, 80) })}><Copy size={14} /></button><button className="icon-button automation-delete" aria-label={`Delete ${automation.name}`} title="Delete automation · Undo restores it" onClick={() => { onChange({ ...document, automations: automations.filter(existing => existing.id !== automation.id) }); setNotice(`${automation.name} deleted. Undo restores it.`) }}><Trash2 size={14} /></button></div>
+          <div className="automation-description"><button className="automation-name" onClick={() => openEditor(automation)}>{automation.name}</button><div className="automation-recipe"><span>{automation.trigger.kind === 'time' ? <Clock3 size={12} /> : <Activity size={12} />}{rows[index].predecessor ? `After ${rows.find(r => r.callId === rows[index].predecessor)?.automation.name ?? 'automation'} finishes + ${rows[index].delay * 1000} ms` : triggerLabel(automation.trigger)}</span><ArrowRight className="automation-recipe-arrow" size={13} /><span>{actionLabel(automation.action)}</span></div><div className="automation-result-line">{event && !warning ? <button className={`automation-result fired${upcoming ? ' upcoming' : ''}`} title="Seek recording to this automation" onClick={() => { playback.seek(event.time); onViewResults?.() }}><Check size={12} />{result}<span>↗</span></button> : <span className={`automation-result${warning ? ' warning' : ''}`}>{result}</span>}{event && <span className="automation-playhead-state">{upcoming ? 'Ahead of playhead' : interrupted ? 'Superseded at playhead' : automation.action.durationMs > 0 && seconds < event.time + automation.action.durationMs / 1000 ? 'In progress at playhead' : 'Reached at playhead'}</span>}</div></div>
+          <div className="automation-row-actions">{onUseTest && <button className="subtle-button" onClick={() => onUseTest(rows[index].callId)}>Use as test</button>}{onFlow && <button className="subtle-button" onClick={() => onFlow(rows[index].flowId)}>Edit flow</button>}<button className="icon-button" aria-label={`Edit ${automation.name}`} title="Edit automation" onClick={() => openEditor(automation)}><Pencil size={14} /></button><button className="icon-button" aria-label={`Duplicate ${automation.name}`} title={atLimit ? 'Maximum 24 automations' : 'Duplicate automation'} disabled={atLimit} onClick={() => openEditor({ ...automation, id: automationId(), name: `${automation.name} copy`.slice(0, 80) })}><Copy size={14} /></button><button className="icon-button automation-delete" aria-label={`Delete ${automation.name}`} title="Delete automation · Undo restores it" onClick={() => { try { onChange(deleteSimple(document, automation.id)); setNotice(`${automation.name} removed from capture. Its definition remains in the library.`) } catch (error) { setNotice((error as Error).message) } }}><Trash2 size={14} /></button></div>
         </li>
       })}</ol>
       <p className="automations-footnote">Controls start at their current settings on every run. A later action on the same control interrupts its ramp or pulse; simultaneous actions follow list order. Click a fired time to inspect the recording.{atLimit ? ' Maximum 24 automations per circuit.' : ''}</p>
     </>}
-    <span className="automation-announcement" role="status">{notice}</span>
+    <p role="status">{notice}</p>
 
     <dialog ref={dialog} className="automation-dialog" aria-labelledby={`${formId}-editor-title`} aria-describedby={`${formId}-editor-description`} onCancel={() => setDraft(null)} onClose={() => setDraft(null)} onKeyDown={event => event.stopPropagation()}>
       {draft && <form noValidate onSubmit={event => { event.preventDefault(); save() }}>
@@ -220,13 +231,13 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
         <p className="automation-dialog-description" id={`${formId}-editor-description`}>Choose when it starts and what it changes. Runs once each time you simulate.</p>
         <label className="automation-field automation-name-field"><span>Name</span><input autoFocus required maxLength={80} value={draft.name} onChange={event => updateDraft({ name: event.target.value })} placeholder="e.g. Sweep the filter" /></label>
         <fieldset className="automation-editor-group"><legend><span>1</span>When</legend>
-          <div className="automation-trigger-tabs" role="group" aria-label="Automation trigger"><button type="button" aria-pressed={draft.triggerKind === 'time'} onClick={() => updateDraft({ triggerKind: 'time' })}><Clock3 size={15} />At a fixed time</button><button type="button" aria-pressed={draft.triggerKind === 'voltage'} onClick={() => updateDraft({ triggerKind: 'voltage' })}><Activity size={15} />On voltage crossing</button></div>
-          {draft.triggerKind === 'time' ? <label className="automation-field"><span>Start time</span><div className="automation-unit-input"><input type="number" min={0} max={10000} step="any" required value={draft.atMs} onChange={event => updateDraft({ atMs: event.target.value })} /><span>ms</span></div><small>From the start of the simulation · recording is {numberLabel(durationSeconds * 1000)} ms</small></label> : <>
+          <div className="automation-trigger-tabs" role="group" aria-label="Automation trigger"><button type="button" aria-pressed={draft.triggerKind === 'time'} onClick={() => updateDraft({ triggerKind: 'time' })}><Clock3 size={15} />At a fixed time</button><button type="button" aria-pressed={draft.triggerKind === 'voltage'} onClick={() => updateDraft({ triggerKind: 'voltage' })}><Activity size={15} />On voltage crossing</button><button type="button" aria-pressed={draft.triggerKind === 'after'} onClick={() => updateDraft({ triggerKind: 'after' })}>After another automation</button></div>
+          {draft.triggerKind === 'after' ? <div className="automation-field-grid"><label className="automation-field"><span>After automation finishes</span><select value={draft.predecessor} onChange={event => updateDraft({ predecessor: event.target.value })}><option value="">Choose automation</option>{rows.filter(r => r.automation.id !== draft.id).map(r => <option key={r.callId} value={r.callId}>{r.automation.name}</option>)}</select></label><label className="automation-field"><span>Delay (ms)</span><input type="number" min={0} max={10000} step="any" value={draft.delayMs} onChange={event => updateDraft({ delayMs: event.target.value })} /></label></div> : draft.triggerKind === 'time' ? <label className="automation-field"><span>Start time</span><div className="automation-unit-input"><input type="number" min={0} max={10000} step="any" required value={draft.atMs} onChange={event => updateDraft({ atMs: event.target.value })} /><span>ms</span></div><small>From the start of the simulation · recording is {numberLabel(durationSeconds * 1000)} ms</small></label> : <>
             <div className="automation-field-grid"><label className="automation-field"><span>Watch probe</span><select value={draft.channel} onChange={event => updateDraft({ channel: event.target.value as Draft['channel'] })}><option value="CH1">CH1{document.probes.CH1 ? '' : ' · unconnected'}</option><option value="CH2">CH2{document.probes.CH2 ? '' : ' · unconnected'}</option></select></label><label className="automation-field"><span>Crossing direction</span><select value={draft.direction} onChange={event => updateDraft({ direction: event.target.value as Draft['direction'] })}><option value="rising">Rises above</option><option value="falling">Falls below</option></select></label></div>
             <div className="automation-field-grid"><label className="automation-field"><span>Voltage threshold</span><div className="automation-unit-input"><input type="number" min={-1000} max={1000} step="any" required value={draft.threshold} onChange={event => updateDraft({ threshold: event.target.value })} /><span>V</span></div></label><label className="automation-field"><span>Start watching at</span><div className="automation-unit-input"><input type="number" min={0} max={10000} step="any" required value={draft.afterMs} onChange={event => updateDraft({ afterMs: event.target.value })} /><span>ms</span></div></label></div><p className="automation-field-help">Fires on the first crossing after watching starts. A voltage already past the threshold does not trigger it.</p>
           </>}
         </fieldset>
-        <fieldset className="automation-editor-group"><legend><span>2</span>Then</legend>
+        <fieldset className="automation-editor-group"><legend><span>2</span>Then</legend>{editing && <p className="automation-field-help">Shared action: changes affect every capture and test calling this automation. Uses: {program.definitions.flatMap(f => f.nodes.filter(n => n.kind === 'call' && n.flowId === rows.find(r => r.automation.id === draft.id)?.flowId).map(n => `${f.name} / ${n.label}`)).join(', ')}.</p>}
           <label className="automation-field"><span>Control</span><select value={draft.partId ? `${draft.target}:${draft.partId}` : draft.target} onChange={event => setControl(event.target.value)}><optgroup label="Instruments"><option value="cv">CV output</option><option value="amplitude">Signal amplitude</option><option value="frequency" disabled={document.stimulus === 'step'}>Signal frequency{document.stimulus === 'step' ? ' · unavailable for step input' : ''}</option><option value="gate">EG gate / pulse</option></optgroup><optgroup label="Breadboard controls">{document.parts.filter(part => part.kind === 'potentiometer' || part.kind === 'switch').map(part => <option key={part.id} value={`${part.kind}:${part.id}`}>{part.id} · {CONTROL_NAMES[part.kind as Target]}</option>)}{!document.parts.some(part => part.kind === 'potentiometer' || part.kind === 'switch') && <option disabled>Add a potentiometer or switch to the board</option>}{draft.partId && !document.parts.some(part => part.id === draft.partId && part.kind === draft.target) && <option value={`${draft.target}:${draft.partId}`} disabled>{draft.partId} · missing control</option>}</optgroup></select></label>
           {draft.target === 'gate' || draft.target === 'switch' ? <label className="automation-field"><span>Action</span><select value={draft.transition === 'pulse' ? 'pulse' : draft.value} onChange={event => updateDraft(event.target.value === 'pulse' ? { value: '1', transition: 'pulse' } : { value: event.target.value, transition: 'step' })}>{draft.target === 'gate' ? <><option value="1">Set high · 5 V</option><option value="0">Set low · 0 V</option><option value="pulse">Pulse high, then return low</option></> : <><option value="1">Close switch</option><option value="0">Open switch</option></>}</select></label> : <div className="automation-field-grid"><label className="automation-field"><span>Change</span><select value={draft.transition} onChange={event => updateDraft({ transition: event.target.value as Draft['transition'] })}><option value="step">Set immediately</option><option value="ramp">Ramp smoothly</option></select></label><label className="automation-field"><span>{draft.target === 'potentiometer' ? 'Wiper position' : 'Target value'}</span><div className="automation-unit-input"><input type="number" required step="any" min={CONTROL_BOUNDS[draft.target].min} max={CONTROL_BOUNDS[draft.target].max} value={draft.value} onChange={event => updateDraft({ value: event.target.value })} /><span>{CONTROL_BOUNDS[draft.target].unit}</span></div><small>{CONTROL_BOUNDS[draft.target].min} to {CONTROL_BOUNDS[draft.target].max} {CONTROL_BOUNDS[draft.target].unit}</small></label></div>}
           {draft.transition !== 'step' && <label className="automation-field"><span>{draft.transition === 'pulse' ? 'Pulse width' : 'Ramp duration'}</span><div className="automation-unit-input"><input type="number" min={0.001} max={10000} required step="any" value={draft.durationMs} onChange={event => updateDraft({ durationMs: event.target.value })} /><span>ms</span></div><small>{draft.transition === 'pulse' ? 'The gate returns to 0 V after this time.' : 'Moves linearly from the control’s value when this automation fires.'}</small></label>}
@@ -234,7 +245,7 @@ export function AutomationsPanel({ document, onChange, durationSeconds, capture,
         </fieldset>
         {draftWarning && !(draft.target === 'gate' && draftWarning === 'EG must be in Gate mode') && <p className="automation-editor-warning">{draftWarning}. {draftWarning.includes('duration') ? 'Choose a longer recording or an earlier start time before running.' : draftWarning.includes('probe') ? 'Attach the probe before running this automation.' : 'Update this control before running.'}</p>}
         {draftAutomation?.trigger.kind === 'time' && draftAutomation.action.durationMs > 0 && draftAutomation.trigger.atMs < durationSeconds * 1000 && draftAutomation.trigger.atMs + draftAutomation.action.durationMs > durationSeconds * 1000 && <p className="automation-editor-note">This {draft.transition === 'pulse' ? 'pulse' : 'ramp'} starts during the recording and finishes after it ends. Choose a longer recording to see the full action.</p>}
-        {draftAutomation && <div className="automation-preview"><span>YOUR AUTOMATION</span><p>{triggerLabel(draftAutomation.trigger)} <ArrowRight size={13} aria-hidden="true" /> {actionLabel(draftAutomation.action)}</p></div>}
+        {draftAutomation && <div className="automation-preview"><span>YOUR AUTOMATION</span><p>{draft.triggerKind === 'after' ? `After ${rows.find(r => r.callId === draft.predecessor)?.automation.name ?? 'automation'} finishes, wait ${draft.delayMs} ms` : triggerLabel(draftAutomation.trigger)} <ArrowRight size={13} aria-hidden="true" /> {actionLabel(draftAutomation.action)}</p></div>}
         {submitted && errors.length > 0 && <div className="automation-errors" role="alert" tabIndex={-1} ref={errorBox}><strong>Check these settings</strong><ul>{errors.map(error => <li key={error}>{error}</li>)}</ul></div>}
         <div className="automation-editor-footer"><label className="automation-enabled-field"><input type="checkbox" checked={draft.enabled} onChange={event => updateDraft({ enabled: event.target.checked })} />Enabled</label><div><button type="button" className="automation-cancel" onClick={() => setDraft(null)}>Cancel</button><button className="automation-save" type="submit">Save automation</button></div></div>
       </form>}

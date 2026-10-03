@@ -1,3 +1,4 @@
+import { validateAutomationProgram, type AutomationProgram } from './automation-graph.ts'
 import { customExamples } from './custom-examples.ts'
 import { PROJECT_LIMITS } from './project-limits.ts'
 import { CUSTOM_LIMITS, validateCustomComponents, resolvePartModel, nominalValue, minimumModelValue, type CustomComponent } from './custom-components.ts'
@@ -46,7 +47,7 @@ export interface EnvelopeSettings {
 export const DEFAULT_ENVELOPE: Readonly<EnvelopeSettings> = Object.freeze({ mode: 'envelope', gateHigh: false, decayMs: 20 })
 
 export interface CircuitDocument {
-  schemaVersion: 1 | 2 | 3
+  schemaVersion: 1 | 2 | 3 | 4
   customComponents?: CustomComponent[]
   pico?: PicoConfiguration
   boardVersion: 'virtual-1'
@@ -58,6 +59,7 @@ export interface CircuitDocument {
   probes: { CH1: string | null; CH2: string | null }
   /** Optional so legacy projects remain byte-for-byte compatible on import. */
   automations?: Automation[]
+  automationProgram?: AutomationProgram
   instruments: {
     frequency: number
     amplitude: number
@@ -323,12 +325,14 @@ export function validateDocument(input: unknown): CircuitDocument {
   try { serialized = JSON.stringify(input) } catch { throw new Error('The circuit must contain valid JSON data.') }
   if (!serialized || new TextEncoder().encode(serialized).length > PROJECT_LIMITS.bytes) throw new Error('Project files must be smaller than 200 kB.')
   const raw = object(input, 'Circuit')
-  if (![1, 2, 3].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
+  if (![1, 2, 3, 4].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
   if (typeof raw.title !== 'string' || raw.title.length > 100) throw new Error('Circuit title must contain at most 100 characters.')
   if (!Array.isArray(raw.parts) || raw.parts.length > 30) throw new Error('A circuit may contain up to 30 components.')
   if (!Array.isArray(raw.wires) || raw.wires.length > 120) throw new Error('A circuit may contain up to 120 wires.')
+  if (raw.schemaVersion === 4 && (raw.automationProgram === undefined || raw.automations !== undefined)) throw new Error('Schema 4 requires one automationProgram and no legacy automations.')
+  if (raw.schemaVersion !== 4 && raw.automationProgram !== undefined) throw new Error('Automation flows require schema version 4.')
   if (raw.pico !== undefined && raw.schemaVersion === 1) throw new Error('Pico projects require schema version 2 or 3.')
-  if (raw.schemaVersion !== 3 && (raw.customComponents !== undefined || raw.parts.some(p => p && typeof p === 'object' && 'customModelId' in p))) throw new Error('Custom components require schema version 3.')
+  if ((raw.schemaVersion !== 3 && raw.schemaVersion !== 4) && (raw.customComponents !== undefined || raw.parts.some(p => p && typeof p === 'object' && 'customModelId' in p))) throw new Error('Custom components require schema version 3.')
   const customComponents = raw.customComponents === undefined ? undefined : validateCustomComponents(raw.customComponents)
   const pico = raw.pico === undefined ? undefined : validatePico(raw.pico)
   const ids = new Set<string>()
@@ -393,10 +397,11 @@ export function validateDocument(input: unknown): CircuitDocument {
   const probes = object(raw.probes, 'Probes')
   if (raw.stimulus !== undefined && raw.stimulus !== 'periodic' && raw.stimulus !== 'step') throw new Error('Unsupported capture stimulus.')
   const result: CircuitDocument = {
-    schemaVersion: raw.schemaVersion as 1 | 2 | 3,
+    schemaVersion: raw.schemaVersion as 1 | 2 | 3 | 4,
     ...(customComponents === undefined ? {} : { customComponents }), boardVersion: 'virtual-1', title: raw.title,
     ...(pico ? { pico } : {}),
     parts, wires,
+    ...(raw.automationProgram === undefined ? {} : { automationProgram: validateAutomationProgram(raw.automationProgram) }),
     ...(raw.automations === undefined ? {} : { automations: validateAutomations(raw.automations, parts) }),
     ...(raw.stimulus === undefined ? {} : { stimulus: raw.stimulus as CircuitDocument['stimulus'] }),
     instruments: { frequency, amplitude, cv, waveform: instruments.waveform as CircuitDocument['instruments']['waveform'], ...(envelope === undefined ? {} : { envelope }) },
@@ -460,12 +465,14 @@ export function resolveTopology(doc: CircuitDocument) {
   return { nodeByTerminal, nets }
 }
 
-export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace, durationSeconds = 0.1, automationEvents?: readonly AutomationEvent[]): CompiledCircuit {
+export function compileCircuit(document: CircuitDocument, analysis: 'transient' | 'operating-point' = 'transient', picoTrace?: PicoTrace, durationSeconds = 0.1, automationEvents?: readonly AutomationEvent[], resolvedActions?: readonly Automation[]): CompiledCircuit {
   const diagnostics: Diagnostic[] = []
   let doc: CircuitDocument
   try { doc = validateDocument(document) } catch (error) {
     return { netlist: '', diagnostics: [{ severity: 'error', message: error instanceof Error ? error.message : 'Invalid circuit document.' }], nodeByTerminal: {}, nets: {} }
   }
+  // Runtime actions are individually validated, never persisted as a second model.
+  if (resolvedActions) doc = { ...doc, automations: resolvedActions.flatMap(action => validateAutomations([action])) }
   const { nodeByTerminal, nets } = resolveTopology(doc)
   if (!Number.isFinite(durationSeconds) || durationSeconds < 0.001 || durationSeconds > SIMULATION_LIMITS.maxDurationSeconds) {
     diagnostics.push({ severity: 'error', message: `Choose a simulation duration between 1 ms and ${SIMULATION_LIMITS.maxDurationSeconds} s.` })

@@ -1,3 +1,4 @@
+import { executionFingerprint } from './execution-fingerprint'
 import { PICO_PINS } from './pico/profile'
 import { PicoClient } from './pico/client'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -19,15 +20,18 @@ interface SimulationState {
   netlist?: string
 }
 
-export function useSimulation(document: CircuitDocument, requestedAutoUpdate: boolean, durationSeconds = 0.1) {
-  const autoUpdate = requestedAutoUpdate && !document.pico
+export function useSimulation(document: CircuitDocument, requestedAutoUpdate: boolean, durationSeconds = 0.1, paused = false) {
+  const autoUpdate = requestedAutoUpdate && !document.pico && !paused
   const [picoState, setPicoState] = useState({ phase: '', console: '', key: '' })
   const picoClient = useRef<PicoClient | null>(null)
-  const documentKey = useMemo(() => JSON.stringify(document), [document])
+  const documentKey = useMemo(() => executionFingerprint(document, durationSeconds), [document, durationSeconds])
   const key = `${documentKey}:${durationSeconds}`
   // Scheduling follows saved document contents. Equivalent object replacements
   // must not cancel an in-flight manual capture while Auto update is disabled.
-  const snapshot = useMemo(() => JSON.parse(documentKey) as CircuitDocument, [documentKey])
+  // Semantic keys deliberately exclude labels and graph layout.
+  const [snapshotState, setSnapshotState] = useState({ key: documentKey, document })
+  if (snapshotState.key !== documentKey) setSnapshotState({ key: documentKey, document })
+  const snapshot = snapshotState.key === documentKey ? snapshotState.document : document
   const compiled = useMemo(() => compileCircuit(snapshot, 'transient', undefined, durationSeconds), [snapshot, durationSeconds])
   const dcCompiled = useMemo(() => compileCircuit(snapshot, 'operating-point', undefined, durationSeconds), [snapshot, durationSeconds])
   const [state, setState] = useState<SimulationState>({ status: 'loading', capture: null, error: null, key: '', captureKey: '', requestKey: '' })
@@ -36,6 +40,8 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
   const handledTrigger = useRef(0)
   const revision = useRef(0)
   const client = useRef<SimulationClient | null>(null)
+  const pausedForSuite = useRef(false)
+  const readyKey = useRef('')
 
   useEffect(() => {
     client.current = new SimulationClient()
@@ -52,6 +58,10 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
     const manuallyRequested = handledTrigger.current !== trigger
     handledTrigger.current = trigger
     instance.discardQueued()
+    if (paused) { pausedForSuite.current = true; instance.dispose(); picoClient.current?.stop(); return }
+    const resuming = pausedForSuite.current
+    pausedForSuite.current = false
+    if (resuming && readyKey.current === key && !manuallyRequested) { setState(previous => ({ ...previous, key, requestKey, status: 'ready' })); return }
 
     if (compiled.diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
       return
@@ -63,6 +73,7 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
     const timer = setTimeout(() => {
       const execute = async () => {
         if (currentRevision !== revision.current) throw new SupersededSimulation()
+        readyKey.current = ''
         let transient = compiled, operating = dcCompiled
         let picoTrace: Capture['picoTrace']
         if (snapshot.pico) {
@@ -89,13 +100,14 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
         const picoChecks = snapshot.pico ? PICO_PINS.filter(pin => pin.gpio !== null && used.has(transient.nodeByTerminal[pin.id])).map(pin => ({ gpio: pin.gpio!, node: transient.nodeByTerminal[pin.id] })) : undefined
         const capture = await instance.run(transient.netlist, { CH1: resolveProbe(snapshot.probes.CH1), CH2: resolveProbe(snapshot.probes.CH2) }, currentRevision, (status) => {
           if (!cancelled && currentRevision === revision.current) setState((previous) => ({ ...previous, key, requestKey, status, error: null }))
-        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks, durationSeconds, snapshot.automations?.some(automation => automation.enabled) ? { document: snapshot, picoTrace } : undefined)
-        if (capture.automationEvents) runNetlist = compileCircuit(snapshot, 'transient', picoTrace, durationSeconds, capture.automationEvents).netlist
+        }, voltageChecks, { netlist: operating.netlist, parts: operatingPointDescriptors(snapshot, operating.nodeByTerminal) }, picoChecks, durationSeconds, (snapshot.automationProgram || snapshot.automations?.some(automation => automation.enabled)) ? { document: snapshot, picoTrace } : undefined)
+        if (capture.automationEvents) runNetlist = compileCircuit(snapshot, 'transient', picoTrace, durationSeconds, capture.automationEvents, capture.automationRun?.actions).netlist
         return picoTrace ? { ...capture, picoTrace } : capture
       }
       void execute().then((capture) => {
         if (!cancelled && capture.revision === revision.current) {
           if (snapshot.pico) setPicoState(previous => ({ ...previous, phase: 'Capture ready' }))
+          readyKey.current = key
           setState({ key, captureKey: key, requestKey, status: 'ready', capture, error: null, netlist: runNetlist })
         }
       }).catch((error: unknown) => {
@@ -105,27 +117,31 @@ export function useSimulation(document: CircuitDocument, requestedAutoUpdate: bo
         setState((previous) => ({ ...previous, key, requestKey, status: 'error', error: error instanceof Error ? error.message : 'Simulation failed. Check the circuit and capture again.' }))
       })
     }, manuallyRequested ? 0 : SIMULATION_LIMITS.debounceMs)
-    return () => { cancelled = true; clearTimeout(timer); if (snapshot.pico || snapshot.automations?.some(automation => automation.enabled)) { picoClient.current?.stop(); instance.dispose() } }
-  }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger, durationSeconds])
+    return () => { cancelled = true; clearTimeout(timer); if (snapshot.pico || snapshot.automationProgram || snapshot.automations?.some(automation => automation.enabled)) { picoClient.current?.stop(); instance.dispose() } }
+  }, [key, requestKey, compiled, dcCompiled, snapshot, autoUpdate, trigger, durationSeconds, paused])
 
   const captureNow = useCallback(() => {
+    if (paused) return
     stopAllAudio()
     setState((previous) => ({ ...previous, key, requestKey: `${key}:${autoUpdate}:${trigger + 1}`, status: 'calculating', error: null }))
     setTrigger(trigger + 1)
-  }, [key, autoUpdate, trigger])
+  }, [key, autoUpdate, trigger, paused])
   const stop = useCallback(() => {
+    readyKey.current = ''
     stopAllAudio(); revision.current++; picoClient.current?.stop(); client.current?.dispose()
     setState(previous => ({ ...previous, key, requestKey, status: 'stale', capture: null, error: null }))
     setPicoState(previous => ({ ...previous, phase: 'Stopped' }))
   }, [key, requestKey])
   const reset = useCallback(() => {
+    if (paused) return
+    readyKey.current = ''
     if (document.pico) { stop(); setPicoState({ key, phase: 'Reset — ready to Run', console: '' }); return }
     stopAllAudio()
     client.current?.dispose()
     client.current = new SimulationClient()
     setState((previous) => ({ ...previous, key, requestKey: `${key}:${autoUpdate}:${trigger + 1}`, capture: null, error: null, status: 'loading' }))
     setTrigger(trigger + 1)
-  }, [key, autoUpdate, trigger, document.pico, stop])
+  }, [key, autoUpdate, trigger, document.pico, stop, paused])
 
   // An edit invalidates the displayed status immediately, before the effect runs.
   let status: SimulationStatus = state.status

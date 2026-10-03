@@ -111,7 +111,7 @@ test('capacitor models show frozen nonlinear readings and survive adding a Pico'
   await expect(inspector(page).getByLabel('Recorded stored energy')).toBeVisible()
   await library(page).getByRole('button', { name: 'Raspberry Pi Pico', exact: true }).click()
   await expect.poll(async () => (await recovered(page)).schemaVersion).toBe(3)
-  expect((await recovered(page)).pico).toBeTruthy()
+  await expect.poll(async () => (await recovered(page)).pico).toBeTruthy()
 })
 
 test('nonlinear DC readings, stale edits, long names and example replacement undo', async ({ page }) => {

@@ -7,6 +7,7 @@ interface PendingRun {
   resolve: (capture: Capture) => void
   reject: (error: Error) => void
   phase?: (phase: 'loading' | 'calculating') => void
+  progress?: (node: import('./automation-runtime.ts').NodeResult) => void
 }
 
 export class SupersededSimulation extends Error {
@@ -23,10 +24,10 @@ export class SimulationClient {
 
   get isReady() { return this.ready }
 
-  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest, picoChecks?: PicoElectricalCheck[], durationSeconds = 0.1, automation?: SimulationRequest['automation']): Promise<Capture> {
+  run(netlist: string, nodes: ProbeNodes, revision: number, phase?: PendingRun['phase'], voltageChecks: VoltageCheck[] = [], operatingPoint?: OperatingPointRequest, picoChecks?: PicoElectricalCheck[], durationSeconds = 0.1, automation?: SimulationRequest['automation'], progress?: PendingRun['progress']): Promise<Capture> {
     this.discardQueued()
     return new Promise((resolve, reject) => {
-      this.pending = { request: { type: 'run', netlist, nodes, revision, voltageChecks, operatingPoint, picoChecks, durationSeconds, ...(automation ? { automation } : {}) }, resolve, reject, phase }
+      this.pending = { request: { type: 'run', runId: crypto.randomUUID(), owner: automation?.flowId ? 'suite' : 'capture', netlist, nodes, revision, voltageChecks, operatingPoint, picoChecks, durationSeconds, ...(automation ? { automation } : {}) }, resolve, reject, phase, progress }
       phase?.(this.ready ? 'calculating' : 'loading')
       if (!this.worker) this.initialize()
       this.pump()
@@ -67,6 +68,7 @@ export class SimulationClient {
           return
         }
         if (!this.active || message.revision !== this.active.request.revision) return
+        if (message.type === 'progress') { this.active.progress?.(message.node); return }
         this.clearTimeout()
         const active = this.active
         this.active = null

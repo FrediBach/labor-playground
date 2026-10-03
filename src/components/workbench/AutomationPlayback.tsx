@@ -11,7 +11,7 @@ export function RecordedAutomationValue({ document, target, partId }: {
 }) {
   const { playback, seconds } = useRecording()
   const events = playback.capture?.automationEvents
-  const points = useMemo(() => events ? automationTimelines(document, events, playback.capture!.duration).get(automationTargetKey({ target, partId, value: 0, durationMs: 0 })) : undefined, [document, events, playback.capture, target, partId])
+  const points = useMemo(() => events ? automationTimelines(playback.capture?.automationRun ? { ...document, ...playback.capture.automationInitialState, automations: playback.capture.automationRun.actions } : document, events, playback.capture!.duration).get(automationTargetKey({ target, partId, value: 0, durationMs: 0 })) : undefined, [document, events, playback.capture, target, partId])
   if (!points) return null
   const value = automationValueAt(points, seconds)
   const label = partId ?? ({ cv: 'CV', amplitude: 'Amplitude', frequency: 'Frequency', gate: 'Gate', potentiometer: 'Potentiometer', switch: 'Switch' }[target])
@@ -28,7 +28,7 @@ export function AutomationTimeline({ document }: { document: CircuitDocument }) 
   if (!events?.length) return null
   return <div className="automation-event-strip" aria-label="Automation events in recording">
     <div className="automation-event-labels"><span>EVENTS</span><span>Click to inspect</span></div><div className="automation-event-track">{events.map(event => {
-      const name = document.automations?.find(row => row.id === event.automationId)?.name ?? event.automationId
+      const name = (playback.capture?.automationRun?.actions ?? document.automations)?.find(row => row.id === event.automationId)?.name ?? event.automationId
       const label = `${name} at ${Number((event.time * 1000).toFixed(3))} ms`
       return <button key={event.automationId} className={seconds >= event.time ? 'occurred' : ''} style={{ left: `${Math.max(0, Math.min(100, (event.time - playback.start) / (playback.end - playback.start) * 100))}%` }} title={label} aria-label={`Seek ${label}`} onClick={() => playback.seek(event.time)} />
   })}</div>

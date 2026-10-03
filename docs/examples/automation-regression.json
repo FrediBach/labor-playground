@@ -1,0 +1,470 @@
+{
+  "schemaVersion": 4,
+  "boardVersion": "virtual-1",
+  "title": "Voltage-triggered gate release",
+  "parts": [
+    {
+      "id": "R1",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "a9",
+        "a13"
+      ]
+    },
+    {
+      "id": "C1",
+      "kind": "capacitor",
+      "value": 0.000001,
+      "pins": [
+        "c13",
+        "c17"
+      ]
+    }
+  ],
+  "wires": [
+    {
+      "id": "W1",
+      "from": "eg",
+      "to": "b9",
+      "color": "#c8a55b"
+    },
+    {
+      "id": "W2",
+      "from": "gnd",
+      "to": "d17",
+      "color": "#6a839b"
+    }
+  ],
+  "automationProgram": {
+    "version": 1,
+    "captureFlowId": "Capture",
+    "signals": [
+      {
+        "id": "CH1",
+        "name": "CH1 · follows probe",
+        "kind": "channel",
+        "channel": "CH1"
+      },
+      {
+        "id": "CH2",
+        "name": "CH2 · follows probe",
+        "kind": "channel",
+        "channel": "CH2"
+      },
+      {
+        "id": "Capacitor",
+        "name": "C1 voltage, pin 1 − pin 2",
+        "kind": "voltage",
+        "positive": "part:C1:0",
+        "negative": "part:C1:1"
+      }
+    ],
+    "definitions": [
+      {
+        "id": "Capture",
+        "name": "Capture",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "label": "Capture starts",
+            "kind": "start",
+            "order": 0
+          },
+          {
+            "id": "Wait_A1",
+            "label": "At 10 ms",
+            "kind": "wait",
+            "mode": "time",
+            "seconds": 0.01,
+            "reference": "capture",
+            "order": 1
+          },
+          {
+            "id": "Call_A1",
+            "label": "Start charging",
+            "kind": "call",
+            "flowId": "Flow_A1",
+            "inputs": {},
+            "enabled": true,
+            "legacyId": "A1",
+            "order": 2
+          },
+          {
+            "id": "Wait_A2",
+            "label": "CH2 rising",
+            "kind": "watch",
+            "signalId": "CH2",
+            "direction": "rising",
+            "threshold": 3,
+            "after": 0,
+            "deadline": 10,
+            "reference": "capture",
+            "order": 3
+          },
+          {
+            "id": "Call_A2",
+            "label": "Release at threshold",
+            "kind": "call",
+            "flowId": "Flow_A2",
+            "inputs": {},
+            "enabled": true,
+            "legacyId": "A2",
+            "order": 4
+          }
+        ],
+        "edges": [
+          {
+            "id": "Start_A1",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Wait_A1"
+          },
+          {
+            "id": "Ready_A1",
+            "source": "Wait_A1",
+            "outcome": "done",
+            "target": "Call_A1"
+          },
+          {
+            "id": "Start_A2",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Wait_A2"
+          },
+          {
+            "id": "Ready_A2",
+            "source": "Wait_A2",
+            "outcome": "done",
+            "target": "Call_A2"
+          }
+        ],
+        "conflictPolicy": "replace",
+        "layout": {
+          "Wait_A1": {
+            "x": 240,
+            "y": 0
+          },
+          "Call_A1": {
+            "x": 500,
+            "y": 0
+          },
+          "Wait_A2": {
+            "x": 240,
+            "y": 130
+          },
+          "Call_A2": {
+            "x": 500,
+            "y": 130
+          }
+        }
+      },
+      {
+        "id": "Flow_A1",
+        "name": "Start charging",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "label": "Capture starts",
+            "kind": "start",
+            "order": 0
+          },
+          {
+            "kind": "action",
+            "id": "Action",
+            "label": "Start charging",
+            "order": 1,
+            "action": {
+              "target": "gate",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "kind": "finish",
+            "id": "Finish",
+            "label": "Finish",
+            "order": 2,
+            "outputs": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "StartAction",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Action"
+          },
+          {
+            "id": "ActionFinish",
+            "source": "Action",
+            "outcome": "done",
+            "target": "Finish"
+          }
+        ],
+        "conflictPolicy": "replace",
+        "layout": {}
+      },
+      {
+        "id": "Flow_A2",
+        "name": "Release at threshold",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "label": "Capture starts",
+            "kind": "start",
+            "order": 0
+          },
+          {
+            "kind": "action",
+            "id": "Action",
+            "label": "Release at threshold",
+            "order": 1,
+            "action": {
+              "target": "gate",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "kind": "finish",
+            "id": "Finish",
+            "label": "Finish",
+            "order": 2,
+            "outputs": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "StartAction",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Action"
+          },
+          {
+            "id": "ActionFinish",
+            "source": "Action",
+            "outcome": "done",
+            "target": "Finish"
+          }
+        ],
+        "conflictPolicy": "replace",
+        "layout": {}
+      },
+      {
+        "id": "ReleaseTest",
+        "name": "Capacitor release scenario",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "label": "Capture starts",
+            "kind": "start",
+            "order": 0
+          },
+          {
+            "id": "Wait_A1",
+            "label": "At 10 ms",
+            "kind": "wait",
+            "mode": "time",
+            "seconds": 0.01,
+            "reference": "capture",
+            "order": 1
+          },
+          {
+            "id": "Call_A1",
+            "label": "Start charging",
+            "kind": "call",
+            "flowId": "Flow_A1",
+            "inputs": {},
+            "enabled": true,
+            "legacyId": "A1",
+            "order": 2
+          },
+          {
+            "id": "Wait_A2",
+            "label": "CH2 rising",
+            "kind": "watch",
+            "signalId": "Capacitor",
+            "direction": "rising",
+            "threshold": 3,
+            "after": 0,
+            "deadline": 10,
+            "reference": "capture",
+            "order": 3
+          },
+          {
+            "id": "Call_A2",
+            "label": "Release at threshold",
+            "kind": "call",
+            "flowId": "Flow_A2",
+            "inputs": {},
+            "enabled": true,
+            "legacyId": "A2",
+            "order": 4
+          },
+          {
+            "id": "Timing",
+            "label": "Gate released by 35 ms",
+            "kind": "expect",
+            "required": true,
+            "order": 10,
+            "expectation": {
+              "kind": "result",
+              "value": {
+                "kind": "result",
+                "nodeId": "Call_A2",
+                "output": "time",
+                "unit": "s"
+              },
+              "operator": "lte",
+              "expected": {
+                "kind": "constant",
+                "value": 0.035,
+                "unit": "s"
+              }
+            }
+          },
+          {
+            "id": "Discharge",
+            "label": "C1 discharged after release",
+            "kind": "expect",
+            "required": true,
+            "order": 11,
+            "expectation": {
+              "kind": "range",
+              "observation": {
+                "signalId": "Capacitor",
+                "statistic": "sample",
+                "from": 0.05,
+                "to": 0.05,
+                "reference": "activation"
+              },
+              "min": 0,
+              "max": 0.05
+            }
+          },
+          {
+            "id": "Finish",
+            "label": "Regression checks complete",
+            "kind": "finish",
+            "order": 12,
+            "outputs": {}
+          }
+        ],
+        "edges": [
+          {
+            "id": "Start_A1",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Wait_A1"
+          },
+          {
+            "id": "Ready_A1",
+            "source": "Wait_A1",
+            "outcome": "done",
+            "target": "Call_A1"
+          },
+          {
+            "id": "Start_A2",
+            "source": "Start",
+            "outcome": "done",
+            "target": "Wait_A2"
+          },
+          {
+            "id": "Ready_A2",
+            "source": "Wait_A2",
+            "outcome": "done",
+            "target": "Call_A2"
+          },
+          {
+            "id": "CheckTiming",
+            "source": "Call_A2",
+            "outcome": "done",
+            "target": "Timing"
+          },
+          {
+            "id": "CheckDischarge",
+            "source": "Timing",
+            "outcome": "passed",
+            "target": "Discharge"
+          },
+          {
+            "id": "Complete",
+            "source": "Discharge",
+            "outcome": "passed",
+            "target": "Finish"
+          }
+        ],
+        "conflictPolicy": "replace",
+        "layout": {
+          "Wait_A1": {
+            "x": 240,
+            "y": 0
+          },
+          "Call_A1": {
+            "x": 500,
+            "y": 0
+          },
+          "Wait_A2": {
+            "x": 240,
+            "y": 130
+          },
+          "Call_A2": {
+            "x": 500,
+            "y": 130
+          }
+        }
+      }
+    ],
+    "tests": [
+      {
+        "id": "ReleaseRegression",
+        "name": "Capacitor charges and discharges",
+        "enabled": true,
+        "tags": [
+          "RC",
+          "regression"
+        ],
+        "flowId": "ReleaseTest",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 440,
+            "amplitude": 2,
+            "waveform": "sine",
+            "cv": 5,
+            "envelope": {
+              "mode": "gate",
+              "gateHigh": false,
+              "decayMs": 20
+            }
+          },
+          "parts": []
+        }
+      }
+    ]
+  },
+  "instruments": {
+    "frequency": 440,
+    "amplitude": 2,
+    "cv": 5,
+    "waveform": "sine",
+    "envelope": {
+      "mode": "gate",
+      "gateHigh": false,
+      "decayMs": 20
+    }
+  },
+  "probes": {
+    "CH1": "c9",
+    "CH2": "d13"
+  }
+}

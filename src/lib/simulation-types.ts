@@ -59,12 +59,16 @@ export interface Capture {
   picoTrace?: PicoTrace
   /** Resolved, once-per-recording actions; times use the simulation clock. */
   automationEvents?: AutomationEvent[]
+  automationRun?: import('./automation-runtime.ts').FlowRun
+  automationInitialState?: Pick<CircuitDocument, 'instruments' | 'parts'>
 }
 
 export type SimulationStatus = 'loading' | 'calculating' | 'ready' | 'stale' | 'invalid' | 'error'
 
 export interface SimulationRequest {
   type: 'run'
+  runId?: string
+  owner?: 'capture' | 'suite'
   revision: number
   netlist: string
   nodes: ProbeNodes
@@ -72,11 +76,12 @@ export interface SimulationRequest {
   picoChecks?: PicoElectricalCheck[]
   operatingPoint?: OperatingPointRequest
   durationSeconds?: number
-  automation?: { document: CircuitDocument; picoTrace?: PicoTrace }
+  automation?: { document: CircuitDocument; picoTrace?: PicoTrace; flowId?: string }
 }
 
 export type SimulationResponse =
   | { type: 'ready' }
+  | { type: 'progress'; revision: number; runId: string; node: import('./automation-runtime.ts').NodeResult }
   | { type: 'result'; revision: number; capture: Capture }
   | { type: 'error'; revision: number; message: string }
 

@@ -14,7 +14,8 @@ self.onmessage = async (event: MessageEvent<SimulationRequest>) => {
   if (request.type !== 'run') return
   try {
     await initialized
-    const capture = await runCircuitCapture(engine, request)
+    const runId = request.runId ?? crypto.randomUUID()
+    const capture = await runCircuitCapture(engine, { ...request, runId }, node => send({ type: 'progress', revision: request.revision, runId, node }))
     send({ type: 'result', revision: request.revision, capture })
   } catch (error) {
     send({ type: 'error', revision: request.revision, message: error instanceof Error ? error.message : 'ngspice could not complete this circuit.' })

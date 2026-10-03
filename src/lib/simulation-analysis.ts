@@ -1,3 +1,6 @@
+import { signalNodeMap } from './automation-signals.ts'
+import { migrateAutomations } from './automation-migration.ts'
+import { runAutomationFlow } from './automation-runtime.ts'
 import { checkPicoEnvelope } from './pico/checks.ts'
 import type { Simulation } from 'eecircuit-engine'
 import type { Capture, SimulationRequest } from './simulation-types.ts'
@@ -5,7 +8,7 @@ import { extractCapture, extractOperatingPoint, fatalSimulationMessages, require
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { extractRecording } from './recording.ts'
 import { compileCircuit, validateDocument, spiceDeviceId } from './circuit.ts'
-import { automationCrossing, automationIssue, scheduledAutomationEvents } from './automations.ts'
+import { automationIssue } from './automations.ts'
 import { operatingPointDescriptors } from './simulation-descriptors.ts'
 
 type Engine = Pick<Simulation, 'setNetList' | 'runSim' | 'getError' | 'getInfo'>
@@ -34,7 +37,7 @@ async function executeAnalysis(engine: Engine, netlist: string) {
 }
 
 /** Both analyses belong to one worker request, timeout, and circuit revision. */
-async function captureCircuit(engine: Engine, request: SimulationRequest): Promise<Capture> {
+async function captureCircuit(engine: Engine, request: SimulationRequest, resolved?: { actions: import('./automations.ts').Automation[]; events: import('./automations.ts').AutomationEvent[] }): Promise<Capture> {
   const started = performance.now()
   const durationSeconds = request.durationSeconds ?? 0.1
   if (!Number.isFinite(durationSeconds) || durationSeconds < 0.001 || durationSeconds > SIMULATION_LIMITS.maxDurationSeconds) throw new Error('The requested recording duration is outside the supported 1 ms to 10 s range.')
@@ -49,14 +52,12 @@ async function captureCircuit(engine: Engine, request: SimulationRequest): Promi
   }
 
   const document = request.automation ? validateDocument(request.automation.document) : undefined
-  const events = document ? scheduledAutomationEvents(document, durationSeconds) : []
-  const pending = document?.automations?.filter(row => row.enabled && row.trigger.kind === 'voltage' && !automationIssue(row, document, durationSeconds)) ?? []
-  let causalCursor = 0
+  const events = resolved?.events ?? []
   // Every pass is a continuous SPICE trajectory from the original DC state.
   // Commit only the earliest causal event, then resolve future events again
   // against the changed circuit. Never splice captures or reset stored charge.
-  for (;;) {
-    const compiled = document ? compileCircuit(document, 'transient', request.automation?.picoTrace, durationSeconds, events) : undefined
+  {
+    const compiled = document ? compileCircuit(document, 'transient', request.automation?.picoTrace, durationSeconds, events, resolved?.actions) : undefined
     const failure = compiled?.diagnostics.find(item => item.severity === 'error')
     if (failure) throw new Error(failure.message)
     const result = await executeAnalysis(engine, compiled?.netlist ?? request.netlist)
@@ -65,19 +66,8 @@ async function captureCircuit(engine: Engine, request: SimulationRequest): Promi
     requireAnalysisCompletion(result, engine.getInfo(), 'transient')
     const errors = fatalSimulationMessages(engine.getError(), capture, durationSeconds)
     if (errors.length) throw new Error(errors.slice(0, 3).join(' '))
-    const candidates = pending.map(row => ({ automationId: row.id, time: automationCrossing(row, capture, causalCursor) }))
-      .filter((event): event is { automationId: string; time: number } => event.time !== null && event.time < durationSeconds)
-      .sort((a, b) => a.time - b.time)
-    if (candidates.length) {
-      causalCursor = candidates[0].time
-      for (const event of candidates.filter(candidate => candidate.time <= causalCursor + 1e-12)) {
-        events.push(event)
-        pending.splice(pending.findIndex(row => row.id === event.automationId), 1)
-      }
-      continue
-    }
     if (request.picoChecks) checkPicoEnvelope(result, request.picoChecks)
-    const descriptors = document && compiled ? operatingPointDescriptors(document, compiled.nodeByTerminal, true, durationSeconds) : request.operatingPoint?.parts ?? []
+    const descriptors = document && compiled ? operatingPointDescriptors(resolved ? { ...document, automations: resolved.actions } : document, compiled.nodeByTerminal, true, durationSeconds) : request.operatingPoint?.parts ?? []
     const recording = extractRecording(result, descriptors)
     for (const descriptor of descriptors) {
       const model = descriptor.customModel
@@ -98,8 +88,20 @@ async function captureCircuit(engine: Engine, request: SimulationRequest): Promi
 }
 
 /** Keep circuit-level recovery advice when ngspice cannot identify a device. */
-export async function runCircuitCapture(engine: Engine, request: SimulationRequest): Promise<Capture> {
-  try { return await captureCircuit(engine, request) } catch (error) {
+export async function runCircuitCapture(engine: Engine, request: SimulationRequest, onProgress?: (node: import('./automation-runtime.ts').NodeResult) => void): Promise<Capture> {
+  try {
+    const document = request.automation?.document
+    if (document) {
+      const program = document.automationProgram ?? migrateAutomations((document.automations ?? []).map(row => ({ ...row, enabled: row.enabled && !automationIssue(row, document, request.durationSeconds ?? .1) })))
+      const result = await runAutomationFlow(document, program, request.automation?.flowId ?? program.captureFlowId, request.durationSeconds ?? 0.1, async (actions, events) => {
+        const compiled = compileCircuit(document, 'transient', request.automation?.picoTrace, request.durationSeconds ?? 0.1, events, actions)
+        const capture = await captureCircuit(engine, request, { actions, events })
+        return { capture, nodeByTerminal: signalNodeMap(document, compiled.nodeByTerminal) }
+      }, { runId: request.runId ?? crypto.randomUUID(), onProgress })
+      return result.capture
+    }
+    return await captureCircuit(engine, request)
+  } catch (error) {
     const custom = request.operatingPoint?.parts.filter(part => part.customModel) ?? []
     if (!custom.length || !(error instanceof Error)) throw error
     const matching = custom.filter(part => error.message.toLowerCase().includes(spiceDeviceId({ id: part.partId }).toLowerCase()))

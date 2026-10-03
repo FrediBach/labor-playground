@@ -1,0 +1,44 @@
+.automation-workspace {
+  margin: 0 0 14px; border: 1px solid var(--automation-border); border-radius: 9px; padding: 17px 18px;
+  --automation-surface: #252d28;
+  --automation-border: #475347;
+  --automation-text: #e5ebdf;
+  --automation-muted: #b0bcaf;
+  --automation-accent: #c6db94;
+  color: var(--automation-text);
+  background: var(--automation-surface);
+  min-width: 0;
+}
+.automation-workspace .automations-panel { border: 0; padding: 12px 0; }
+.flow-toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 8px 0; }
+.flow-toolbar label { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+.automation-workspace button:not(.icon-button):not(.automation-name):not(.automation-result):not(.react-flow__controls-button), .automation-workspace select { min-height: 36px; border: 1px solid var(--automation-border); border-radius: 6px; padding: 6px 10px; background: #303b32; color: var(--automation-text); font-size: 12px; }
+.automation-workspace button[aria-pressed=true] { border-color: var(--automation-accent) !important; color: var(--automation-accent) !important; }
+.automation-workspace button:disabled { opacity: .45; cursor: not-allowed; }
+.automation-workspace :focus-visible { outline: 2px solid #f4e3ad; outline-offset: 3px; }
+.flow-editor-body { display: flex; border: 1px solid var(--automation-border); border-radius: 8px; overflow: hidden; }
+.flow-canvas { height: 510px; flex: 1; min-width: 0; }
+.flow-canvas .react-flow { --xy-background-color: #202823; --xy-node-background-color: #303b32; --xy-node-color: var(--automation-text); --xy-edge-stroke: #95a58d; --xy-handle-background-color: var(--automation-accent); --xy-controls-button-background-color: #303b32; --xy-controls-button-color: var(--automation-text); --xy-edge-label-color: var(--automation-text); --xy-edge-label-background-color: #252d28; }
+.flow-step { background: var(--automation-surface); border: 1px solid var(--automation-border); border-left: 4px solid var(--automation-accent); border-radius: 7px; padding: 12px 16px; width: 205px; min-height: 86px; }
+.flow-step.selected { border-color: var(--automation-accent); box-shadow: 0 0 0 1px var(--automation-accent); }
+.flow-step strong { display: block; font-size: 13px; margin-top: 6px; overflow-wrap: anywhere; }
+.flow-step-kind { display: flex; gap: 5px; color: var(--automation-muted); font-size: 11px; }
+.flow-step small { color: var(--automation-accent); text-transform: capitalize; }
+.flow-outputs { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 7px; font-size: 10px; color: var(--automation-muted); }
+.flow-inspector { width: 275px; padding: 12px; border-left: 1px solid var(--automation-border); background: #29332b; max-height: 510px; overflow: auto; }
+.flow-inspector fieldset { border: 1px solid var(--automation-border); border-radius: 5px; padding: 8px; margin: 8px 0; }
+.flow-inspector legend, .flow-inspector p { color: var(--automation-muted); font-size: 12px; }
+.flow-inspector .automation-field { margin: 9px 0; }
+.flow-notice { font-size: 12px; color: var(--automation-muted); min-height: 20px; }
+.flow-step-list, .flow-run-details, .tests-panel details { margin-top: 12px; font-size: 12px; }
+.flow-step-list li, .flow-run-details li { padding: 6px 0; }
+.flow-step-list li { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.test-verdict { text-transform: capitalize; color: var(--automation-muted); }
+.test-verdict.passed { color: #b4d790; }
+.test-verdict.failed, .test-verdict.error { color: #f3ad99; }
+.test-verdict.inconclusive, .test-verdict.canceled { color: #e5bd68; }
+.tests-panel .automation-description p { margin: 5px 0; font-size: 12px; }
+.test-recording-banner { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; border: 1px solid #c6db94; padding: 12px; background: #303b32; color: #e5ebdf; }
+@media (max-width: 900px) { .flow-inspector { width: 235px; } .automation-row-actions { flex-wrap: wrap; } }
+@media (max-width: 650px) { .flow-editor-body { flex-direction: column; } .flow-canvas { height: 370px; flex: none; } .flow-inspector { width: 100%; max-height: 400px; border-left: 0; border-top: 1px solid var(--automation-border); } .flow-toolbar label { flex-wrap: wrap; } .automation-workspace .automation-row { flex-wrap: wrap; } }
+@media (prefers-reduced-motion: reduce) { .automation-workspace * { animation: none !important; transition: none !important; } }
