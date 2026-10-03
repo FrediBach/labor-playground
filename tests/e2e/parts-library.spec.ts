@@ -37,7 +37,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 900, height: 800 
     await page.goto('/')
     await captured(page)
     const tray = library(page)
-    await expect(tray.locator('.part-item')).toHaveCount(29)
+    await expect(tray.locator('.part-item')).toHaveCount(33)
     const controls = [
       tray.getByRole('button', { name: /Raspberry Pi Pico/ }),
       tray.getByRole('button', { name: /Jumper wire/ }),
@@ -97,7 +97,7 @@ test('component search combines with categories and clears without losing the se
   await expect(schottky).toHaveAttribute('aria-pressed', 'true')
   await search.fill('')
   await category.selectOption('all')
-  await expect(tray.locator('.part-item')).toHaveCount(29)
+  await expect(tray.locator('.part-item')).toHaveCount(33)
 })
 
 test('the expanded catalog and its controls fit a phone without horizontal overflow', async ({ page }) => {
@@ -105,7 +105,7 @@ test('the expanded catalog and its controls fit a phone without horizontal overf
   await page.goto('/')
   await captured(page)
   const tray = library(page)
-  await expect(tray.locator('.part-item')).toHaveCount(29)
+  await expect(tray.locator('.part-item')).toHaveCount(33)
   for (const control of [
     tray.getByRole('textbox', { name: 'Find a component', exact: true }),
     tray.getByRole('combobox', { name: 'Component category', exact: true }),

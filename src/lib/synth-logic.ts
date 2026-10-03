@@ -9,12 +9,15 @@ export const QUAD_GATE_SECTIONS = [[0, 1, 2], [4, 5, 3], [7, 8, 9], [11, 12, 10]
 /** Zero-based [Q, /Q, clock, reset, data, set]. */
 export const FLIP_FLOP_SECTIONS = [[0, 1, 2, 3, 4, 5], [12, 11, 10, 9, 8, 7]] as const
 export const LOGIC_PINOUTS: Partial<Record<ComponentKind, { inputs: number[]; outputs: number[] }>> = {
+  cd4024: { inputs: [0, 1], outputs: [11, 10, 8, 5, 4, 3, 2] },
+  cd4093: { inputs: QUAD_GATE_SECTIONS.flatMap(([a, b]) => [a, b]), outputs: QUAD_GATE_SECTIONS.map(([, , output]) => output) },
+  cd4001: { inputs: QUAD_GATE_SECTIONS.flatMap(([a, b]) => [a, b]), outputs: QUAD_GATE_SECTIONS.map(([, , output]) => output) },
   cd4013: { inputs: FLIP_FLOP_SECTIONS.flatMap(([, , ...inputs]) => inputs), outputs: FLIP_FLOP_SECTIONS.flatMap(([q, nq]) => [q, nq]) },
   cd4070: { inputs: QUAD_GATE_SECTIONS.flatMap(([a, b]) => [a, b]), outputs: QUAD_GATE_SECTIONS.map(([, , output]) => output) },
   cd4081: { inputs: QUAD_GATE_SECTIONS.flatMap(([a, b]) => [a, b]), outputs: QUAD_GATE_SECTIONS.map(([, , output]) => output) },
 }
 
-export function synthLogicLines(kind: 'cd4013' | 'cd4070' | 'cd4081' | 'pc817', id: string, n: string[], ctr = 100): string[] {
+export function synthLogicLines(kind: 'cd4013' | 'cd4070' | 'cd4081' | 'cd4001' | 'pc817', id: string, n: string[], ctr = 100): string[] {
   if (kind === 'pc817') {
     const [anode, cathode, emitter, collector] = n
     const light = `photo_${id}`, base = `photo_${id}_base`
@@ -70,7 +73,7 @@ export function synthLogicLines(kind: 'cd4013' | 'cd4070' | 'cd4081' | 'pc817', 
     for (const [section, [a, b, output]] of QUAD_GATE_SECTIONS.entries()) {
       const logic = (pin: number) => `(0.5*(1+tanh((${voltage(n[pin])}-0.5*${supply})/max(0.01,0.01*${supply}))))`
       const x = logic(a), y = logic(b), state = `gate_${id}_${section}`
-      const target = kind === 'cd4070' ? `(${x}+${y}-2*${x}*${y})` : `(${x}*${y})`
+      const target = kind === 'cd4070' ? `(${x}+${y}-2*${x}*${y})` : kind === 'cd4001' ? `((1-${x})*(1-${y}))` : `(${x}*${y})`
       lines.push(`BGATE_${id}_${section} ${state} ${low} I = (${voltage(state)}-${target})/1k`, `CGATE_${id}_${section} ${state} ${low} 100p`)
       drive(output, voltage(state))
     }

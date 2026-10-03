@@ -14,6 +14,8 @@ import { icExamples } from './ic-examples.ts'
 import { automationExamples } from './automation-examples.ts'
 import { synthIcLines, SYNTH_IC_LAYOUTS } from './synth-models.ts'
 import { synthUtilityLines, SCHMITT_SECTIONS, MULTIPLEXER_SECTIONS } from './synth-utilities.ts'
+import { synthTimingLines, COUNTER_NC } from './synth-timing.ts'
+import { synthTimingExamples } from './synth-timing-examples.ts'
 import { synthLogicLines, LOGIC_PINOUTS } from './synth-logic.ts'
 import { synthLogicExamples } from './synth-logic-examples.ts'
 import { synthUtilityExamples } from './synth-utility-examples.ts'
@@ -23,7 +25,7 @@ import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040'
 
 export interface Part {
   id: string
@@ -102,6 +104,34 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  cd4024: {
+    package: 'DIP-14', pinNames: ['CLK', 'RESET', 'Q7', 'Q6', 'Q5', 'Q4', 'VSS', 'NC', 'Q3', 'NC', 'Q2', 'Q1', 'NC', 'VDD'],
+    label: 'CD4024-style ripple counter', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Seven binary divider stages provide clocks and sub-octaves from ÷2 through ÷128.',
+    supplyHint: 'Pin 14 VDD, pin 7 VSS (3–18 V). Clock pin 1 counts falling edges; RESET pin 2 clears all stages when high. Pins 8, 10, and 13 are not connected internally.',
+    model: 'CD4024B DIP-14 pinout. Seven falling-edge master/slave stages with asynchronous active-high reset, Schmitt clock thresholds at 40%/60% of supply, and 100 ns state poles. Outputs have 500 Ω resistance at 5 V, falling to 167 Ω at 15 V; inputs have 5 pF capacitance and 1 TΩ leakage. Captures initialize all stages low for 1 µs. Real hardware needs reset for predictable startup. Ripple stages are not simultaneous. No calibrated propagation delays, metastability, protection, supply current, temperature, or damage model.',
+  },
+  cd4093: {
+    package: 'DIP-14', pinNames: ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD'],
+    label: 'CD4093-style Schmitt NAND gates', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Four NAND gates with hysteresis on both inputs for gated oscillators and pulse shaping.',
+    supplyHint: 'Pin 14 VDD, pin 7 VSS (3–18 V). An output goes low only when both inputs are high. Tie unused inputs to a supply rail. A low enable holds a gated oscillator output high.',
+    model: 'CD4093B DIP-14 pinout. Independent input hysteresis at 40%/60% of supply, 100 ns input and output state poles, 5 pF input capacitance, and 1 TΩ leakage. Output resistance is 500 Ω at 5 V and 167 Ω at 15 V. A deterministic 1 µs initialization starts RC oscillators. No calibrated thresholds/delay, protection diodes, supply current, temperature, or noise model. DC describes startup.',
+  },
+  cd4001: {
+    package: 'DIP-14', pinNames: ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD'],
+    label: 'CD4001-style NOR gates', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Four NOR gates for inverted gate combining, pulse inhibition, and logic experiments.',
+    supplyHint: 'Pin 14 VDD, pin 7 VSS (3–18 V). Output is high only when both inputs are low. Keep inputs inside the supply range and define every unused input.',
+    model: 'CD4001B DIP-14 pinout and NOR truth table. Smooth switching around half the supply, 100 ns state pole, 5 pF input capacitance, and 1 TΩ leakage. Output resistance is 500 Ω at 5 V and 167 Ω at 15 V. No hysteresis, calibrated propagation delay, metastability, protection, supply current, or thermal behavior. Cross-coupled latches require an explicit set/reset stimulus.',
+  },
+  lm4040: {
+    pinNames: ['NC / A', 'Cathode', 'Anode'],
+    label: 'LM4040-style 2.5 V reference', unit: 'V', defaultValue: 2.5, min: 2.5, max: 2.5,
+    description: 'A fixed shunt voltage reference for stable CV offsets and control-voltage scaling.',
+    supplyHint: 'TI TO-92 pin order: 1 float or anode, 2 cathode, 3 anode. Connect anode to the reference return and feed cathode through a resistor. Allow 60 µA–15 mA shunt current after load current; the reference cannot source current.',
+    model: 'Original nominal 2.5 V shunt approximation, using the TI LM4040 TO-92 pin order (not the SOT-23 order). A soft pre-regulation current rises to 60 µA at 2.5 V, followed by 0.5 Ω incremental resistance. Includes forward diode conduction and 1 nF effective capacitance. Pin 1 is electrically omitted and may only float or connect to anode. No tolerance, temperature coefficient, noise, calibrated startup, or overcurrent failure model. Behavior above 15 mA is not device-qualified.',
+  },
   cd4013: {
     package: 'DIP-14', pinNames: ['Q A', '/Q A', 'CLK A', 'RST A', 'D A', 'SET A', 'VSS', 'SET B', 'D B', 'RST B', 'CLK B', '/Q B', 'Q B', 'VDD'],
     label: 'CD4013-style dual flip-flop', unit: '', defaultValue: 1, min: 1, max: 1,
@@ -611,6 +641,12 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       if (new Set(nodes).size < 3) diagnostics.push({ severity: 'warning', message: `${part.id} has transistor terminals on the same net. Check the D–G–S connections.`, partId: part.id })
       continue
     }
+    if (part.kind === 'lm4040') {
+      addEdge(b, c)
+      const spareUsed = doc.wires.some(w => nodeByTerminal[w.from] === a || nodeByTerminal[w.to] === a) || doc.parts.some(p => p.id !== part.id && p.pins.some(pin => nodeByTerminal[pin] === a))
+      if (a !== c && spareUsed) diagnostics.push({ severity: 'error', message: `${part.id} pin 1 must float or connect to its anode (pin 3).`, partId: part.id })
+      continue
+    }
     if (part.kind === 'vactrol' || part.kind === 'pc817') { addEdge(a, b); addEdge(nodes[2], nodes[3]); continue }
     if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
@@ -817,6 +853,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const warnedFloating = new Set<string>()
   for (const part of doc.parts) {
     for (const [index, pin] of part.pins.entries()) {
+      if (part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0) continue
       const node = nodeByTerminal[pin]
       if (!referenced.has(node) && !warnedFloating.has(node)) {
         const input = amplifierPinouts[part.kind]?.sections.some(([, minus, plus]) => index === minus || index === plus)
@@ -915,7 +952,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       if (part.kind === 'njfet') lines.push(`.model JF_${safeId} NJF(Vto=-2 Beta=1m Lambda=0.01 Rd=10 Rs=10 Cgs=5p Cgd=2p Is=1p)`, `J_${safeId} fd_${safeId} fg_${safeId} ${c} JF_${safeId}`)
       else lines.push(`.model MF_${safeId} ${part.kind === 'pmos' ? 'PMOS(Level=1 Vto=-2 Kp=10m' : 'NMOS(Level=1 Vto=2 Kp=20m'} Lambda=0.02 Rd=2 Rs=2 Cbd=10p Is=1p)`, `M_${safeId} fd_${safeId} fg_${safeId} ${c} ${c} MF_${safeId} W=10u L=10u`, `CGS_${safeId} fg_${safeId} ${c} 30p`, `CGD_${safeId} fg_${safeId} fd_${safeId} 5p`, `RG_${safeId} fg_${safeId} ${c} 1e12`)
     }
-    if (part.kind === 'cd4013' || part.kind === 'cd4070' || part.kind === 'cd4081' || part.kind === 'pc817') lines.push(...synthLogicLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin]), part.value))
+    if (part.kind === 'cd4024' || part.kind === 'cd4093' || part.kind === 'lm4040') lines.push(...synthTimingLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    if (part.kind === 'cd4001' || part.kind === 'cd4013' || part.kind === 'cd4070' || part.kind === 'cd4081' || part.kind === 'pc817') lines.push(...synthLogicLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin]), part.value))
     if (part.kind === 'cd40106' || part.kind === 'cd4053' || part.kind === 'vactrol') lines.push(...synthUtilityLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm393' || part.kind === 'cd4066') lines.push(...synthIcLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'switch') lines.push(timelines.has(`switch:${part.id}`)
@@ -960,10 +998,11 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   // Bound the interpolation error of periodic inputs; otherwise let ngspice's
   // local-error control and source breakpoints refine a modest baseline grid.
   // Unconnected instruments must not force tiny steps for a slow/DC circuit.
-  const timers = doc.parts.filter(part => part.kind === 'timer555' || part.kind === 'cd40106')
-  let timerStep = doc.parts.some(part => part.kind === 'cd4013') ? 1e-5 : Infinity
+  const timers = doc.parts.filter(part => part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4093')
+  const hasRippleCounter = doc.parts.some(part => part.kind === 'cd4024')
+  let timerStep = hasRippleCounter || doc.parts.some(part => part.kind === 'cd4013') ? 1e-5 : Infinity
   for (const timer of timers) {
-    const timingNodes = new Set((timer.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : [1, 5, 6]).map(index => nodeByTerminal[timer.pins[index]]))
+    const timingNodes = new Set((timer.kind === 'cd4093' ? LOGIC_PINOUTS.cd4093!.inputs : timer.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : [1, 5, 6]).map(index => nodeByTerminal[timer.pins[index]]))
     const capacitors = doc.parts.filter(part => (part.kind === 'capacitor' || part.kind === 'electrolytic') && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
     const resistors = doc.parts.filter(part => part.kind === 'resistor' && part.pins.some(pin => timingNodes.has(nodeByTerminal[pin])))
     // Behavioral latch thresholds need explicit resolution as well as LTE
@@ -986,6 +1025,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
     if (part.kind === 'npn' || part.kind === 'pnp') return [`@Q_${safeId}[ic]`, `@Q_${safeId}[ib]`]
     if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') return [`i(VFD_${safeId})`, `i(VFG_${safeId})`]
+    if (part.kind === 'lm4040') return [`i(VREF_${safeId})`]
     if (part.kind === 'pc817') return [`i(VLED_${safeId})`, `i(VCOL_${safeId})`]
     if (part.kind === 'vactrol') return [`i(VLED_${safeId})`, `@BLDR_${safeId}[i]`]
     if (part.kind === 'inductor') return [`@L_${safeId}[i]`]
@@ -1009,7 +1049,9 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   }
   // Tighter truncation-error control retains useful interpolation accuracy at
   // fast RC transitions even when the baseline grid spans a long recording.
-  lines.push(`.options reltol=0.001 abstol=1e-12 vntol=1e-6 trtol=${timers.length ? 7 : 0.01}`, ['.save', ...savedVectors].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} ${durationSeconds} 0 ${step}`, '.end')
+  // Ripple storage needs tight local-error control even alongside RC timers;
+  // loose integration can introduce an extra transition between clock edges.
+  lines.push(`.options reltol=0.001 abstol=1e-12 vntol=1e-6 trtol=${timers.length && !hasRippleCounter ? 7 : 0.01}`, ['.save', ...savedVectors].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} ${durationSeconds} 0 ${step}`, '.end')
   const netlist = lines.join('\n') + '\n'
   const externalNodes = new Set(Object.values(nodeByTerminal))
   const internalNodes = new Set(lines.slice(1).filter(line => /^[RCLVIBDQ]/i.test(line)).flatMap(line => {
@@ -1024,6 +1066,10 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'ssd1306') return '128×64 · I²C'
   if (kind === 'diode') return 'Silicon'
   if (kind === 'schottky') return 'Low Vf'
+  if (kind === 'cd4024') return '7-stage · DIP-14'
+  if (kind === 'cd4093') return 'Quad Schmitt NAND · DIP-14'
+  if (kind === 'cd4001') return 'Quad NOR · DIP-14'
+  if (kind === 'lm4040') return '2.5 V shunt · TO-92'
   if (kind === 'cd4013') return 'Dual D-type · DIP-14'
   if (kind === 'cd4070') return 'Quad XOR · DIP-14'
   if (kind === 'cd4081') return 'Quad AND · DIP-14'
@@ -1162,6 +1208,7 @@ export const examples: CircuitExample[] = [
   ...synthExamples,
   ...synthUtilityExamples,
   ...synthLogicExamples,
+  ...synthTimingExamples,
   ...picoExamples,
 ]
 

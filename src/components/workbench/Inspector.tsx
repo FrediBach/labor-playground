@@ -54,7 +54,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
       {part && definition ? <>
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
-          <span className="eyebrow">{part.id} · {integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · ${fet ? 'D / G / S' : 'C / B / E'}` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
+          <span className="eyebrow">{part.id} · {part.kind === 'lm4040' ? 'SHUNT REFERENCE · TO-92' : integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · ${fet ? 'D / G / S' : 'C / B / E'}` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
           <h2>{partDisplayName(document, part)}</h2><p>{model ? model.description || `Custom ${model.baseKind} characteristic` : definition.description}</p>
         </div>
         <div className="inspector-section">
@@ -110,7 +110,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
         </div>
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
-          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
+          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013' || part.kind === 'cd4024' || part.kind === 'cd4093') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
             {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
             <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
             <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>

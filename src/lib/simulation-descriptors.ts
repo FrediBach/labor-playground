@@ -1,6 +1,7 @@
 import { compileCustomModel } from './component-models.ts'
 import { spiceDeviceId, type CircuitDocument } from './circuit.ts'
 import type { OperatingPointBranch, OperatingPointPartDescriptor } from './simulation-types.ts'
+import { COUNTER_NC } from './synth-timing.ts'
 import { automationIssue } from './automations.ts'
 
 /** These match the compiler's fixed device models; this is measurement, not a solver. */
@@ -35,6 +36,8 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
       const id = spiceDeviceId(part).toLowerCase()
       branches.push({ kind: 'saved-current', label: 'Drain → Source', fromNode: a, toNode: c, vector: `i(vfd_${id})` })
       branches.push({ kind: 'saved-current', label: 'Gate → Source', fromNode: b, toNode: c, vector: `i(vfg_${id})` })
+    } else if (part.kind === 'lm4040') {
+      branches.push({ kind: 'saved-current', label: 'Cathode → Anode', fromNode: b, toNode: c, vector: `i(vref_${spiceDeviceId(part).toLowerCase()})` })
     } else if (part.kind === 'pc817') {
       const id = spiceDeviceId(part).toLowerCase()
       branches.push({ kind: 'saved-current', label: 'LED A → K', fromNode: a, toNode: b, vector: `i(vled_${id})` })
@@ -52,6 +55,8 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
     }
     // Behavioral IC terminal currents are not exposed as measured chip power.
     // Op-amps omit supply consumption; 555 supply loading is only approximate.
-    return { partId: part.id, nodes, branches }
+    // Unconnected package pins have no electrical voltage to measure.
+    const measuredNodes = nodes.filter((_, index) => !(part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0))
+    return { partId: part.id, nodes: measuredNodes, branches }
   })
 }
