@@ -37,7 +37,8 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
   const capacitive = part?.kind === 'capacitor' || part?.kind === 'electrolytic'
   const inductive = part?.kind === 'inductor'
   const zener = part?.kind === 'zener'
-  const transistor = part?.kind === 'npn' || part?.kind === 'pnp'
+  const fet = part?.kind === 'njfet' || part?.kind === 'nmos'
+  const transistor = fet || part?.kind === 'npn' || part?.kind === 'pnp'
   const polarized = part?.kind === 'electrolytic' || part?.kind === 'diode' || part?.kind === 'schottky' || zener || part?.kind === 'led'
   const dc = part ? operatingPoint?.parts[part.id] : undefined
   const unit = resistive ? 'kΩ' : inductive ? 'mH' : zener ? 'V' : part?.kind === 'electrolytic' ? 'µF' : 'nF'
@@ -53,7 +54,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
       {part && definition ? <>
         <div className="selected-part-summary">
           <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
-          <span className="eyebrow">{part.id} · {integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · C / B / E` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
+          <span className="eyebrow">{part.id} · {integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · ${fet ? 'D / G / S' : 'C / B / E'}` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
           <h2>{partDisplayName(document, part)}</h2><p>{model ? model.description || `Custom ${model.baseKind} characteristic` : definition.description}</p>
         </div>
         <div className="inspector-section">
@@ -96,7 +97,8 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
             ))}
           </div>
           <p className="micro-copy">{integratedCircuit ? 'The notch marks the pin 1 end. The package must straddle the center trench.' : 'Drag the component to move it. Jumper wires stay attached to their holes.'}</p>
-          {transistor && <p className="micro-copy">C = Collector, B = Base, E = Emitter. The three leads move together. This virtual pin order is C–B–E; physical transistor pinouts vary.</p>}
+          {fet && <p className="micro-copy">D = Drain, G = Gate, S = Source. The three leads move together. This virtual pin order is D–G–S; check the pinout of your physical device.</p>}
+          {transistor && !fet && <p className="micro-copy">C = Collector, B = Base, E = Emitter. The three leads move together. This virtual pin order is C–B–E; physical transistor pinouts vary.</p>}
           {hasEditableLeads(part) && <p className="micro-copy">Move one lead to change its spacing. Choose holes 1–8 spacings apart; polarity stays with the lead.</p>}
           {editingLead?.partId === part.id && <button className="subtle-button cancel-lead-edit" onClick={onFinishLeadEdit}>Cancel lead move <kbd>esc</kbd></button>}
           {polarized && (

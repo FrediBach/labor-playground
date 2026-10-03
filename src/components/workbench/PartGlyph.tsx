@@ -49,7 +49,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       y: index < rowPins ? -30 : 30,
     }))
     const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
-    const inscription = kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
+    const inscription = kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
     return <g>
       {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
@@ -91,13 +91,15 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       {leads.map((pin, index) => <text key={index} x={pin.x} y={-3} textAnchor="middle" fill="#576752" fontFamily="monospace" fontSize={6}>{['A', 'W', 'B'][index]}</text>)}
     </g>
   }
-  if (kind === 'npn' || kind === 'pnp') {
+  if (kind === 'npn' || kind === 'pnp' || kind === 'njfet' || kind === 'nmos') {
+    const fet = kind === 'njfet' || kind === 'nmos'
+    const letters = fet ? ['D', 'G', 'S'] : ['C', 'B', 'E']
     const leads = pins ?? [{ x: -24, y: 0 }, { x: 0, y: 0 }, { x: 24, y: 0 }]
-    const accent = kind === 'npn' ? '#adc9ad' : '#cbbbd2'
+    const accent = fet ? '#cbbd91' : kind === 'npn' ? '#adc9ad' : '#cbbbd2'
     return <g>
       {selected && <rect x={-half - 9} y={-47} width={span + 18} height={60} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
-        <title>{index + 1}: {pinNames?.[index] ?? ['Collector', 'Base', 'Emitter'][index]}</title>
+        <title>{index + 1}: {pinNames?.[index] ?? PARTS[kind].pinNames[index]}</title>
         <path d={`M${pin.x} ${pin.y}V-6L${(index - 1) * 13}-16`} fill="none" stroke="#596057" strokeWidth={4} strokeLinecap="round" />
         <path d={`M${pin.x - 0.7} ${pin.y}V-6L${(index - 1) * 13 - 0.7}-16`} fill="none" stroke="#c8c9bd" strokeWidth={1.5} strokeLinecap="round" />
         <circle cx={pin.x} cy={pin.y} r={3} fill="#353d35" />
@@ -106,8 +108,8 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       <path d="M-23-14V-27C-23-48 23-48 23-27V-14Z" fill={kind === 'npn' ? '#3d4540' : '#46434a'} stroke="#242d27" strokeWidth={1.3} />
       <path d="M-18-30C-15-41 15-41 18-30" fill="none" stroke="#737b70" strokeWidth={1.2} />
       <path d="M-20-16H20" stroke="#202924" strokeWidth={2} />
-      <text x={0} y={-23} textAnchor="middle" fill={accent} fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={1}>{kind.toUpperCase()}</text>
-      {leads.map((pin, index) => <text key={index} x={pin.x} y={-5} textAnchor="middle" fill="#465743" stroke="#e8e7d7" strokeWidth={2.2} paintOrder="stroke" fontFamily="monospace" fontSize={7} fontWeight={700}>{['C', 'B', 'E'][index]}</text>)}
+      <text x={0} y={-23} textAnchor="middle" fill={accent} fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={1}>{kind === 'njfet' ? 'JFET' : kind.toUpperCase()}</text>
+      {leads.map((pin, index) => <text key={index} x={pin.x} y={-5} textAnchor="middle" fill="#465743" stroke="#e8e7d7" strokeWidth={2.2} paintOrder="stroke" fontFamily="monospace" fontSize={7} fontWeight={700}>{letters[index]}</text>)}
     </g>
   }
   return (

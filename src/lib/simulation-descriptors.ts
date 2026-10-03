@@ -31,6 +31,10 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
       branches.push({ kind: 'saved-current', label: 'Anode → Cathode', fromNode: a, toNode: b, vector: `i(@d_${safeId.toLowerCase()}[id])` })
     } else if (part.kind === 'inductor') {
       branches.push({ kind: 'saved-current', label: '1 → 2', fromNode: a, toNode: b, vector: `i(@l_${spiceDeviceId(part).toLowerCase()}[i])` })
+    } else if (part.kind === 'njfet' || part.kind === 'nmos') {
+      const id = spiceDeviceId(part).toLowerCase()
+      branches.push({ kind: 'saved-current', label: 'Drain → Source', fromNode: a, toNode: c, vector: `i(vfd_${id})` })
+      branches.push({ kind: 'saved-current', label: 'Gate → Source', fromNode: b, toNode: c, vector: `i(vfg_${id})` })
     } else if (part.kind === 'npn' || part.kind === 'pnp') {
       const safeId = spiceDeviceId(part).toLowerCase()
       // Referencing both terminal currents to E gives Vce*Ic + Vbe*Ib.

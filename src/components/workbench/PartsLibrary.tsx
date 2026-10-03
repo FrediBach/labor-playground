@@ -11,10 +11,14 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'passive', label: 'Passive', kinds: ['resistor', 'capacitor', 'electrolytic', 'inductor'] },
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
-  { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700'] },
+  { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
+  njfet: 'fet jfet depletion transistor drain gate source buffer voltage controlled resistor',
+  nmos: 'fet mosfet enhancement transistor drain gate source driver inverter discharge',
+  lm393: 'comparator dual threshold gate trigger pulse schmitt open collector dip8',
+  cd4066: 'cmos analog bilateral quad switch sample hold track audio gate cv routing dip14',
   ssd1306: 'oled screen display i2c ssd1306 128 64 monochrome graphics',
   resistor: 'resistance ohm', capacitor: 'ceramic non-polarized capacitance farad',
   electrolytic: 'polarized capacitance farad', inductor: 'coil inductance henry',

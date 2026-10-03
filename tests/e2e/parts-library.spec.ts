@@ -37,7 +37,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 900, height: 800 
     await page.goto('/')
     await captured(page)
     const tray = library(page)
-    await expect(tray.locator('.part-item')).toHaveCount(17)
+    await expect(tray.locator('.part-item')).toHaveCount(21)
     const controls = [
       tray.getByRole('button', { name: /Raspberry Pi Pico/ }),
       tray.getByRole('button', { name: /Jumper wire/ }),
@@ -73,7 +73,7 @@ test('component search combines with categories and clears without losing the se
   const search = tray.getByRole('textbox', { name: 'Find a component', exact: true })
   const category = tray.getByRole('combobox', { name: 'Component category', exact: true })
   await category.selectOption('transistors')
-  await expect(tray.locator('.part-item')).toHaveCount(2)
+  await expect(tray.locator('.part-item')).toHaveCount(4)
   await expect(tray.getByRole('button', { name: 'NPN transistor', exact: true })).toBeVisible()
   await expect(tray.getByRole('button', { name: 'PNP transistor', exact: true })).toBeVisible()
 
@@ -87,7 +87,7 @@ test('component search combines with categories and clears without losing the se
   await tray.getByRole('button', { name: 'Clear search', exact: true }).click()
   await expect(search).toHaveValue('')
   await expect(category).toHaveValue('transistors')
-  await expect(tray.locator('.part-item')).toHaveCount(2)
+  await expect(tray.locator('.part-item')).toHaveCount(4)
 
   await category.selectOption('diodes')
   await search.fill('Schottky')
@@ -97,7 +97,7 @@ test('component search combines with categories and clears without losing the se
   await expect(schottky).toHaveAttribute('aria-pressed', 'true')
   await search.fill('')
   await category.selectOption('all')
-  await expect(tray.locator('.part-item')).toHaveCount(17)
+  await expect(tray.locator('.part-item')).toHaveCount(21)
 })
 
 test('the expanded catalog and its controls fit a phone without horizontal overflow', async ({ page }) => {
@@ -105,7 +105,7 @@ test('the expanded catalog and its controls fit a phone without horizontal overf
   await page.goto('/')
   await captured(page)
   const tray = library(page)
-  await expect(tray.locator('.part-item')).toHaveCount(17)
+  await expect(tray.locator('.part-item')).toHaveCount(21)
   for (const control of [
     tray.getByRole('textbox', { name: 'Find a component', exact: true }),
     tray.getByRole('combobox', { name: 'Component category', exact: true }),
