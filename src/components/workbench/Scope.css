@@ -9,6 +9,8 @@
 .scope .capture-state.error, .scope .capture-state.invalid { color: #f1b497; }
 .scope .scope-screen canvas { height: 320px; touch-action: none; }
 .scope .scope-screen canvas:focus-visible { outline: 2px solid #b9d8cb; outline-offset: -3px; }
+.scope .scope-screen canvas[data-pan=true] { cursor: grab; }
+.scope .scope-screen canvas[data-panning=true] { cursor: grabbing; }
 .scope-trace-overlay { position: absolute; inset: 12px 12px 20px 34px; pointer-events: none; overflow: hidden; }
 .scope-trace-cursor { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #e8e8dc; transform: translateX(-1px); }
 .scope-trace-cursor b { position: absolute; top: 0; left: 4px; font: 11px monospace; }
@@ -143,7 +145,8 @@
 .scope-hover-tooltip.align-left { transform: translateX(calc(-100% - 12px)); }
 .scope-hover-tooltip strong { font-size: 12px; font-weight: 500; }
 .scope-hover-tooltip > span { display: flex; justify-content: space-between; gap: 16px; }
-.scope-zoom-selection { position: absolute; inset-block: 0; background: #b6dbc522; border-inline: 1px solid #c4e7d2; }
+.scope-zoom-selection { position: absolute; min-height: 1px; background: #b6dbc522; border: 1px solid #c4e7d2; }
+.scope-voltage-window { color: #b3c8ba; font: 10px/1.5 monospace; }
 .scope-zoom-selection b { position: absolute; bottom: 10px; left: 6px; padding: 3px 5px; background: #1b2c24e8; color: #d6e9db; font: 11px monospace; white-space: nowrap; }
 .scope .scope-channels { border-bottom: 1px solid #435048; background: #28362e; }
 .scope .scope-channel { min-width: 0; }

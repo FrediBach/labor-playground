@@ -51,7 +51,7 @@ export function RecordingTransport({ probes, document, compact = false }: { prob
 
 export function RecordingScope(props: ComponentProps<typeof Scope>) {
   const { seconds, playback } = useRecording()
-  return <Scope {...props} playbackTime={playback.capture?.recording ? seconds : undefined} onSeek={playback.seek} />
+  return <Scope {...props} playbackTime={playback.capture?.recording ? seconds : undefined} onSeek={playback.seek} onPause={playback.pause} />
 }
 
 export function RecordedLed({ partId, ...props }: ComponentProps<typeof PartGlyph> & { partId: string }) {
