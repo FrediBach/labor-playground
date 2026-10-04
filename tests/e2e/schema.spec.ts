@@ -74,6 +74,8 @@ test('Schema annotates the current circuit, selects components, and retains its 
   await expect(drawing(page)).toContainText('C1')
   await expect(drawing(page)).toContainText('10 kΩ')
   await expect(drawing(page)).toContainText('100 nF')
+  await expect(drawing(page)).toHaveRole('group')
+  await expect(drawing(page).getByRole('button', { name: /^R1,/ })).toBeVisible()
   await expect(page.getByTestId('board-viewport')).toBeHidden()
 
   await drawing(page).locator('[data-schema-part="R1"]').click()

@@ -99,13 +99,12 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
   const [wireStart, setWireStart] = useState<string | null>(null)
   const [editingWire, setEditingWire] = useState<{ id: string; moving: 'from' | 'to' } | null>(null)
   const [move, setMove] = useState<Move | null>(null)
-  const [previousTool, setPreviousTool] = useState(tool)
-  const [interactionDocument, setInteractionDocument] = useState(document)
+  const [interaction, setInteraction] = useState({ tool, document, editingLead })
   const moveRef = useRef<Move | null>(null)
   const suppressClick = useRef(false)
-  if (previousTool !== tool || interactionDocument !== document) {
-    setPreviousTool(tool)
-    setInteractionDocument(document)
+  if (interaction.tool !== tool || interaction.document !== document || interaction.editingLead !== editingLead) {
+    // A new tool, document, or lead edit invalidates the previous gesture before paint.
+    setInteraction({ tool, document, editingLead })
     setWireStart(null)
     setEditingWire(null)
     setMove(null)
@@ -136,11 +135,6 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
 
   useEffect(() => {
     if (!leadPart || !editingLead) return
-    // A new explicit lead edit supersedes any unfinished wire or whole-part drag.
-    // oxlint-disable-next-line react/set-state-in-effect
-    setWireStart(null)
-    setEditingWire(null)
-    setMove(null)
     moveRef.current = null
     terminalElements.current.get(leadPart.pins[editingLead.pinIndex])?.focus()
   }, [leadPart, editingLead])

@@ -117,7 +117,7 @@ export function SchematicDrawing({ document, layout: providedLayout, nodeVoltage
     sourceNames.has('CV') ? `CV ${document.instruments.cv} V` : '',
     sourceNames.has('EG') ? `EG ${document.instruments.envelope?.mode ?? 'envelope'}` : '',
   ].filter(Boolean).join('     ')
-  return <svg xmlns="http://www.w3.org/2000/svg" className="schematic-sheet" data-testid="schematic-drawing" viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width} height={layout.height} role="img" aria-label={`${document.title} electrical schematic`}>
+  return <svg xmlns="http://www.w3.org/2000/svg" className="schematic-sheet" data-testid="schematic-drawing" viewBox={`0 0 ${layout.width} ${layout.height}`} width={layout.width} height={layout.height} role={onSelect ? 'group' : 'img'} aria-label={`${document.title} electrical schematic`}>
     <title>{document.title} — electrical schematic</title>
     <desc>Electrical connections include the breadboard’s internal strips. Matching net labels are connected. Pin numbers refer to the component pinout.{hasVoltages ? ' Voltage annotations show the selected simulation position.' : ''}</desc>
     <style>{sheetStyles}</style>
@@ -145,7 +145,7 @@ export function SchematicDrawing({ document, layout: providedLayout, nodeVoltage
         <SymbolDrawing symbol={symbol} />
       </g>
     })}
-    {layout.labels.map((label, index) => {
+    {layout.labels.map(label => {
       const net = netById.get(label.node)
       if (!net) return null
       const value = nodeVoltages?.[label.node] ?? nodeVoltages?.[`v(${label.node})`] ?? (hasVoltages && label.node === '0' ? 0 : undefined)
@@ -156,7 +156,7 @@ export function SchematicDrawing({ document, layout: providedLayout, nodeVoltage
       const voltageAnchor = offsetVoltage ? 'start' : label.anchor
       const voltageLabelX = label.x + (offsetVoltage ? 12 : 0)
       const voltageX = voltageLabelX - (voltageAnchor === 'middle' ? voltageWidth / 2 : voltageAnchor === 'end' ? voltageWidth : 0)
-      return <g key={`${label.node}-${index}`} data-schema-net-label={label.node}>
+      return <g key={`${label.node}:${label.x}:${label.y}:${label.anchor}`} data-schema-net-label={label.node}>
         {label.ground && <path className="sch-wire" d={`M ${label.x} ${label.y - 16} V ${label.y - 10} M ${label.x - 13} ${label.y - 10} H ${label.x + 13} M ${label.x - 8} ${label.y - 5} H ${label.x + 8} M ${label.x - 3} ${label.y} H ${label.x + 3}`} />}
         <text className="sch-net" x={label.x} y={labelY} textAnchor={label.anchor}>{net.label}{net.probes.length ? ` · ${net.probes.join(' / ')}` : ''}</text>
         {hasVoltages && value !== undefined && Number.isFinite(value) && <g data-schema-voltage={label.node}>
