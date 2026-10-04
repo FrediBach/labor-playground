@@ -87,6 +87,7 @@ export function InspectorSignals({ signals, children, wire = false }: { signals:
       <div className="signal-plot" role="slider" tabIndex={0} aria-label="Inspector recording cursor" aria-valuemin={playback.start} aria-valuemax={playback.end} aria-valuenow={seconds} aria-valuetext={`${(seconds * 1000).toFixed(3)} milliseconds`} onKeyDown={seekFromKey}
         onPointerDown={event => { if (event.button !== 0) return; event.currentTarget.focus(); event.currentTarget.setPointerCapture(event.pointerId); seekFromPointer(event) }}
         onPointerMove={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) seekFromPointer(event) }}
+        onPointerCancel={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}
         onPointerUp={event => { if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId) }}>
         <svg viewBox={`0 0 ${PLOT.width} ${PLOT.height}`} role="img" aria-label="Voltage waveforms" data-window-start={windowStart} data-window-end={windowEnd}>
           <title>Recorded voltage over time. Select pin rows to show or hide traces.</title>

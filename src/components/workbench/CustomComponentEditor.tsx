@@ -30,7 +30,7 @@ export function CustomComponentEditor({ initial, document, editing, onSave, onCa
   const [description, setDescription] = useState(initial.description ?? '')
   const [xFactor, setXFactor] = useState(kind === 'resistor' ? 0.001 : 1)
   const [yFactor, setYFactor] = useState(kind === 'resistor' ? 1000 : 1e-9)
-  const [rows, setRows] = useState(initial.characteristic.points.map(p => ({ x: String(p.x / xFactor), y: String(p.y / yFactor) })))
+  const [rows, setRows] = useState(() => initial.characteristic.points.map(p => ({ x: String(p.x / xFactor), y: String(p.y / yFactor) })))
   const [commitError, setCommitError] = useState('')
   useEffect(() => {
     const previous = window.document.activeElement as HTMLElement | null

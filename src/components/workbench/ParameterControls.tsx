@@ -53,7 +53,7 @@ export function CommitSlider({ label, value, min, max, step, unit = '', onCommit
   if (editing.source !== value) setEditing({ source: value, value })
   const draft = editing.source === value ? editing.value : value
   return (
-    <label className="commit-slider">
+    <div className="commit-slider">
       <span>{label}<output>{Number(draft.toFixed(2))}{unit}</output></span>
       <input
         aria-label={label} type="range" min={min} max={max} step={step} value={draft}
@@ -63,7 +63,7 @@ export function CommitSlider({ label, value, min, max, step, unit = '', onCommit
         onKeyUp={event => onCommit(Number(event.currentTarget.value))}
         onBlur={event => onCommit(Number(event.currentTarget.value))}
       />
-    </label>
+    </div>
   )
 }
 

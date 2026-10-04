@@ -62,7 +62,9 @@ interface InspectorProps {
   onFinishLeadEdit: () => void
 }
 
-export function Inspector({ onEditModel, onCreateModel, document, selectedId, onChange, onDelete, colors, operatingPoint, nodeByTerminal = {}, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
+const EMPTY_NODE_BY_TERMINAL: Record<string, string> = {}
+
+export function Inspector({ onEditModel, onCreateModel, document, selectedId, onChange, onDelete, colors, operatingPoint, nodeByTerminal = EMPTY_NODE_BY_TERMINAL, editingLead, onStartLeadEdit, onFinishLeadEdit }: InspectorProps) {
   const [modelError, setModelError] = useState('')
   const modelAction = (action: () => CircuitDocument) => { try { onChange(action()); setModelError('') } catch (e) { setModelError((e as Error).message) } }
   const part = document.parts.find(item => item.id === selectedId)

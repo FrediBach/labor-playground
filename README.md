@@ -90,9 +90,12 @@ The [automation guide](./docs/automations.md#dependent-flows) covers Simple/Flow
 
 ## Checks and builds
 
+[React Doctor](https://github.com/millionco/react-doctor) is installed as a development dependency. `npm run doctor -- --verbose` lists all findings; `npm run doctor -- --scope changed --base main` checks new issues against a branch. The script disables telemetry and the external dependency supply-chain scan. Existing findings remain visible for incremental cleanup.
+
 ```sh
 npm test          # Compiler, actual ngspice numerical fixtures, audio, worker scheduling
 npm run lint      # Oxlint, including React hook rules
+npm run doctor    # React Doctor: full local scan (fails on errors)
 npm run typecheck # TypeScript checks
 npm run build     # TypeScript checks and production assets in dist/
 npm run test:e2e  # Playwright browser integration tests
