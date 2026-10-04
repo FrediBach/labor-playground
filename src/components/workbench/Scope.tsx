@@ -20,10 +20,10 @@ function timeLabel(seconds: number) {
   return `${Number((seconds * 1000).toFixed(3))} ms`
 }
 
-function automationActionLabel(action: Automation['action']) {
+function automationActionLabel(action: Automation['action'], partKind?: string) {
   const target = action.partId ?? ({ cv: 'CV', amplitude: 'Amplitude', frequency: 'Frequency', gate: 'Gate', potentiometer: 'Potentiometer', switch: 'Switch' }[action.target])
   const value = action.target === 'potentiometer' ? `${Number((action.value * 100).toFixed(2))}%`
-    : action.target === 'switch' ? action.value ? 'closed' : 'open'
+    : action.target === 'switch' ? partKind === 'spdt' || partKind === 'dpdt' ? `throw ${action.value}` : action.value ? 'closed' : 'open'
       : action.target === 'gate' ? action.value ? 'high' : 'low'
         : `${action.value} ${action.target === 'frequency' ? 'Hz' : 'V'}`
   const duration = action.durationMs > 0 ? ` ${action.target === 'gate' ? 'for' : 'over'} ${action.durationMs} ms` : ''
@@ -97,7 +97,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     .slice(0, 24)
     .map((event, index) => {
       const automation = automations?.find(row => row.id === event.automationId)
-      return { ...event, number: index + 1, name: automation?.name ?? event.automationId, action: automation ? automationActionLabel(automation.action) : null }
+      return { ...event, number: index + 1, name: automation?.name ?? event.automationId, action: automation ? automationActionLabel(automation.action, capture?.automationInitialState?.parts.find(part => part.id === automation.action.partId)?.kind) : null }
     }), [capture, captureEnd, automations])
   const eventsInView = automationEvents.filter(event => event.time >= windowStart && event.time <= windowEnd)
   const hasAutomations = Boolean(automations?.length || automationEvents.length)

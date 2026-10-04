@@ -1,0 +1,6721 @@
+{
+  "schemaVersion": 4,
+  "boardVersion": "virtual-1",
+  "board": {
+    "columns": 60,
+    "rows": 3
+  },
+  "title": "Cascadable 1U utility cells",
+  "parts": [
+    {
+      "id": "UREF",
+      "kind": "opa4197",
+      "value": 1,
+      "pins": [
+        "e1",
+        "e2",
+        "e3",
+        "e4",
+        "e5",
+        "e6",
+        "e7",
+        "f7",
+        "f6",
+        "f5",
+        "f4",
+        "f3",
+        "f2",
+        "f1"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "DREF",
+      "kind": "lm4040",
+      "value": 5,
+      "pins": [
+        "r2:a1",
+        "r2:a2",
+        "r2:a3"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "RREF1",
+      "kind": "resistor",
+      "value": 2200,
+      "pins": [
+        "r2:a4",
+        "r2:a5"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "RREF2",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a6",
+        "r2:a7"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "RREF3",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a8",
+        "r2:a9"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "RREF4",
+      "kind": "resistor",
+      "value": 4640,
+      "pins": [
+        "r2:a10",
+        "r2:a11"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "RREF5",
+      "kind": "resistor",
+      "value": 5490,
+      "pins": [
+        "r2:a12",
+        "r2:a13"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "CREF1",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:a14",
+        "r2:a15"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "CREF2",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:a16",
+        "r2:a17"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "CREF3",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:a18",
+        "r2:a19"
+      ],
+      "schemaGroup": "Shared references"
+    },
+    {
+      "id": "A_U1",
+      "kind": "opa4197",
+      "value": 1,
+      "pins": [
+        "e8",
+        "e9",
+        "e10",
+        "e11",
+        "e12",
+        "e13",
+        "e14",
+        "f14",
+        "f13",
+        "f12",
+        "f11",
+        "f10",
+        "f9",
+        "f8"
+      ],
+      "schemaGroup": "A · Input, LEVEL and VCA"
+    },
+    {
+      "id": "A_U2",
+      "kind": "opa4197",
+      "value": 1,
+      "pins": [
+        "e15",
+        "e16",
+        "e17",
+        "e18",
+        "e19",
+        "e20",
+        "e21",
+        "f21",
+        "f20",
+        "f19",
+        "f18",
+        "f17",
+        "f16",
+        "f15"
+      ],
+      "schemaGroup": "A · Offset, OUT and MIX input"
+    },
+    {
+      "id": "A_U3",
+      "kind": "opa197",
+      "value": 1,
+      "pins": [
+        "e22",
+        "e23",
+        "e24",
+        "e25",
+        "f25",
+        "f24",
+        "f23",
+        "f22"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_U4",
+      "kind": "ssi2162",
+      "value": 1,
+      "pins": [
+        "e26",
+        "e27",
+        "e28",
+        "e29",
+        "e30",
+        "f30",
+        "f29",
+        "f28",
+        "f27",
+        "f26"
+      ],
+      "schemaGroup": "A · Linear VCA"
+    },
+    {
+      "id": "A_Q1",
+      "kind": "pnp",
+      "value": 1,
+      "pins": [
+        "r2:a20",
+        "r2:a21",
+        "r2:a22"
+      ],
+      "schemaGroup": "A · VCA cutoff clamp"
+    },
+    {
+      "id": "A_P1",
+      "kind": "potentiometer",
+      "value": 10000,
+      "pins": [
+        "r2:a23",
+        "r2:a24",
+        "r2:a25"
+      ],
+      "schemaGroup": "A · LEVEL: −1 to +1",
+      "position": 0.75
+    },
+    {
+      "id": "A_P2",
+      "kind": "potentiometer",
+      "value": 100000,
+      "pins": [
+        "r2:a26",
+        "r2:a27",
+        "r2:a28"
+      ],
+      "schemaGroup": "A · OFFSET: −5 to +5 V",
+      "position": 0.5
+    },
+    {
+      "id": "A_SW1",
+      "kind": "dpdt",
+      "value": 0,
+      "pins": [
+        "e31",
+        "e32",
+        "e33",
+        "f33",
+        "f32",
+        "f31"
+      ],
+      "schemaGroup": "A · Mode: 0 PROCESS / 1 DIRECT"
+    },
+    {
+      "id": "A_IN",
+      "kind": "spdt",
+      "value": 1,
+      "pins": [
+        "r2:a29",
+        "r2:a30",
+        "r2:a31"
+      ],
+      "schemaGroup": "A · IN: 0 normal / 1 patched"
+    },
+    {
+      "id": "A_CV",
+      "kind": "spdt",
+      "value": 0,
+      "pins": [
+        "r2:a32",
+        "r2:a33",
+        "r2:a34"
+      ],
+      "schemaGroup": "A · CV: 0 +5 V normal / 1 patched"
+    },
+    {
+      "id": "A_SUM",
+      "kind": "switch",
+      "value": 1,
+      "pins": [
+        "r2:a35",
+        "r2:a36"
+      ],
+      "schemaGroup": "A · SUM: 1 normal / 0 patched"
+    },
+    {
+      "id": "A_TAP",
+      "kind": "switch",
+      "value": 0,
+      "pins": [
+        "r2:a37",
+        "r2:a38"
+      ],
+      "schemaGroup": "A · OUT tap: 1 loads local OUT"
+    },
+    {
+      "id": "A_RLOAD",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a39",
+        "r2:a40"
+      ],
+      "schemaGroup": "A · OUT test load"
+    },
+    {
+      "id": "A_R1",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a41",
+        "r2:a42"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R2",
+      "kind": "resistor",
+      "value": 10000000,
+      "pins": [
+        "r2:a43",
+        "r2:a44"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R3",
+      "kind": "resistor",
+      "value": 100000,
+      "pins": [
+        "r2:a45",
+        "r2:a46"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R4",
+      "kind": "resistor",
+      "value": 100000,
+      "pins": [
+        "r2:a47",
+        "r2:a48"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R5",
+      "kind": "resistor",
+      "value": 1000,
+      "pins": [
+        "r2:a49",
+        "r2:a50"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R6",
+      "kind": "resistor",
+      "value": 110,
+      "pins": [
+        "r2:a51",
+        "r2:a52"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R7",
+      "kind": "resistor",
+      "value": 110,
+      "pins": [
+        "r2:a53",
+        "r2:a54"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R8",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a55",
+        "r2:a56"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R9",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a57",
+        "r2:a58"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R10",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:a59",
+        "r2:a60"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R11",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j1",
+        "r2:j2"
+      ],
+      "schemaGroup": "A · Input and VCA"
+    },
+    {
+      "id": "A_R12",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j3",
+        "r2:j4"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R13",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j5",
+        "r2:j6"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R14",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j7",
+        "r2:j8"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R15",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j9",
+        "r2:j10"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R16",
+      "kind": "resistor",
+      "value": 100,
+      "pins": [
+        "r2:j11",
+        "r2:j12"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R17",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j13",
+        "r2:j14"
+      ],
+      "schemaGroup": "A · Offset and OUT"
+    },
+    {
+      "id": "A_R19",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j15",
+        "r2:j16"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_R20",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j17",
+        "r2:j18"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_R21",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j19",
+        "r2:j20"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_R22",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r2:j21",
+        "r2:j22"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_R23",
+      "kind": "resistor",
+      "value": 100,
+      "pins": [
+        "r2:j23",
+        "r2:j24"
+      ],
+      "schemaGroup": "A · Positive SUM"
+    },
+    {
+      "id": "A_C1",
+      "kind": "capacitor",
+      "value": 2.2e-9,
+      "pins": [
+        "r2:j25",
+        "r2:j26"
+      ],
+      "schemaGroup": "A · Compensation"
+    },
+    {
+      "id": "A_C2",
+      "kind": "capacitor",
+      "value": 2.2e-9,
+      "pins": [
+        "r2:j27",
+        "r2:j28"
+      ],
+      "schemaGroup": "A · Compensation"
+    },
+    {
+      "id": "A_C3",
+      "kind": "capacitor",
+      "value": 1e-10,
+      "pins": [
+        "r2:j29",
+        "r2:j30"
+      ],
+      "schemaGroup": "A · Compensation"
+    },
+    {
+      "id": "A_C4",
+      "kind": "capacitor",
+      "value": 1e-10,
+      "pins": [
+        "r2:j31",
+        "r2:j32"
+      ],
+      "schemaGroup": "A · Compensation"
+    },
+    {
+      "id": "A_C5",
+      "kind": "capacitor",
+      "value": 1e-9,
+      "pins": [
+        "r2:j33",
+        "r2:j34"
+      ],
+      "schemaGroup": "A · Compensation"
+    },
+    {
+      "id": "A_C6",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j35",
+        "r2:j36"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C7",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j37",
+        "r2:j38"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C8",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j39",
+        "r2:j40"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C9",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j41",
+        "r2:j42"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C10",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j43",
+        "r2:j44"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C11",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j45",
+        "r2:j46"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C12",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j47",
+        "r2:j48"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C13",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r2:j49",
+        "r2:j50"
+      ],
+      "schemaGroup": "A · Supply bypass"
+    },
+    {
+      "id": "A_C14",
+      "kind": "electrolytic",
+      "value": 0.00001,
+      "pins": [
+        "r2:j51",
+        "r2:j52"
+      ],
+      "schemaGroup": "A · Bulk supply"
+    },
+    {
+      "id": "A_C15",
+      "kind": "electrolytic",
+      "value": 0.00001,
+      "pins": [
+        "r2:j53",
+        "r2:j54"
+      ],
+      "schemaGroup": "A · Bulk supply"
+    },
+    {
+      "id": "B_U1",
+      "kind": "opa4197",
+      "value": 1,
+      "pins": [
+        "e34",
+        "e35",
+        "e36",
+        "e37",
+        "e38",
+        "e39",
+        "e40",
+        "f40",
+        "f39",
+        "f38",
+        "f37",
+        "f36",
+        "f35",
+        "f34"
+      ],
+      "schemaGroup": "B · Input, LEVEL and VCA"
+    },
+    {
+      "id": "B_U2",
+      "kind": "opa4197",
+      "value": 1,
+      "pins": [
+        "e41",
+        "e42",
+        "e43",
+        "e44",
+        "e45",
+        "e46",
+        "e47",
+        "f47",
+        "f46",
+        "f45",
+        "f44",
+        "f43",
+        "f42",
+        "f41"
+      ],
+      "schemaGroup": "B · Offset, OUT and MIX input"
+    },
+    {
+      "id": "B_U3",
+      "kind": "opa197",
+      "value": 1,
+      "pins": [
+        "e48",
+        "e49",
+        "e50",
+        "e51",
+        "f51",
+        "f50",
+        "f49",
+        "f48"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_U4",
+      "kind": "ssi2162",
+      "value": 1,
+      "pins": [
+        "e52",
+        "e53",
+        "e54",
+        "e55",
+        "e56",
+        "f56",
+        "f55",
+        "f54",
+        "f53",
+        "f52"
+      ],
+      "schemaGroup": "B · Linear VCA"
+    },
+    {
+      "id": "B_Q1",
+      "kind": "pnp",
+      "value": 1,
+      "pins": [
+        "r2:j55",
+        "r2:j56",
+        "r2:j57"
+      ],
+      "schemaGroup": "B · VCA cutoff clamp"
+    },
+    {
+      "id": "B_P1",
+      "kind": "potentiometer",
+      "value": 10000,
+      "pins": [
+        "r2:j58",
+        "r2:j59",
+        "r2:j60"
+      ],
+      "schemaGroup": "B · LEVEL: −1 to +1",
+      "position": 0.75
+    },
+    {
+      "id": "B_P2",
+      "kind": "potentiometer",
+      "value": 100000,
+      "pins": [
+        "r3:a1",
+        "r3:a2",
+        "r3:a3"
+      ],
+      "schemaGroup": "B · OFFSET: −5 to +5 V",
+      "position": 0.5
+    },
+    {
+      "id": "B_SW1",
+      "kind": "dpdt",
+      "value": 0,
+      "pins": [
+        "e57",
+        "e58",
+        "e59",
+        "f59",
+        "f58",
+        "f57"
+      ],
+      "schemaGroup": "B · Mode: 0 PROCESS / 1 DIRECT"
+    },
+    {
+      "id": "B_IN",
+      "kind": "spdt",
+      "value": 0,
+      "pins": [
+        "r3:a4",
+        "r3:a5",
+        "r3:a6"
+      ],
+      "schemaGroup": "B · IN: 0 normal / 1 patched"
+    },
+    {
+      "id": "B_CV",
+      "kind": "spdt",
+      "value": 0,
+      "pins": [
+        "r3:a7",
+        "r3:a8",
+        "r3:a9"
+      ],
+      "schemaGroup": "B · CV: 0 +5 V normal / 1 patched"
+    },
+    {
+      "id": "B_SUM",
+      "kind": "switch",
+      "value": 1,
+      "pins": [
+        "r3:a10",
+        "r3:a11"
+      ],
+      "schemaGroup": "B · SUM: 1 normal / 0 patched"
+    },
+    {
+      "id": "B_TAP",
+      "kind": "switch",
+      "value": 0,
+      "pins": [
+        "r3:a12",
+        "r3:a13"
+      ],
+      "schemaGroup": "B · OUT tap: 1 loads local OUT"
+    },
+    {
+      "id": "B_RLOAD",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a14",
+        "r3:a15"
+      ],
+      "schemaGroup": "B · OUT test load"
+    },
+    {
+      "id": "B_RLINK",
+      "kind": "resistor",
+      "value": 1000000,
+      "pins": [
+        "r3:a16",
+        "r3:a17"
+      ],
+      "schemaGroup": "B · Next MIX input load"
+    },
+    {
+      "id": "B_R1",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a18",
+        "r3:a19"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R2",
+      "kind": "resistor",
+      "value": 10000000,
+      "pins": [
+        "r3:a20",
+        "r3:a21"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R3",
+      "kind": "resistor",
+      "value": 100000,
+      "pins": [
+        "r3:a22",
+        "r3:a23"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R4",
+      "kind": "resistor",
+      "value": 100000,
+      "pins": [
+        "r3:a24",
+        "r3:a25"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R5",
+      "kind": "resistor",
+      "value": 1000,
+      "pins": [
+        "r3:a26",
+        "r3:a27"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R6",
+      "kind": "resistor",
+      "value": 110,
+      "pins": [
+        "r3:a28",
+        "r3:a29"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R7",
+      "kind": "resistor",
+      "value": 110,
+      "pins": [
+        "r3:a30",
+        "r3:a31"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R8",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a32",
+        "r3:a33"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R9",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a34",
+        "r3:a35"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R10",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a36",
+        "r3:a37"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R11",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a38",
+        "r3:a39"
+      ],
+      "schemaGroup": "B · Input and VCA"
+    },
+    {
+      "id": "B_R12",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a40",
+        "r3:a41"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R13",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a42",
+        "r3:a43"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R14",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a44",
+        "r3:a45"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R15",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a46",
+        "r3:a47"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R16",
+      "kind": "resistor",
+      "value": 100,
+      "pins": [
+        "r3:a48",
+        "r3:a49"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R17",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a50",
+        "r3:a51"
+      ],
+      "schemaGroup": "B · Offset and OUT"
+    },
+    {
+      "id": "B_R18",
+      "kind": "resistor",
+      "value": 1000000,
+      "pins": [
+        "r3:a52",
+        "r3:a53"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_R19",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a54",
+        "r3:a55"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_R20",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a56",
+        "r3:a57"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_R21",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:a58",
+        "r3:a59"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_R22",
+      "kind": "resistor",
+      "value": 10000,
+      "pins": [
+        "r3:j1",
+        "r3:j2"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_R23",
+      "kind": "resistor",
+      "value": 100,
+      "pins": [
+        "r3:j3",
+        "r3:j4"
+      ],
+      "schemaGroup": "B · Positive SUM"
+    },
+    {
+      "id": "B_C1",
+      "kind": "capacitor",
+      "value": 2.2e-9,
+      "pins": [
+        "r3:j5",
+        "r3:j6"
+      ],
+      "schemaGroup": "B · Compensation"
+    },
+    {
+      "id": "B_C2",
+      "kind": "capacitor",
+      "value": 2.2e-9,
+      "pins": [
+        "r3:j7",
+        "r3:j8"
+      ],
+      "schemaGroup": "B · Compensation"
+    },
+    {
+      "id": "B_C3",
+      "kind": "capacitor",
+      "value": 1e-10,
+      "pins": [
+        "r3:j9",
+        "r3:j10"
+      ],
+      "schemaGroup": "B · Compensation"
+    },
+    {
+      "id": "B_C4",
+      "kind": "capacitor",
+      "value": 1e-10,
+      "pins": [
+        "r3:j11",
+        "r3:j12"
+      ],
+      "schemaGroup": "B · Compensation"
+    },
+    {
+      "id": "B_C5",
+      "kind": "capacitor",
+      "value": 1e-9,
+      "pins": [
+        "r3:j13",
+        "r3:j14"
+      ],
+      "schemaGroup": "B · Compensation"
+    },
+    {
+      "id": "B_C6",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j15",
+        "r3:j16"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C7",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j17",
+        "r3:j18"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C8",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j19",
+        "r3:j20"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C9",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j21",
+        "r3:j22"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C10",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j23",
+        "r3:j24"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C11",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j25",
+        "r3:j26"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C12",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j27",
+        "r3:j28"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C13",
+      "kind": "capacitor",
+      "value": 1e-7,
+      "pins": [
+        "r3:j29",
+        "r3:j30"
+      ],
+      "schemaGroup": "B · Supply bypass"
+    },
+    {
+      "id": "B_C14",
+      "kind": "electrolytic",
+      "value": 0.00001,
+      "pins": [
+        "r3:j31",
+        "r3:j32"
+      ],
+      "schemaGroup": "B · Bulk supply"
+    },
+    {
+      "id": "B_C15",
+      "kind": "electrolytic",
+      "value": 0.00001,
+      "pins": [
+        "r3:j33",
+        "r3:j34"
+      ],
+      "schemaGroup": "B · Bulk supply"
+    }
+  ],
+  "wires": [
+    {
+      "id": "W1",
+      "from": "b1",
+      "to": "b2",
+      "color": "#d98870"
+    },
+    {
+      "id": "W2",
+      "from": "c2",
+      "to": "r2:b6",
+      "color": "#d98870"
+    },
+    {
+      "id": "W3",
+      "from": "r2:c6",
+      "to": "r2:b10",
+      "color": "#d98870"
+    },
+    {
+      "id": "W4",
+      "from": "r2:c10",
+      "to": "r2:b28",
+      "color": "#d98870"
+    },
+    {
+      "id": "W5",
+      "from": "r2:c28",
+      "to": "r2:b32",
+      "color": "#d98870"
+    },
+    {
+      "id": "W6",
+      "from": "r2:c32",
+      "to": "r3:b3",
+      "color": "#d98870"
+    },
+    {
+      "id": "W7",
+      "from": "r3:c3",
+      "to": "r3:b7",
+      "color": "#d98870"
+    },
+    {
+      "id": "W8",
+      "from": "b3",
+      "to": "r2:b2",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W9",
+      "from": "r2:c2",
+      "to": "r2:b5",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W10",
+      "from": "r2:c5",
+      "to": "r2:b14",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W11",
+      "from": "vplus",
+      "to": "b4",
+      "color": "#d98870"
+    },
+    {
+      "id": "W12",
+      "from": "c4",
+      "to": "b11",
+      "color": "#d98870"
+    },
+    {
+      "id": "W13",
+      "from": "c11",
+      "to": "b18",
+      "color": "#d98870"
+    },
+    {
+      "id": "W14",
+      "from": "c18",
+      "to": "h23",
+      "color": "#d98870"
+    },
+    {
+      "id": "W15",
+      "from": "i23",
+      "to": "h26",
+      "color": "#d98870"
+    },
+    {
+      "id": "W16",
+      "from": "i26",
+      "to": "b37",
+      "color": "#d98870"
+    },
+    {
+      "id": "W17",
+      "from": "c37",
+      "to": "b44",
+      "color": "#d98870"
+    },
+    {
+      "id": "W18",
+      "from": "c44",
+      "to": "h49",
+      "color": "#d98870"
+    },
+    {
+      "id": "W19",
+      "from": "i49",
+      "to": "h52",
+      "color": "#d98870"
+    },
+    {
+      "id": "W20",
+      "from": "i52",
+      "to": "r2:b4",
+      "color": "#d98870"
+    },
+    {
+      "id": "W21",
+      "from": "r2:c4",
+      "to": "r2:b16",
+      "color": "#d98870"
+    },
+    {
+      "id": "W22",
+      "from": "r2:c16",
+      "to": "r2:h35",
+      "color": "#d98870"
+    },
+    {
+      "id": "W23",
+      "from": "r2:i35",
+      "to": "r2:h39",
+      "color": "#d98870"
+    },
+    {
+      "id": "W24",
+      "from": "r2:i39",
+      "to": "r2:h43",
+      "color": "#d98870"
+    },
+    {
+      "id": "W25",
+      "from": "r2:i43",
+      "to": "r2:h47",
+      "color": "#d98870"
+    },
+    {
+      "id": "W26",
+      "from": "r2:i47",
+      "to": "r2:h51",
+      "color": "#d98870"
+    },
+    {
+      "id": "W27",
+      "from": "r2:i51",
+      "to": "r3:h15",
+      "color": "#d98870"
+    },
+    {
+      "id": "W28",
+      "from": "r3:i15",
+      "to": "r3:h19",
+      "color": "#d98870"
+    },
+    {
+      "id": "W29",
+      "from": "r3:i19",
+      "to": "r3:h23",
+      "color": "#d98870"
+    },
+    {
+      "id": "W30",
+      "from": "r3:i23",
+      "to": "r3:h27",
+      "color": "#d98870"
+    },
+    {
+      "id": "W31",
+      "from": "r3:i27",
+      "to": "r3:h31",
+      "color": "#d98870"
+    },
+    {
+      "id": "W32",
+      "from": "gnd",
+      "to": "b5",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W33",
+      "from": "c5",
+      "to": "h3",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W34",
+      "from": "i3",
+      "to": "b12",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W35",
+      "from": "c12",
+      "to": "h12",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W36",
+      "from": "i12",
+      "to": "h17",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W37",
+      "from": "i17",
+      "to": "b30",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W38",
+      "from": "c30",
+      "to": "h33",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W39",
+      "from": "i33",
+      "to": "b38",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W40",
+      "from": "c38",
+      "to": "h38",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W41",
+      "from": "i38",
+      "to": "b56",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W42",
+      "from": "c56",
+      "to": "h59",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W43",
+      "from": "i59",
+      "to": "r2:b3",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W44",
+      "from": "r2:c3",
+      "to": "r2:b13",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W45",
+      "from": "r2:c13",
+      "to": "r2:b15",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W46",
+      "from": "r2:c15",
+      "to": "r2:b17",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W47",
+      "from": "r2:c17",
+      "to": "r2:b19",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W48",
+      "from": "r2:c19",
+      "to": "r2:b25",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W49",
+      "from": "r2:c25",
+      "to": "r2:b29",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W50",
+      "from": "r2:c29",
+      "to": "r2:b40",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W51",
+      "from": "r2:c40",
+      "to": "r2:b44",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W52",
+      "from": "r2:c44",
+      "to": "r2:h10",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W53",
+      "from": "r2:i10",
+      "to": "r2:h22",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W54",
+      "from": "r2:i22",
+      "to": "r2:h26",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W55",
+      "from": "r2:i26",
+      "to": "r2:h28",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W56",
+      "from": "r2:i28",
+      "to": "r2:h36",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W57",
+      "from": "r2:i36",
+      "to": "r2:h38",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W58",
+      "from": "r2:i38",
+      "to": "r2:h40",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W59",
+      "from": "r2:i40",
+      "to": "r2:h42",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W60",
+      "from": "r2:i42",
+      "to": "r2:h44",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W61",
+      "from": "r2:i44",
+      "to": "r2:h46",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W62",
+      "from": "r2:i46",
+      "to": "r2:h48",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W63",
+      "from": "r2:i48",
+      "to": "r2:h50",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W64",
+      "from": "r2:i50",
+      "to": "r2:h52",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W65",
+      "from": "r2:i52",
+      "to": "r2:h53",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W66",
+      "from": "r2:i53",
+      "to": "r2:h60",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W67",
+      "from": "r2:i60",
+      "to": "r3:b15",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W68",
+      "from": "r3:c15",
+      "to": "r3:b17",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W69",
+      "from": "r3:c17",
+      "to": "r3:b21",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W70",
+      "from": "r3:c21",
+      "to": "r3:b47",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W71",
+      "from": "r3:c47",
+      "to": "r3:b53",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W72",
+      "from": "r3:c53",
+      "to": "r3:h2",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W73",
+      "from": "r3:i2",
+      "to": "r3:h6",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W74",
+      "from": "r3:i6",
+      "to": "r3:h8",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W75",
+      "from": "r3:i8",
+      "to": "r3:h16",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W76",
+      "from": "r3:i16",
+      "to": "r3:h18",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W77",
+      "from": "r3:i18",
+      "to": "r3:h20",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W78",
+      "from": "r3:i20",
+      "to": "r3:h22",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W79",
+      "from": "r3:i22",
+      "to": "r3:h24",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W80",
+      "from": "r3:i24",
+      "to": "r3:h26",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W81",
+      "from": "r3:i26",
+      "to": "r3:h28",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W82",
+      "from": "r3:i28",
+      "to": "r3:h30",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W83",
+      "from": "r3:i30",
+      "to": "r3:h32",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W84",
+      "from": "r3:i32",
+      "to": "r3:h33",
+      "color": "#6a839b"
+    },
+    {
+      "id": "W85",
+      "from": "b6",
+      "to": "r2:b7",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W86",
+      "from": "r2:c7",
+      "to": "r2:b8",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W87",
+      "from": "b7",
+      "to": "r2:b9",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W88",
+      "from": "r2:c9",
+      "to": "r2:b26",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W89",
+      "from": "r2:c26",
+      "to": "r2:b47",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W90",
+      "from": "r2:c47",
+      "to": "r3:b1",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W91",
+      "from": "r3:c1",
+      "to": "r3:b24",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W92",
+      "from": "h7",
+      "to": "h6",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W93",
+      "from": "i6",
+      "to": "r2:b21",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W94",
+      "from": "r2:c21",
+      "to": "r2:h56",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W95",
+      "from": "h5",
+      "to": "r2:b11",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W96",
+      "from": "r2:c11",
+      "to": "r2:b12",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W97",
+      "from": "vminus",
+      "to": "h4",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W98",
+      "from": "i4",
+      "to": "h11",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W99",
+      "from": "i11",
+      "to": "h18",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W100",
+      "from": "i18",
+      "to": "b25",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W101",
+      "from": "c25",
+      "to": "h30",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W102",
+      "from": "i30",
+      "to": "h37",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W103",
+      "from": "i37",
+      "to": "h44",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W104",
+      "from": "i44",
+      "to": "b51",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W105",
+      "from": "c51",
+      "to": "h56",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W106",
+      "from": "i56",
+      "to": "r2:b18",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W107",
+      "from": "r2:c18",
+      "to": "r2:h37",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W108",
+      "from": "r2:i37",
+      "to": "r2:h41",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W109",
+      "from": "r2:i41",
+      "to": "r2:h45",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W110",
+      "from": "r2:i45",
+      "to": "r2:h49",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W111",
+      "from": "r2:i49",
+      "to": "r2:h54",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W112",
+      "from": "r2:i54",
+      "to": "r3:h17",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W113",
+      "from": "r3:i17",
+      "to": "r3:h21",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W114",
+      "from": "r3:i21",
+      "to": "r3:h25",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W115",
+      "from": "r3:i25",
+      "to": "r3:h29",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W116",
+      "from": "r3:i29",
+      "to": "r3:h34",
+      "color": "#798bbf"
+    },
+    {
+      "id": "W117",
+      "from": "h2",
+      "to": "h1",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W118",
+      "from": "b8",
+      "to": "b9",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W119",
+      "from": "c9",
+      "to": "b33",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W120",
+      "from": "c33",
+      "to": "r2:b23",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W121",
+      "from": "r2:c23",
+      "to": "r2:b59",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W122",
+      "from": "r2:c59",
+      "to": "r3:b4",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W123",
+      "from": "b10",
+      "to": "r2:b42",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W124",
+      "from": "b13",
+      "to": "b29",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W125",
+      "from": "c29",
+      "to": "r2:b20",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W126",
+      "from": "r2:c20",
+      "to": "r2:b46",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W127",
+      "from": "r2:c46",
+      "to": "r2:h29",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W128",
+      "from": "b14",
+      "to": "r2:b49",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W129",
+      "from": "r2:c49",
+      "to": "r2:h30",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W130",
+      "from": "h14",
+      "to": "r2:b57",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W131",
+      "from": "r2:c57",
+      "to": "r2:h3",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W132",
+      "from": "r2:i3",
+      "to": "r2:h32",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W133",
+      "from": "h13",
+      "to": "h29",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W134",
+      "from": "i29",
+      "to": "r2:b58",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W135",
+      "from": "r2:c58",
+      "to": "r2:h31",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W136",
+      "from": "h10",
+      "to": "r2:b24",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W137",
+      "from": "h9",
+      "to": "r2:b60",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W138",
+      "from": "r2:c60",
+      "to": "r2:h2",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W139",
+      "from": "h8",
+      "to": "r2:b55",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W140",
+      "from": "r2:c55",
+      "to": "r2:h1",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W141",
+      "from": "b15",
+      "to": "b16",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W142",
+      "from": "c16",
+      "to": "r2:h5",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W143",
+      "from": "b17",
+      "to": "r2:b27",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W144",
+      "from": "b19",
+      "to": "r2:h4",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W145",
+      "from": "r2:i4",
+      "to": "r2:h6",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W146",
+      "from": "b20",
+      "to": "r2:h8",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W147",
+      "from": "r2:i8",
+      "to": "r2:h9",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W148",
+      "from": "b21",
+      "to": "b31",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W149",
+      "from": "c31",
+      "to": "h31",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W150",
+      "from": "i31",
+      "to": "r2:h7",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W151",
+      "from": "h21",
+      "to": "r2:h11",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W152",
+      "from": "r2:i11",
+      "to": "r2:h34",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W153",
+      "from": "h20",
+      "to": "r2:h14",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W154",
+      "from": "r2:i14",
+      "to": "r2:h33",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W155",
+      "from": "h19",
+      "to": "b32",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W156",
+      "from": "h16",
+      "to": "h15",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W157",
+      "from": "i15",
+      "to": "r2:h15",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W158",
+      "from": "b23",
+      "to": "r2:h20",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W159",
+      "from": "r2:i20",
+      "to": "r2:h21",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W160",
+      "from": "b24",
+      "to": "r2:h16",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W161",
+      "from": "r2:i16",
+      "to": "r2:h18",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W162",
+      "from": "h24",
+      "to": "r2:h19",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W163",
+      "from": "r2:i19",
+      "to": "r2:h23",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W164",
+      "from": "b27",
+      "to": "r2:b48",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W165",
+      "from": "r2:c48",
+      "to": "r2:b51",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W166",
+      "from": "b28",
+      "to": "h28",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W167",
+      "from": "i28",
+      "to": "r2:b22",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W168",
+      "from": "r2:c22",
+      "to": "r2:b50",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W169",
+      "from": "h27",
+      "to": "r2:b53",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W170",
+      "from": "r2:c53",
+      "to": "r2:b56",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W171",
+      "from": "h32",
+      "to": "r2:h17",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W172",
+      "from": "b34",
+      "to": "b35",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W173",
+      "from": "c35",
+      "to": "b59",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W174",
+      "from": "c59",
+      "to": "r2:h58",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W175",
+      "from": "r2:i58",
+      "to": "r3:b36",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W176",
+      "from": "b36",
+      "to": "r3:b19",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W177",
+      "from": "b39",
+      "to": "b55",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W178",
+      "from": "c55",
+      "to": "r2:h55",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W179",
+      "from": "r2:i55",
+      "to": "r3:b23",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W180",
+      "from": "r3:c23",
+      "to": "r3:h9",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W181",
+      "from": "b40",
+      "to": "r3:b26",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W182",
+      "from": "r3:c26",
+      "to": "r3:h10",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W183",
+      "from": "h40",
+      "to": "r3:b34",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W184",
+      "from": "r3:c34",
+      "to": "r3:b40",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W185",
+      "from": "r3:c40",
+      "to": "r3:h12",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W186",
+      "from": "h39",
+      "to": "h55",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W187",
+      "from": "i55",
+      "to": "r3:b35",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W188",
+      "from": "r3:c35",
+      "to": "r3:h11",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W189",
+      "from": "h36",
+      "to": "r2:h59",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W190",
+      "from": "h35",
+      "to": "r3:b37",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W191",
+      "from": "r3:c37",
+      "to": "r3:b39",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W192",
+      "from": "h34",
+      "to": "r3:b32",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W193",
+      "from": "r3:c32",
+      "to": "r3:b38",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W194",
+      "from": "b41",
+      "to": "b42",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W195",
+      "from": "c42",
+      "to": "r3:b42",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W196",
+      "from": "b43",
+      "to": "r3:b2",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W197",
+      "from": "b45",
+      "to": "r3:b41",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W198",
+      "from": "r3:c41",
+      "to": "r3:b43",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W199",
+      "from": "b46",
+      "to": "r3:b45",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W200",
+      "from": "r3:c45",
+      "to": "r3:b46",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W201",
+      "from": "b47",
+      "to": "b57",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W202",
+      "from": "c57",
+      "to": "h57",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W203",
+      "from": "i57",
+      "to": "r3:b44",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W204",
+      "from": "h47",
+      "to": "r3:b48",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W205",
+      "from": "r3:c48",
+      "to": "r3:h14",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W206",
+      "from": "h46",
+      "to": "r3:b51",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W207",
+      "from": "r3:c51",
+      "to": "r3:h13",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W208",
+      "from": "h45",
+      "to": "b58",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W209",
+      "from": "h43",
+      "to": "r2:b36",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W210",
+      "from": "r2:c36",
+      "to": "r3:b52",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W211",
+      "from": "h42",
+      "to": "h41",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W212",
+      "from": "i41",
+      "to": "r3:b54",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W213",
+      "from": "b49",
+      "to": "r3:b59",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W214",
+      "from": "r3:c59",
+      "to": "r3:h1",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W215",
+      "from": "b50",
+      "to": "r3:b55",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W216",
+      "from": "r3:c55",
+      "to": "r3:b57",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W217",
+      "from": "h50",
+      "to": "r3:b58",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W218",
+      "from": "r3:c58",
+      "to": "r3:h3",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W219",
+      "from": "b53",
+      "to": "r3:b25",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W220",
+      "from": "r3:c25",
+      "to": "r3:b28",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W221",
+      "from": "b54",
+      "to": "h54",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W222",
+      "from": "i54",
+      "to": "r2:h57",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W223",
+      "from": "r2:i57",
+      "to": "r3:b27",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W224",
+      "from": "h53",
+      "to": "r3:b30",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W225",
+      "from": "r3:c30",
+      "to": "r3:b33",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W226",
+      "from": "h58",
+      "to": "r3:b56",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W227",
+      "from": "r2:b30",
+      "to": "r2:b41",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W228",
+      "from": "r2:c41",
+      "to": "r2:b43",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W229",
+      "from": "osc",
+      "to": "r2:b31",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W230",
+      "from": "r2:b33",
+      "to": "r2:b45",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W231",
+      "from": "cv",
+      "to": "r2:b34",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W232",
+      "from": "r2:c34",
+      "to": "r3:b6",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W233",
+      "from": "r3:c6",
+      "to": "r3:b9",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W234",
+      "from": "r2:b35",
+      "to": "r2:h24",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W235",
+      "from": "r2:b37",
+      "to": "r2:h12",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W236",
+      "from": "r2:i12",
+      "to": "r2:h13",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W237",
+      "from": "r2:b38",
+      "to": "r2:b39",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W238",
+      "from": "r2:b52",
+      "to": "r2:h25",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W239",
+      "from": "r2:b54",
+      "to": "r2:h27",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W240",
+      "from": "r3:b5",
+      "to": "r3:b18",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W241",
+      "from": "r3:c18",
+      "to": "r3:b20",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W242",
+      "from": "r3:b8",
+      "to": "r3:b22",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W243",
+      "from": "r3:b10",
+      "to": "r3:h4",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W244",
+      "from": "r3:b11",
+      "to": "r3:b16",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W245",
+      "from": "r3:b12",
+      "to": "r3:b49",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W246",
+      "from": "r3:c49",
+      "to": "r3:b50",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W247",
+      "from": "r3:b13",
+      "to": "r3:b14",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W248",
+      "from": "r3:b29",
+      "to": "r3:h5",
+      "color": "#56c7c2"
+    },
+    {
+      "id": "W249",
+      "from": "r3:b31",
+      "to": "r3:h7",
+      "color": "#56c7c2"
+    }
+  ],
+  "probes": {
+    "CH1": "r2:a37",
+    "CH2": "r3:a10"
+  },
+  "instruments": {
+    "frequency": 100,
+    "amplitude": 1,
+    "waveform": "sine",
+    "cv": 2
+  },
+  "automationProgram": {
+    "version": 1,
+    "captureFlowId": "Capture",
+    "definitions": [
+      {
+        "id": "Capture",
+        "name": "Explore two utility cells",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Wait1",
+            "kind": "wait",
+            "label": "At 10 ms",
+            "order": 1,
+            "mode": "time",
+            "seconds": 0.01,
+            "reference": "capture"
+          },
+          {
+            "id": "Action2",
+            "kind": "action",
+            "label": "A_P1 → 1",
+            "order": 2,
+            "action": {
+              "target": "potentiometer",
+              "partId": "A_P1",
+              "value": 1,
+              "durationMs": 10
+            }
+          },
+          {
+            "id": "Wait3",
+            "kind": "wait",
+            "label": "At 30 ms",
+            "order": 3,
+            "mode": "time",
+            "seconds": 0.03,
+            "reference": "capture"
+          },
+          {
+            "id": "Action4",
+            "kind": "action",
+            "label": "A_P2 → 0.6",
+            "order": 4,
+            "action": {
+              "target": "potentiometer",
+              "partId": "A_P2",
+              "value": 0.6,
+              "durationMs": 5
+            }
+          },
+          {
+            "id": "Wait5",
+            "kind": "wait",
+            "label": "At 45 ms",
+            "order": 5,
+            "mode": "time",
+            "seconds": 0.045,
+            "reference": "capture"
+          },
+          {
+            "id": "Action6",
+            "kind": "action",
+            "label": "A_SW1 → 1",
+            "order": 6,
+            "action": {
+              "target": "switch",
+              "partId": "A_SW1",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Wait7",
+            "kind": "wait",
+            "label": "At 60 ms",
+            "order": 7,
+            "mode": "time",
+            "seconds": 0.06,
+            "reference": "capture"
+          },
+          {
+            "id": "Action8",
+            "kind": "action",
+            "label": "A_SW1 → 0",
+            "order": 8,
+            "action": {
+              "target": "switch",
+              "partId": "A_SW1",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Wait9",
+            "kind": "wait",
+            "label": "At 70 ms",
+            "order": 9,
+            "mode": "time",
+            "seconds": 0.07,
+            "reference": "capture"
+          },
+          {
+            "id": "Action10",
+            "kind": "action",
+            "label": "A_SUM → 0",
+            "order": 10,
+            "action": {
+              "target": "switch",
+              "partId": "A_SUM",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Wait11",
+            "kind": "wait",
+            "label": "At 85 ms",
+            "order": 11,
+            "mode": "time",
+            "seconds": 0.085,
+            "reference": "capture"
+          },
+          {
+            "id": "Action12",
+            "kind": "action",
+            "label": "B_IN → 1",
+            "order": 12,
+            "action": {
+              "target": "switch",
+              "partId": "B_IN",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 13,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Wait1": {
+            "x": 220,
+            "y": 0
+          },
+          "Action2": {
+            "x": 440,
+            "y": 0
+          },
+          "Wait3": {
+            "x": 660,
+            "y": 0
+          },
+          "Action4": {
+            "x": 880,
+            "y": 0
+          },
+          "Wait5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Action6": {
+            "x": 0,
+            "y": 160
+          },
+          "Wait7": {
+            "x": 220,
+            "y": 160
+          },
+          "Action8": {
+            "x": 440,
+            "y": 160
+          },
+          "Wait9": {
+            "x": 660,
+            "y": 160
+          },
+          "Action10": {
+            "x": 880,
+            "y": 160
+          },
+          "Wait11": {
+            "x": 1100,
+            "y": 160
+          },
+          "Action12": {
+            "x": 0,
+            "y": 320
+          },
+          "Finish": {
+            "x": 220,
+            "y": 320
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Wait1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Wait1",
+            "target": "Action2",
+            "outcome": "done"
+          },
+          {
+            "id": "E2",
+            "source": "Action2",
+            "target": "Wait3",
+            "outcome": "done"
+          },
+          {
+            "id": "E3",
+            "source": "Wait3",
+            "target": "Action4",
+            "outcome": "done"
+          },
+          {
+            "id": "E4",
+            "source": "Action4",
+            "target": "Wait5",
+            "outcome": "done"
+          },
+          {
+            "id": "E5",
+            "source": "Wait5",
+            "target": "Action6",
+            "outcome": "done"
+          },
+          {
+            "id": "E6",
+            "source": "Action6",
+            "target": "Wait7",
+            "outcome": "done"
+          },
+          {
+            "id": "E7",
+            "source": "Wait7",
+            "target": "Action8",
+            "outcome": "done"
+          },
+          {
+            "id": "E8",
+            "source": "Action8",
+            "target": "Wait9",
+            "outcome": "done"
+          },
+          {
+            "id": "E9",
+            "source": "Wait9",
+            "target": "Action10",
+            "outcome": "done"
+          },
+          {
+            "id": "E10",
+            "source": "Action10",
+            "target": "Wait11",
+            "outcome": "done"
+          },
+          {
+            "id": "E11",
+            "source": "Wait11",
+            "target": "Action12",
+            "outcome": "done"
+          },
+          {
+            "id": "E12",
+            "source": "Action12",
+            "target": "Finish",
+            "outcome": "done"
+          }
+        ]
+      },
+      {
+        "id": "Transfer",
+        "name": "Signed LEVEL and offset after VCA",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_x ≈ 2 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_x",
+                "statistic": "sample",
+                "from": 0.005,
+                "to": 0.005,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect2",
+            "kind": "expect",
+            "label": "B_w ≈ -2 V",
+            "order": 2,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_w",
+                "statistic": "sample",
+                "from": 0.005,
+                "to": 0.005,
+                "reference": "capture"
+              },
+              "expected": -2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "B_v ≈ 2 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.005,
+                "to": 0.005,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect4",
+            "kind": "expect",
+            "label": "B_out ≈ 2 V",
+            "order": 4,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.005,
+                "to": 0.005,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action5",
+            "kind": "action",
+            "label": "B_P1 → 0",
+            "order": 5,
+            "action": {
+              "target": "potentiometer",
+              "partId": "B_P1",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect6",
+            "kind": "expect",
+            "label": "B_out ≈ -2 V",
+            "order": 6,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.015,
+                "to": 0.015,
+                "reference": "capture"
+              },
+              "expected": -2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action7",
+            "kind": "action",
+            "label": "B_P1 → 0.5",
+            "order": 7,
+            "action": {
+              "target": "potentiometer",
+              "partId": "B_P1",
+              "value": 0.5,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect8",
+            "kind": "expect",
+            "label": "B_out ≈ 0 V",
+            "order": 8,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.025,
+                "to": 0.025,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action9",
+            "kind": "action",
+            "label": "B_P2 → 0.75",
+            "order": 9,
+            "action": {
+              "target": "potentiometer",
+              "partId": "B_P2",
+              "value": 0.75,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect10",
+            "kind": "expect",
+            "label": "B_out ≈ 2.5 V",
+            "order": 10,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.035,
+                "to": 0.035,
+                "reference": "capture"
+              },
+              "expected": 2.5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action11",
+            "kind": "action",
+            "label": "B_CV → 1",
+            "order": 11,
+            "action": {
+              "target": "switch",
+              "partId": "B_CV",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Action12",
+            "kind": "action",
+            "label": "cv → -2",
+            "order": 12,
+            "action": {
+              "target": "cv",
+              "value": -2,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect13",
+            "kind": "expect",
+            "label": "B_out ≈ 2.5 V",
+            "order": 13,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.05,
+                "to": 0.05,
+                "reference": "capture"
+              },
+              "expected": 2.5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 14,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Expect2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Expect4": {
+            "x": 880,
+            "y": 0
+          },
+          "Action5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Expect6": {
+            "x": 0,
+            "y": 160
+          },
+          "Action7": {
+            "x": 220,
+            "y": 160
+          },
+          "Expect8": {
+            "x": 440,
+            "y": 160
+          },
+          "Action9": {
+            "x": 660,
+            "y": 160
+          },
+          "Expect10": {
+            "x": 880,
+            "y": 160
+          },
+          "Action11": {
+            "x": 1100,
+            "y": 160
+          },
+          "Action12": {
+            "x": 0,
+            "y": 320
+          },
+          "Expect13": {
+            "x": 220,
+            "y": 320
+          },
+          "Finish": {
+            "x": 440,
+            "y": 320
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Expect2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Expect2",
+            "target": "Expect3",
+            "outcome": "passed"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Expect4",
+            "outcome": "passed"
+          },
+          {
+            "id": "E4",
+            "source": "Expect4",
+            "target": "Action5",
+            "outcome": "passed"
+          },
+          {
+            "id": "E5",
+            "source": "Action5",
+            "target": "Expect6",
+            "outcome": "done"
+          },
+          {
+            "id": "E6",
+            "source": "Expect6",
+            "target": "Action7",
+            "outcome": "passed"
+          },
+          {
+            "id": "E7",
+            "source": "Action7",
+            "target": "Expect8",
+            "outcome": "done"
+          },
+          {
+            "id": "E8",
+            "source": "Expect8",
+            "target": "Action9",
+            "outcome": "passed"
+          },
+          {
+            "id": "E9",
+            "source": "Action9",
+            "target": "Expect10",
+            "outcome": "done"
+          },
+          {
+            "id": "E10",
+            "source": "Expect10",
+            "target": "Action11",
+            "outcome": "passed"
+          },
+          {
+            "id": "E11",
+            "source": "Action11",
+            "target": "Action12",
+            "outcome": "done"
+          },
+          {
+            "id": "E12",
+            "source": "Action12",
+            "target": "Expect13",
+            "outcome": "done"
+          },
+          {
+            "id": "E13",
+            "source": "Expect13",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Vca",
+        "name": "Linear CV: negative, zero, half and unity",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Action1",
+            "kind": "action",
+            "label": "B_CV → 1",
+            "order": 1,
+            "action": {
+              "target": "switch",
+              "partId": "B_CV",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect2",
+            "kind": "expect",
+            "label": "B_v ≈ 0.8 V",
+            "order": 2,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 0.8,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action3",
+            "kind": "action",
+            "label": "cv → 0",
+            "order": 3,
+            "action": {
+              "target": "cv",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect4",
+            "kind": "expect",
+            "label": "B_v ≈ 0 V",
+            "order": 4,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.025,
+                "to": 0.025,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action5",
+            "kind": "action",
+            "label": "cv → -2.5",
+            "order": 5,
+            "action": {
+              "target": "cv",
+              "value": -2.5,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect6",
+            "kind": "expect",
+            "label": "B_v ≈ 0 V",
+            "order": 6,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.04,
+                "to": 0.04,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action7",
+            "kind": "action",
+            "label": "cv → 2.5",
+            "order": 7,
+            "action": {
+              "target": "cv",
+              "value": 2.5,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect8",
+            "kind": "expect",
+            "label": "B_v ≈ 1.25 V",
+            "order": 8,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.055,
+                "to": 0.055,
+                "reference": "capture"
+              },
+              "expected": 1.25,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action9",
+            "kind": "action",
+            "label": "cv → 5",
+            "order": 9,
+            "action": {
+              "target": "cv",
+              "value": 5,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect10",
+            "kind": "expect",
+            "label": "B_v ≈ 5 V",
+            "order": 10,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_v",
+                "statistic": "sample",
+                "from": 0.07,
+                "to": 0.07,
+                "reference": "capture"
+              },
+              "expected": 5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 11,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Action1": {
+            "x": 220,
+            "y": 0
+          },
+          "Expect2": {
+            "x": 440,
+            "y": 0
+          },
+          "Action3": {
+            "x": 660,
+            "y": 0
+          },
+          "Expect4": {
+            "x": 880,
+            "y": 0
+          },
+          "Action5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Expect6": {
+            "x": 0,
+            "y": 160
+          },
+          "Action7": {
+            "x": 220,
+            "y": 160
+          },
+          "Expect8": {
+            "x": 440,
+            "y": 160
+          },
+          "Action9": {
+            "x": 660,
+            "y": 160
+          },
+          "Expect10": {
+            "x": 880,
+            "y": 160
+          },
+          "Finish": {
+            "x": 1100,
+            "y": 160
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Action1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Action1",
+            "target": "Expect2",
+            "outcome": "done"
+          },
+          {
+            "id": "E2",
+            "source": "Expect2",
+            "target": "Action3",
+            "outcome": "passed"
+          },
+          {
+            "id": "E3",
+            "source": "Action3",
+            "target": "Expect4",
+            "outcome": "done"
+          },
+          {
+            "id": "E4",
+            "source": "Expect4",
+            "target": "Action5",
+            "outcome": "passed"
+          },
+          {
+            "id": "E5",
+            "source": "Action5",
+            "target": "Expect6",
+            "outcome": "done"
+          },
+          {
+            "id": "E6",
+            "source": "Expect6",
+            "target": "Action7",
+            "outcome": "passed"
+          },
+          {
+            "id": "E7",
+            "source": "Action7",
+            "target": "Expect8",
+            "outcome": "done"
+          },
+          {
+            "id": "E8",
+            "source": "Expect8",
+            "target": "Action9",
+            "outcome": "passed"
+          },
+          {
+            "id": "E9",
+            "source": "Action9",
+            "target": "Expect10",
+            "outcome": "done"
+          },
+          {
+            "id": "E10",
+            "source": "Expect10",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Direct",
+        "name": "DIRECT bypasses LEVEL, VCA and offset; excludes mix",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_out ≈ 2 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect2",
+            "kind": "expect",
+            "label": "B_q ≈ 0 V",
+            "order": 2,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_q",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "B_sum ≈ 0 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action4",
+            "kind": "action",
+            "label": "B_SW1 → 0",
+            "order": 4,
+            "action": {
+              "target": "switch",
+              "partId": "B_SW1",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect5",
+            "kind": "expect",
+            "label": "B_out ≈ 2.5 V",
+            "order": 5,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.03,
+                "to": 0.03,
+                "reference": "capture"
+              },
+              "expected": 2.5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect6",
+            "kind": "expect",
+            "label": "B_sum ≈ 2.5 V",
+            "order": 6,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.03,
+                "to": 0.03,
+                "reference": "capture"
+              },
+              "expected": 2.5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 7,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Expect2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Action4": {
+            "x": 880,
+            "y": 0
+          },
+          "Expect5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Expect6": {
+            "x": 0,
+            "y": 160
+          },
+          "Finish": {
+            "x": 220,
+            "y": 160
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Expect2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Expect2",
+            "target": "Expect3",
+            "outcome": "passed"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Action4",
+            "outcome": "passed"
+          },
+          {
+            "id": "E4",
+            "source": "Action4",
+            "target": "Expect5",
+            "outcome": "done"
+          },
+          {
+            "id": "E5",
+            "source": "Expect5",
+            "target": "Expect6",
+            "outcome": "passed"
+          },
+          {
+            "id": "E6",
+            "source": "Expect6",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Cascade",
+        "name": "Positive sum, OUT tap and SUM break",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_sum ≈ 3 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 3,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action2",
+            "kind": "action",
+            "label": "A_TAP → 1",
+            "order": 2,
+            "action": {
+              "target": "switch",
+              "partId": "A_TAP",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "B_sum ≈ 3 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.025,
+                "to": 0.025,
+                "reference": "capture"
+              },
+              "expected": 3,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action4",
+            "kind": "action",
+            "label": "A_SUM → 0",
+            "order": 4,
+            "action": {
+              "target": "switch",
+              "partId": "A_SUM",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect5",
+            "kind": "expect",
+            "label": "B_m ≈ 0 V",
+            "order": 5,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_m",
+                "statistic": "sample",
+                "from": 0.04,
+                "to": 0.04,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect6",
+            "kind": "expect",
+            "label": "B_sum ≈ 2 V",
+            "order": 6,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.04,
+                "to": 0.04,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action7",
+            "kind": "action",
+            "label": "A_SUM → 1",
+            "order": 7,
+            "action": {
+              "target": "switch",
+              "partId": "A_SUM",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect8",
+            "kind": "expect",
+            "label": "B_sum ≈ 3 V",
+            "order": 8,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.055,
+                "to": 0.055,
+                "reference": "capture"
+              },
+              "expected": 3,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action9",
+            "kind": "action",
+            "label": "A_SW1 → 1",
+            "order": 9,
+            "action": {
+              "target": "switch",
+              "partId": "A_SW1",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect10",
+            "kind": "expect",
+            "label": "B_sum ≈ 2 V",
+            "order": 10,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_sum",
+                "statistic": "sample",
+                "from": 0.07,
+                "to": 0.07,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 11,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Action2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Action4": {
+            "x": 880,
+            "y": 0
+          },
+          "Expect5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Expect6": {
+            "x": 0,
+            "y": 160
+          },
+          "Action7": {
+            "x": 220,
+            "y": 160
+          },
+          "Expect8": {
+            "x": 440,
+            "y": 160
+          },
+          "Action9": {
+            "x": 660,
+            "y": 160
+          },
+          "Expect10": {
+            "x": 880,
+            "y": 160
+          },
+          "Finish": {
+            "x": 1100,
+            "y": 160
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Action2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Action2",
+            "target": "Expect3",
+            "outcome": "done"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Action4",
+            "outcome": "passed"
+          },
+          {
+            "id": "E4",
+            "source": "Action4",
+            "target": "Expect5",
+            "outcome": "done"
+          },
+          {
+            "id": "E5",
+            "source": "Expect5",
+            "target": "Expect6",
+            "outcome": "passed"
+          },
+          {
+            "id": "E6",
+            "source": "Expect6",
+            "target": "Action7",
+            "outcome": "passed"
+          },
+          {
+            "id": "E7",
+            "source": "Action7",
+            "target": "Expect8",
+            "outcome": "done"
+          },
+          {
+            "id": "E8",
+            "source": "Expect8",
+            "target": "Action9",
+            "outcome": "passed"
+          },
+          {
+            "id": "E9",
+            "source": "Action9",
+            "target": "Expect10",
+            "outcome": "done"
+          },
+          {
+            "id": "E10",
+            "source": "Expect10",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Source",
+        "name": "IN override and raw SOURCE independence",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_x ≈ 0 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_x",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect2",
+            "kind": "expect",
+            "label": "A_out ≈ 1 V",
+            "order": 2,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "A_out",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 1,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action3",
+            "kind": "action",
+            "label": "B_IN → 1",
+            "order": 3,
+            "action": {
+              "target": "switch",
+              "partId": "B_IN",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect4",
+            "kind": "expect",
+            "label": "B_x ≈ 2 V",
+            "order": 4,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_x",
+                "statistic": "sample",
+                "from": 0.025,
+                "to": 0.025,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action5",
+            "kind": "action",
+            "label": "A_P2 → 0.7",
+            "order": 5,
+            "action": {
+              "target": "potentiometer",
+              "partId": "A_P2",
+              "value": 0.7,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect6",
+            "kind": "expect",
+            "label": "B_x ≈ 2 V",
+            "order": 6,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_x",
+                "statistic": "sample",
+                "from": 0.04,
+                "to": 0.04,
+                "reference": "capture"
+              },
+              "expected": 2,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action7",
+            "kind": "action",
+            "label": "B_IN → 0",
+            "order": 7,
+            "action": {
+              "target": "switch",
+              "partId": "B_IN",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect8",
+            "kind": "expect",
+            "label": "B_x ≈ 0 V",
+            "order": 8,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_x",
+                "statistic": "sample",
+                "from": 0.055,
+                "to": 0.055,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 9,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Expect2": {
+            "x": 440,
+            "y": 0
+          },
+          "Action3": {
+            "x": 660,
+            "y": 0
+          },
+          "Expect4": {
+            "x": 880,
+            "y": 0
+          },
+          "Action5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Expect6": {
+            "x": 0,
+            "y": 160
+          },
+          "Action7": {
+            "x": 220,
+            "y": 160
+          },
+          "Expect8": {
+            "x": 440,
+            "y": 160
+          },
+          "Finish": {
+            "x": 660,
+            "y": 160
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Expect2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Expect2",
+            "target": "Action3",
+            "outcome": "passed"
+          },
+          {
+            "id": "E3",
+            "source": "Action3",
+            "target": "Expect4",
+            "outcome": "done"
+          },
+          {
+            "id": "E4",
+            "source": "Expect4",
+            "target": "Action5",
+            "outcome": "passed"
+          },
+          {
+            "id": "E5",
+            "source": "Action5",
+            "target": "Expect6",
+            "outcome": "done"
+          },
+          {
+            "id": "E6",
+            "source": "Expect6",
+            "target": "Action7",
+            "outcome": "passed"
+          },
+          {
+            "id": "E7",
+            "source": "Action7",
+            "target": "Expect8",
+            "outcome": "done"
+          },
+          {
+            "id": "E8",
+            "source": "Expect8",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Offset",
+        "name": "Offset source reaches both polarities",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_out ≈ -5 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": -5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action2",
+            "kind": "action",
+            "label": "B_P2 → 1",
+            "order": 2,
+            "action": {
+              "target": "potentiometer",
+              "partId": "B_P2",
+              "value": 1,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "B_out ≈ 5 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.03,
+                "to": 0.03,
+                "reference": "capture"
+              },
+              "expected": 5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 4,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Action2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Finish": {
+            "x": 880,
+            "y": 0
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Action2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Action2",
+            "target": "Expect3",
+            "outcome": "done"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "References",
+        "name": "Shared +5 V, −5 V and clamp references",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "ref5 ≈ 5 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "ref5",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect2",
+            "kind": "expect",
+            "label": "refn5 ≈ -5 V",
+            "order": 2,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "refn5",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": -5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "clamp ≈ 2.709772951628825 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "clamp",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 2.709772951628825,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 4,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Expect2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Finish": {
+            "x": 880,
+            "y": 0
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Expect2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Expect2",
+            "target": "Expect3",
+            "outcome": "passed"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      },
+      {
+        "id": "Range",
+        "name": "Convert bipolar ±5 V into 0–5 V",
+        "inputs": [],
+        "outputs": [],
+        "nodes": [
+          {
+            "id": "Start",
+            "kind": "start",
+            "label": "Start",
+            "order": 0
+          },
+          {
+            "id": "Expect1",
+            "kind": "expect",
+            "label": "B_out ≈ 0 V",
+            "order": 1,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.01,
+                "to": 0.01,
+                "reference": "capture"
+              },
+              "expected": 0,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action2",
+            "kind": "action",
+            "label": "cv → 0",
+            "order": 2,
+            "action": {
+              "target": "cv",
+              "value": 0,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect3",
+            "kind": "expect",
+            "label": "B_out ≈ 2.5 V",
+            "order": 3,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.03,
+                "to": 0.03,
+                "reference": "capture"
+              },
+              "expected": 2.5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Action4",
+            "kind": "action",
+            "label": "cv → 5",
+            "order": 4,
+            "action": {
+              "target": "cv",
+              "value": 5,
+              "durationMs": 0
+            }
+          },
+          {
+            "id": "Expect5",
+            "kind": "expect",
+            "label": "B_out ≈ 5 V",
+            "order": 5,
+            "required": true,
+            "expectation": {
+              "kind": "equal",
+              "observation": {
+                "signalId": "B_out",
+                "statistic": "sample",
+                "from": 0.05,
+                "to": 0.05,
+                "reference": "capture"
+              },
+              "expected": 5,
+              "absoluteTolerance": 0.01,
+              "relativeTolerance": 0
+            }
+          },
+          {
+            "id": "Finish",
+            "kind": "finish",
+            "label": "Finish",
+            "order": 6,
+            "outputs": {}
+          }
+        ],
+        "conflictPolicy": "error",
+        "layout": {
+          "Start": {
+            "x": 0,
+            "y": 0
+          },
+          "Expect1": {
+            "x": 220,
+            "y": 0
+          },
+          "Action2": {
+            "x": 440,
+            "y": 0
+          },
+          "Expect3": {
+            "x": 660,
+            "y": 0
+          },
+          "Action4": {
+            "x": 880,
+            "y": 0
+          },
+          "Expect5": {
+            "x": 1100,
+            "y": 0
+          },
+          "Finish": {
+            "x": 0,
+            "y": 160
+          }
+        },
+        "edges": [
+          {
+            "id": "E0",
+            "source": "Start",
+            "target": "Expect1",
+            "outcome": "done"
+          },
+          {
+            "id": "E1",
+            "source": "Expect1",
+            "target": "Action2",
+            "outcome": "passed"
+          },
+          {
+            "id": "E2",
+            "source": "Action2",
+            "target": "Expect3",
+            "outcome": "done"
+          },
+          {
+            "id": "E3",
+            "source": "Expect3",
+            "target": "Action4",
+            "outcome": "passed"
+          },
+          {
+            "id": "E4",
+            "source": "Action4",
+            "target": "Expect5",
+            "outcome": "done"
+          },
+          {
+            "id": "E5",
+            "source": "Expect5",
+            "target": "Finish",
+            "outcome": "passed"
+          }
+        ]
+      }
+    ],
+    "tests": [
+      {
+        "id": "Test_Transfer",
+        "name": "Signed LEVEL and offset after VCA",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Transfer",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Vca",
+        "name": "Linear CV: negative, zero, half and unity",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Vca",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Direct",
+        "name": "DIRECT bypasses LEVEL, VCA and offset; excludes mix",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Direct",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.75
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 1
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Cascade",
+        "name": "Positive sum, OUT tap and SUM break",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Cascade",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.6
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Source",
+        "name": "IN override and raw SOURCE independence",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Source",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.6
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Offset",
+        "name": "Offset source reaches both polarities",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Offset",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_References",
+        "name": "Shared +5 V, −5 V and clamp references",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "References",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": 2
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      },
+      {
+        "id": "Test_Range",
+        "name": "Convert bipolar ±5 V into 0–5 V",
+        "enabled": true,
+        "tags": [
+          "utility-cell"
+        ],
+        "flowId": "Range",
+        "durationSeconds": 0.1,
+        "fixture": {
+          "instruments": {
+            "frequency": 100,
+            "amplitude": 0,
+            "waveform": "sine",
+            "cv": -5
+          },
+          "parts": [
+            {
+              "partId": "A_P1",
+              "kind": "potentiometer",
+              "position": 1
+            },
+            {
+              "partId": "A_P2",
+              "kind": "potentiometer",
+              "position": 0.5
+            },
+            {
+              "partId": "A_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "A_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "A_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "A_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "A_TAP",
+              "kind": "switch",
+              "value": 0
+            },
+            {
+              "partId": "B_P1",
+              "kind": "potentiometer",
+              "position": 0.75
+            },
+            {
+              "partId": "B_P2",
+              "kind": "potentiometer",
+              "position": 0.75
+            },
+            {
+              "partId": "B_SW1",
+              "kind": "dpdt",
+              "value": 0
+            },
+            {
+              "partId": "B_IN",
+              "kind": "spdt",
+              "value": 1
+            },
+            {
+              "partId": "B_CV",
+              "kind": "spdt",
+              "value": 0
+            },
+            {
+              "partId": "B_SUM",
+              "kind": "switch",
+              "value": 1
+            },
+            {
+              "partId": "B_TAP",
+              "kind": "switch",
+              "value": 0
+            }
+          ]
+        }
+      }
+    ],
+    "signals": [
+      {
+        "id": "ref5",
+        "name": "ref5",
+        "kind": "voltage",
+        "positive": "e1",
+        "negative": "gnd"
+      },
+      {
+        "id": "refn5",
+        "name": "refn5",
+        "kind": "voltage",
+        "positive": "e7",
+        "negative": "gnd"
+      },
+      {
+        "id": "clamp",
+        "name": "clamp",
+        "kind": "voltage",
+        "positive": "f7",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_x",
+        "name": "A x",
+        "kind": "voltage",
+        "positive": "e8",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_w",
+        "name": "A w",
+        "kind": "voltage",
+        "positive": "f8",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_v",
+        "name": "A v",
+        "kind": "voltage",
+        "positive": "f14",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_p",
+        "name": "A p",
+        "kind": "voltage",
+        "positive": "e21",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_q",
+        "name": "A q",
+        "kind": "voltage",
+        "positive": "f32",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_m",
+        "name": "A m",
+        "kind": "voltage",
+        "positive": "f16",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_S",
+        "name": "A S",
+        "kind": "voltage",
+        "positive": "f24",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_out",
+        "name": "A out",
+        "kind": "voltage",
+        "positive": "r2:a37",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_sum",
+        "name": "A sum",
+        "kind": "voltage",
+        "positive": "r2:a35",
+        "negative": "gnd"
+      },
+      {
+        "id": "A_vctl",
+        "name": "A vctl",
+        "kind": "voltage",
+        "positive": "e28",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_x",
+        "name": "B x",
+        "kind": "voltage",
+        "positive": "e34",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_w",
+        "name": "B w",
+        "kind": "voltage",
+        "positive": "f34",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_v",
+        "name": "B v",
+        "kind": "voltage",
+        "positive": "f40",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_p",
+        "name": "B p",
+        "kind": "voltage",
+        "positive": "e47",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_q",
+        "name": "B q",
+        "kind": "voltage",
+        "positive": "f58",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_m",
+        "name": "B m",
+        "kind": "voltage",
+        "positive": "f42",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_S",
+        "name": "B S",
+        "kind": "voltage",
+        "positive": "f50",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_out",
+        "name": "B out",
+        "kind": "voltage",
+        "positive": "r3:a12",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_sum",
+        "name": "B sum",
+        "kind": "voltage",
+        "positive": "r3:a10",
+        "negative": "gnd"
+      },
+      {
+        "id": "B_vctl",
+        "name": "B vctl",
+        "kind": "voltage",
+        "positive": "e54",
+        "negative": "gnd"
+      }
+    ]
+  },
+  "documentation": {
+    "sections": [
+      {
+        "id": "purpose",
+        "title": "What this circuit teaches",
+        "body": "Two DC-coupled signed VCAs with offset, DIRECT outputs and independent SOURCE/MIX cascades.",
+        "kind": "explanation"
+      },
+      {
+        "id": "operation",
+        "title": "How it works and why",
+        "body": "Each cell implements p = a×x×g+b with the proposal’s reference-channel SSI2162 feedback loop. Signed LEVEL precedes the VCA, offset follows it, and the two positive adders preserve polarity. Source forwarding comes from the input buffer; only the SUM normal breaks accumulated mixing.",
+        "kind": "explanation"
+      },
+      {
+        "id": "experiment",
+        "title": "Try it yourself",
+        "body": "Run the default 100 ms capture, then open Automations → Tests and run the suite. Edit A_P1/B_P1 for LEVEL and A_P2/B_P2 for OFFSET. Operate the IN, CV, SW1, SUM and TAP switches using the control guide in Overview.",
+        "kind": "explanation"
+      },
+      {
+        "id": "observations",
+        "title": "What to observe",
+        "body": "CH1 follows A OUT; CH2 follows B SUM. DIRECT removes A from the mix while preserving its raw output. Opening A_SUM resets B’s incoming mix. Patching B_IN changes B’s source independently of the mix chain.",
+        "kind": "explanation"
+      },
+      {
+        "id": "build",
+        "title": "Build on EDU LABOR",
+        "body": "Based on Cascadable 1U Utility Cell Design.pdf, v0.1, 04 October 2026. Use ±12 V, common ground and the shared reference board. Virtual adapters preserve IC pin numbers; switched jack contacts are explicit SPDT/SPST controls. Q1 is a generic PNP approximation. This example verifies nominal circuit function, not the document’s outstanding physical stability, noise, fault or mechanical checks.",
+        "kind": "explanation"
+      },
+      {
+        "id": "design",
+        "kind": "explanation",
+        "title": "Cascadable 1U utility cell · v0.1",
+        "body": "Implementation of Cascadable 1U Utility Cell Design.pdf (04 October 2026). Two complete DC-coupled cells share buffered +5 V, −5 V and +2.71 V references. Prefixes A_ and B_ identify the cell; R1–R23 and C1–C15 retain the proposal’s values. OPA197, OPA4197 and SSI2162 use explicit educational models on virtual breadboard adapters. Q1 uses the generic PNP model in place of a calibrated BC557."
+      },
+      {
+        "id": "equations",
+        "kind": "explanation",
+        "title": "Follow the signal",
+        "body": "x is the buffered IN; LEVEL a = 2×P1−1; w = −a×x; g ≈ max(0,CV/5); v = −g×w; p = v+b, where b ≈ 10×P2−5. PROCESS sends p to local OUT and q; DIRECT sends x to OUT and grounds q. The positive adder gives S = incoming MIX + q. SOURCE always forwards x before processing and before the local OUT driver."
+      },
+      {
+        "id": "controls",
+        "kind": "experiment",
+        "title": "Patch and mode controls",
+        "body": "A_IN/B_IN: throw 0 selects the left SOURCE normal (ground at cell A); throw 1 selects the patched source (OSC at A, CV at B). A_CV/B_CV: throw 0 selects the +5 V reference normal, throw 1 selects the CV instrument. SW1: throw 0 PROCESS, throw 1 DIRECT. SUM closed means no plug; open represents inserting a SUM plug and breaking forwarding. TAP closed connects a 10 kΩ test load to local OUT without changing either cascade. Select a switch on the board or in Overview and operate it in Inspector."
+      },
+      {
+        "id": "capture",
+        "kind": "automation",
+        "targetId": "Capture",
+        "title": "Watch the default capture",
+        "body": "CH1 is A OUT and CH2 is B SUM. At 10–20 ms A LEVEL rises from +0.5 to +1. At 30–35 ms A OFFSET rises to +1 V. At 45 ms A enters DIRECT and leaves the mix; at 60 ms it returns to PROCESS. At 70 ms A SUM breaks the mix link. At 85 ms B IN overrides SOURCE with +2 V. Each capture restarts from the saved controls. Disable or edit these steps in Automations → Flow for manual experiments."
+      },
+      {
+        "id": "tests",
+        "kind": "experiment",
+        "title": "Run the saved circuit tests",
+        "body": "Automations → Tests → Run suite verifies signed LEVEL, linear CV and cutoff, offset after the VCA, DIRECT exclusion, positive mixing, local OUT taps, SUM break/rejoin, and independent SOURCE override. Tests freeze all controls and use terminal-bound signals, so moving CH1/CH2 does not change their meaning. DC checks allow 10 mV for finite amplifier gain, endpoint resistance, reference error and link loading. Additional numerical regressions cover +10 V CV, bipolar range conversion, supply faults and loaded outputs."
+      },
+      {
+        "id": "hardware",
+        "kind": "note",
+        "title": "Model and hardware limits",
+        "body": "Retains both 110 Ω / 2.2 nF series input shunts, 100 pF feedback capacitors, local OUT feedback after its 100 Ω resistor, raw SUM feedback before its 100 Ω resistor, 100 nF bypasses and correctly polarized 10 µF bulk capacitors. A_R18 is omitted because the first MIX is hard grounded; B_R18 supplies the normal-break pull-down. B_RLINK represents the 1 MΩ input of a following cell. Model results do not validate cable-load stability, noise, distortion, resistor heating, short-circuit protection or panel fit. The OPA models omit current limiting and calibrated frequency response. Use the proposal’s conservative ±8 V accumulated-sum target; earlier clipping cannot be repaired by attenuating a later output. An unused PROCESS cell needs zero LEVEL and OFFSET."
+      },
+      {
+        "id": "part-UREF",
+        "kind": "component",
+        "targetId": "UREF",
+        "title": "UREF · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-DREF",
+        "kind": "component",
+        "targetId": "DREF",
+        "title": "DREF · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-RREF1",
+        "kind": "component",
+        "targetId": "RREF1",
+        "title": "RREF1 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-RREF2",
+        "kind": "component",
+        "targetId": "RREF2",
+        "title": "RREF2 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-RREF3",
+        "kind": "component",
+        "targetId": "RREF3",
+        "title": "RREF3 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-RREF4",
+        "kind": "component",
+        "targetId": "RREF4",
+        "title": "RREF4 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-RREF5",
+        "kind": "component",
+        "targetId": "RREF5",
+        "title": "RREF5 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-CREF1",
+        "kind": "component",
+        "targetId": "CREF1",
+        "title": "CREF1 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-CREF2",
+        "kind": "component",
+        "targetId": "CREF2",
+        "title": "CREF2 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-CREF3",
+        "kind": "component",
+        "targetId": "CREF3",
+        "title": "CREF3 · Shared references",
+        "body": "Shared references. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_U1",
+        "kind": "component",
+        "targetId": "A_U1",
+        "title": "A_U1 · A · Input, LEVEL and VCA",
+        "body": "A · Input, LEVEL and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_U2",
+        "kind": "component",
+        "targetId": "A_U2",
+        "title": "A_U2 · A · Offset, OUT and MIX input",
+        "body": "A · Offset, OUT and MIX input. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_U3",
+        "kind": "component",
+        "targetId": "A_U3",
+        "title": "A_U3 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_U4",
+        "kind": "component",
+        "targetId": "A_U4",
+        "title": "A_U4 · A · Linear VCA",
+        "body": "A · Linear VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_Q1",
+        "kind": "component",
+        "targetId": "A_Q1",
+        "title": "A_Q1 · A · VCA cutoff clamp",
+        "body": "A · VCA cutoff clamp. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_P1",
+        "kind": "component",
+        "targetId": "A_P1",
+        "title": "A_P1 · A · LEVEL: −1 to +1",
+        "body": "A · LEVEL: −1 to +1. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_P2",
+        "kind": "component",
+        "targetId": "A_P2",
+        "title": "A_P2 · A · OFFSET: −5 to +5 V",
+        "body": "A · OFFSET: −5 to +5 V. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_SW1",
+        "kind": "component",
+        "targetId": "A_SW1",
+        "title": "A_SW1 · A · Mode: 0 PROCESS / 1 DIRECT",
+        "body": "A · Mode: 0 PROCESS / 1 DIRECT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_IN",
+        "kind": "component",
+        "targetId": "A_IN",
+        "title": "A_IN · A · IN: 0 normal / 1 patched",
+        "body": "A · IN: 0 normal / 1 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_CV",
+        "kind": "component",
+        "targetId": "A_CV",
+        "title": "A_CV · A · CV: 0 +5 V normal / 1 patched",
+        "body": "A · CV: 0 +5 V normal / 1 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_SUM",
+        "kind": "component",
+        "targetId": "A_SUM",
+        "title": "A_SUM · A · SUM: 1 normal / 0 patched",
+        "body": "A · SUM: 1 normal / 0 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_TAP",
+        "kind": "component",
+        "targetId": "A_TAP",
+        "title": "A_TAP · A · OUT tap: 1 loads local OUT",
+        "body": "A · OUT tap: 1 loads local OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_RLOAD",
+        "kind": "component",
+        "targetId": "A_RLOAD",
+        "title": "A_RLOAD · A · OUT test load",
+        "body": "A · OUT test load. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R1",
+        "kind": "component",
+        "targetId": "A_R1",
+        "title": "A_R1 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R2",
+        "kind": "component",
+        "targetId": "A_R2",
+        "title": "A_R2 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R3",
+        "kind": "component",
+        "targetId": "A_R3",
+        "title": "A_R3 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R4",
+        "kind": "component",
+        "targetId": "A_R4",
+        "title": "A_R4 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R5",
+        "kind": "component",
+        "targetId": "A_R5",
+        "title": "A_R5 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R6",
+        "kind": "component",
+        "targetId": "A_R6",
+        "title": "A_R6 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R7",
+        "kind": "component",
+        "targetId": "A_R7",
+        "title": "A_R7 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R8",
+        "kind": "component",
+        "targetId": "A_R8",
+        "title": "A_R8 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R9",
+        "kind": "component",
+        "targetId": "A_R9",
+        "title": "A_R9 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R10",
+        "kind": "component",
+        "targetId": "A_R10",
+        "title": "A_R10 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R11",
+        "kind": "component",
+        "targetId": "A_R11",
+        "title": "A_R11 · A · Input and VCA",
+        "body": "A · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R12",
+        "kind": "component",
+        "targetId": "A_R12",
+        "title": "A_R12 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R13",
+        "kind": "component",
+        "targetId": "A_R13",
+        "title": "A_R13 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R14",
+        "kind": "component",
+        "targetId": "A_R14",
+        "title": "A_R14 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R15",
+        "kind": "component",
+        "targetId": "A_R15",
+        "title": "A_R15 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R16",
+        "kind": "component",
+        "targetId": "A_R16",
+        "title": "A_R16 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R17",
+        "kind": "component",
+        "targetId": "A_R17",
+        "title": "A_R17 · A · Offset and OUT",
+        "body": "A · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R19",
+        "kind": "component",
+        "targetId": "A_R19",
+        "title": "A_R19 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R20",
+        "kind": "component",
+        "targetId": "A_R20",
+        "title": "A_R20 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R21",
+        "kind": "component",
+        "targetId": "A_R21",
+        "title": "A_R21 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R22",
+        "kind": "component",
+        "targetId": "A_R22",
+        "title": "A_R22 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_R23",
+        "kind": "component",
+        "targetId": "A_R23",
+        "title": "A_R23 · A · Positive SUM",
+        "body": "A · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C1",
+        "kind": "component",
+        "targetId": "A_C1",
+        "title": "A_C1 · A · Compensation",
+        "body": "A · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C2",
+        "kind": "component",
+        "targetId": "A_C2",
+        "title": "A_C2 · A · Compensation",
+        "body": "A · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C3",
+        "kind": "component",
+        "targetId": "A_C3",
+        "title": "A_C3 · A · Compensation",
+        "body": "A · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C4",
+        "kind": "component",
+        "targetId": "A_C4",
+        "title": "A_C4 · A · Compensation",
+        "body": "A · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C5",
+        "kind": "component",
+        "targetId": "A_C5",
+        "title": "A_C5 · A · Compensation",
+        "body": "A · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C6",
+        "kind": "component",
+        "targetId": "A_C6",
+        "title": "A_C6 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C7",
+        "kind": "component",
+        "targetId": "A_C7",
+        "title": "A_C7 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C8",
+        "kind": "component",
+        "targetId": "A_C8",
+        "title": "A_C8 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C9",
+        "kind": "component",
+        "targetId": "A_C9",
+        "title": "A_C9 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C10",
+        "kind": "component",
+        "targetId": "A_C10",
+        "title": "A_C10 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C11",
+        "kind": "component",
+        "targetId": "A_C11",
+        "title": "A_C11 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C12",
+        "kind": "component",
+        "targetId": "A_C12",
+        "title": "A_C12 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C13",
+        "kind": "component",
+        "targetId": "A_C13",
+        "title": "A_C13 · A · Supply bypass",
+        "body": "A · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C14",
+        "kind": "component",
+        "targetId": "A_C14",
+        "title": "A_C14 · A · Bulk supply",
+        "body": "A · Bulk supply. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-A_C15",
+        "kind": "component",
+        "targetId": "A_C15",
+        "title": "A_C15 · A · Bulk supply",
+        "body": "A · Bulk supply. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_U1",
+        "kind": "component",
+        "targetId": "B_U1",
+        "title": "B_U1 · B · Input, LEVEL and VCA",
+        "body": "B · Input, LEVEL and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_U2",
+        "kind": "component",
+        "targetId": "B_U2",
+        "title": "B_U2 · B · Offset, OUT and MIX input",
+        "body": "B · Offset, OUT and MIX input. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_U3",
+        "kind": "component",
+        "targetId": "B_U3",
+        "title": "B_U3 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_U4",
+        "kind": "component",
+        "targetId": "B_U4",
+        "title": "B_U4 · B · Linear VCA",
+        "body": "B · Linear VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_Q1",
+        "kind": "component",
+        "targetId": "B_Q1",
+        "title": "B_Q1 · B · VCA cutoff clamp",
+        "body": "B · VCA cutoff clamp. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_P1",
+        "kind": "component",
+        "targetId": "B_P1",
+        "title": "B_P1 · B · LEVEL: −1 to +1",
+        "body": "B · LEVEL: −1 to +1. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_P2",
+        "kind": "component",
+        "targetId": "B_P2",
+        "title": "B_P2 · B · OFFSET: −5 to +5 V",
+        "body": "B · OFFSET: −5 to +5 V. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_SW1",
+        "kind": "component",
+        "targetId": "B_SW1",
+        "title": "B_SW1 · B · Mode: 0 PROCESS / 1 DIRECT",
+        "body": "B · Mode: 0 PROCESS / 1 DIRECT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_IN",
+        "kind": "component",
+        "targetId": "B_IN",
+        "title": "B_IN · B · IN: 0 normal / 1 patched",
+        "body": "B · IN: 0 normal / 1 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_CV",
+        "kind": "component",
+        "targetId": "B_CV",
+        "title": "B_CV · B · CV: 0 +5 V normal / 1 patched",
+        "body": "B · CV: 0 +5 V normal / 1 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_SUM",
+        "kind": "component",
+        "targetId": "B_SUM",
+        "title": "B_SUM · B · SUM: 1 normal / 0 patched",
+        "body": "B · SUM: 1 normal / 0 patched. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_TAP",
+        "kind": "component",
+        "targetId": "B_TAP",
+        "title": "B_TAP · B · OUT tap: 1 loads local OUT",
+        "body": "B · OUT tap: 1 loads local OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_RLOAD",
+        "kind": "component",
+        "targetId": "B_RLOAD",
+        "title": "B_RLOAD · B · OUT test load",
+        "body": "B · OUT test load. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_RLINK",
+        "kind": "component",
+        "targetId": "B_RLINK",
+        "title": "B_RLINK · B · Next MIX input load",
+        "body": "B · Next MIX input load. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R1",
+        "kind": "component",
+        "targetId": "B_R1",
+        "title": "B_R1 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R2",
+        "kind": "component",
+        "targetId": "B_R2",
+        "title": "B_R2 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R3",
+        "kind": "component",
+        "targetId": "B_R3",
+        "title": "B_R3 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R4",
+        "kind": "component",
+        "targetId": "B_R4",
+        "title": "B_R4 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R5",
+        "kind": "component",
+        "targetId": "B_R5",
+        "title": "B_R5 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R6",
+        "kind": "component",
+        "targetId": "B_R6",
+        "title": "B_R6 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R7",
+        "kind": "component",
+        "targetId": "B_R7",
+        "title": "B_R7 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R8",
+        "kind": "component",
+        "targetId": "B_R8",
+        "title": "B_R8 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R9",
+        "kind": "component",
+        "targetId": "B_R9",
+        "title": "B_R9 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R10",
+        "kind": "component",
+        "targetId": "B_R10",
+        "title": "B_R10 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R11",
+        "kind": "component",
+        "targetId": "B_R11",
+        "title": "B_R11 · B · Input and VCA",
+        "body": "B · Input and VCA. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R12",
+        "kind": "component",
+        "targetId": "B_R12",
+        "title": "B_R12 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R13",
+        "kind": "component",
+        "targetId": "B_R13",
+        "title": "B_R13 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R14",
+        "kind": "component",
+        "targetId": "B_R14",
+        "title": "B_R14 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R15",
+        "kind": "component",
+        "targetId": "B_R15",
+        "title": "B_R15 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R16",
+        "kind": "component",
+        "targetId": "B_R16",
+        "title": "B_R16 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R17",
+        "kind": "component",
+        "targetId": "B_R17",
+        "title": "B_R17 · B · Offset and OUT",
+        "body": "B · Offset and OUT. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R18",
+        "kind": "component",
+        "targetId": "B_R18",
+        "title": "B_R18 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R19",
+        "kind": "component",
+        "targetId": "B_R19",
+        "title": "B_R19 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R20",
+        "kind": "component",
+        "targetId": "B_R20",
+        "title": "B_R20 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R21",
+        "kind": "component",
+        "targetId": "B_R21",
+        "title": "B_R21 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R22",
+        "kind": "component",
+        "targetId": "B_R22",
+        "title": "B_R22 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_R23",
+        "kind": "component",
+        "targetId": "B_R23",
+        "title": "B_R23 · B · Positive SUM",
+        "body": "B · Positive SUM. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C1",
+        "kind": "component",
+        "targetId": "B_C1",
+        "title": "B_C1 · B · Compensation",
+        "body": "B · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C2",
+        "kind": "component",
+        "targetId": "B_C2",
+        "title": "B_C2 · B · Compensation",
+        "body": "B · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C3",
+        "kind": "component",
+        "targetId": "B_C3",
+        "title": "B_C3 · B · Compensation",
+        "body": "B · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C4",
+        "kind": "component",
+        "targetId": "B_C4",
+        "title": "B_C4 · B · Compensation",
+        "body": "B · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C5",
+        "kind": "component",
+        "targetId": "B_C5",
+        "title": "B_C5 · B · Compensation",
+        "body": "B · Compensation. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C6",
+        "kind": "component",
+        "targetId": "B_C6",
+        "title": "B_C6 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C7",
+        "kind": "component",
+        "targetId": "B_C7",
+        "title": "B_C7 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C8",
+        "kind": "component",
+        "targetId": "B_C8",
+        "title": "B_C8 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C9",
+        "kind": "component",
+        "targetId": "B_C9",
+        "title": "B_C9 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C10",
+        "kind": "component",
+        "targetId": "B_C10",
+        "title": "B_C10 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C11",
+        "kind": "component",
+        "targetId": "B_C11",
+        "title": "B_C11 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C12",
+        "kind": "component",
+        "targetId": "B_C12",
+        "title": "B_C12 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C13",
+        "kind": "component",
+        "targetId": "B_C13",
+        "title": "B_C13 · B · Supply bypass",
+        "body": "B · Supply bypass. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C14",
+        "kind": "component",
+        "targetId": "B_C14",
+        "title": "B_C14 · B · Bulk supply",
+        "body": "B · Bulk supply. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "part-B_C15",
+        "kind": "component",
+        "targetId": "B_C15",
+        "title": "B_C15 · B · Bulk supply",
+        "body": "B · Bulk supply. The suffix follows the component ledger in the proposal. Inspect this part to see its value, numbered connections and model limits."
+      },
+      {
+        "id": "flow-Transfer",
+        "kind": "automation",
+        "targetId": "Transfer",
+        "title": "Signed LEVEL and offset after VCA",
+        "body": "Saved circuit test: Signed LEVEL and offset after VCA. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Vca",
+        "kind": "automation",
+        "targetId": "Vca",
+        "title": "Linear CV: negative, zero, half and unity",
+        "body": "Saved circuit test: Linear CV: negative, zero, half and unity. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Direct",
+        "kind": "automation",
+        "targetId": "Direct",
+        "title": "DIRECT bypasses LEVEL, VCA and offset; excludes mix",
+        "body": "Saved circuit test: DIRECT bypasses LEVEL, VCA and offset; excludes mix. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Cascade",
+        "kind": "automation",
+        "targetId": "Cascade",
+        "title": "Positive sum, OUT tap and SUM break",
+        "body": "Saved circuit test: Positive sum, OUT tap and SUM break. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Source",
+        "kind": "automation",
+        "targetId": "Source",
+        "title": "IN override and raw SOURCE independence",
+        "body": "Saved circuit test: IN override and raw SOURCE independence. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Offset",
+        "kind": "automation",
+        "targetId": "Offset",
+        "title": "Offset source reaches both polarities",
+        "body": "Saved circuit test: Offset source reaches both polarities. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-References",
+        "kind": "automation",
+        "targetId": "References",
+        "title": "Shared +5 V, −5 V and clamp references",
+        "body": "Saved circuit test: Shared +5 V, −5 V and clamp references. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      },
+      {
+        "id": "flow-Range",
+        "kind": "automation",
+        "targetId": "Range",
+        "title": "Convert bipolar ±5 V into 0–5 V",
+        "body": "Saved circuit test: Convert bipolar ±5 V into 0–5 V. Starts from its frozen fixture and checks solved terminal voltages with required expectations. Run it from Automations → Tests."
+      }
+    ]
+  }
+}

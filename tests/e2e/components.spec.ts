@@ -79,7 +79,7 @@ test('a three-pin potentiometer commits one wiper drag and survives browser reco
   const library = page.getByRole('complementary', { name: 'Parts library' })
   await library.getByRole('button', { name: /Potentiometer/ }).click()
   await terminal(page, 'c12').click()
-  await expect(page.getByText('1 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('1 / 128 parts placed', { exact: true })).toBeVisible()
   await expect.poll(async () => (await recovered(page))?.parts[0]?.pins).toEqual(['c12', 'c13', 'c14'])
   for (const id of ['c12', 'c13', 'c14']) await expect(terminal(page, id)).toHaveAttribute('aria-label', `${id.toUpperCase()}, occupied`)
 
@@ -118,7 +118,7 @@ test('DIP-8 placement and movement preserve every pin and probes can reach the s
   const library = page.getByRole('complementary', { name: 'Parts library' })
   await library.getByRole('button', { name: /TL072-style dual op-amp/ }).click()
   await terminal(page, 'a6').click()
-  await expect(page.getByText('0 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('0 / 128 parts placed', { exact: true })).toBeVisible()
   await terminal(page, 'e6').click()
   await expect.poll(async () => (await recovered(page))?.parts[0]?.pins).toEqual(['e6', 'e7', 'e8', 'e9', 'f9', 'f8', 'f7', 'f6'])
   await page.getByRole('button', { name: 'Rotate placement', exact: true }).click()

@@ -34,7 +34,7 @@ test('notes retain missing references and reject malformed, duplicate, or oversi
   const section = { id: 'one', kind: 'component', title: 'Part notes', body: 'Keep this explanation.', targetId: 'R9' } as const
   const document = validateDocument({ ...createEmptyDocument(), documentation: { sections: [section] } })
   assert.match(sectionReference(document, section), /R9 \(removed\)/)
-  for (const sections of [[section, section], [{ ...section, kind: '__proto__' }], [{ ...section, body: null }], [{ ...section, targetId: {} }], [{ ...section, title: 'x'.repeat(121) }], [{ ...section, body: 'x'.repeat(DOCUMENTATION_LIMITS.body + 1) }], Array.from({ length: 101 }, (_, i) => ({ ...section, id: String(i) }))]) assert.throws(() => validateDocumentation({ sections }))
+  for (const sections of [[section, section], [{ ...section, kind: '__proto__' }], [{ ...section, body: null }], [{ ...section, targetId: {} }], [{ ...section, title: 'x'.repeat(121) }], [{ ...section, body: 'x'.repeat(DOCUMENTATION_LIMITS.body + 1) }], Array.from({ length: DOCUMENTATION_LIMITS.sections + 1 }, (_, i) => ({ ...section, id: String(i) }))]) assert.throws(() => validateDocumentation({ sections }))
   assert.throws(() => validateDocumentation({ sections: Array.from({ length: 8 }, (_, i) => ({ ...section, id: String(i), body: 'x'.repeat(8000) })) }), /60,000/)
 })
 

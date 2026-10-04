@@ -1,3 +1,4 @@
+import { isSwitchKind } from '@/lib/utility-cell-models'
 import { useId, useRef, useState } from 'react'
 import { resolvePartModel, partDisplayName, partValueSummary, assignCustomComponent, duplicateCustomComponent, type CustomComponent } from '@/lib/custom-components'
 import { CurvePreview } from './CustomComponentEditor'
@@ -98,9 +99,9 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
         </div>
         <div className="inspector-section">
           <div className="section-overline">{integratedCircuit ? 'POWER & MODEL' : 'COMPONENT VALUE'}</div>
-          {model ? <p>{partValueSummary(document, part)}. Resistor bands show the nominal value.</p> : part.kind === 'switch' ? (
-            <label className="switch-value"><input type="checkbox" checked={!!part.value} onChange={event => updatePart({ value: event.target.checked ? 1 : 0 })} />{part.value ? 'Closed (on)' : 'Open (off)'}</label>
-          ) : part.kind === 'pc817' ? <>
+          {model ? <p>{partValueSummary(document, part)}. Resistor bands show the nominal value.</p> : isSwitchKind(part.kind) ? (
+            <label className="switch-value"><input type="checkbox" checked={!!part.value} onChange={event => updatePart({ value: event.target.checked ? 1 : 0 })} />{part.kind === 'switch' ? part.value ? 'Closed (on)' : 'Open (off)' : `Throw ${part.value}`}</label>
+          ) : part.kind === 'lm4040' ? <label>Reference voltage<select aria-label="Reference voltage" value={part.value} onChange={e => updatePart({ value: Number(e.target.value) })}><option value={2.5}>2.5 V</option><option value={5}>5 V</option></select></label> : part.kind === 'pc817' ? <>
             <NumberField key={part.id} label="Current transfer ratio" value={part.value} min={definition.min} max={definition.max} unit="%" onCommit={value => updatePart({ value })} />
             <p className="muted-copy">{definition.supplyHint}</p>
           </> : resistive || capacitive || inductive || zener ? <>
@@ -132,7 +133,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
           groups={[...new Set(document.parts.flatMap(item => item.schemaGroup ? [item.schemaGroup] : []))].sort((a, b) => a.localeCompare(b))}
           onCommit={name => onChange(assignSchemaGroup(document, [part.id], name))}
         />
-        <RecordedMeasurements key={part.id} part={part} nodeByTerminal={nodeByTerminal} />
+        <RecordedMeasurements key={part.id} document={document} part={part} nodeByTerminal={nodeByTerminal} />
         <div className="inspector-section">
           <div className="section-overline">{integratedCircuit || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>
           <div className={integratedCircuit || transistor ? 'ic-pin-list' : undefined}>
@@ -154,7 +155,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
         </div>
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
-          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013' || part.kind === 'cd4024' || part.kind === 'cd4093') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
+          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013' || part.kind === 'cd4024' || part.kind === 'cd4093') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
             {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
             <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
             <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>

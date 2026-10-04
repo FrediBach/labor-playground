@@ -37,7 +37,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 900, height: 800 
     await page.goto('/')
     await captured(page)
     const tray = library(page)
-    await expect(tray.locator('.part-item')).toHaveCount(33)
+    await expect(tray.locator('.part-item')).toHaveCount(39)
     const controls = [
       tray.getByRole('button', { name: /Raspberry Pi Pico/ }),
       tray.getByRole('button', { name: /Jumper wire/ }),
@@ -97,7 +97,7 @@ test('component search combines with categories and clears without losing the se
   await expect(schottky).toHaveAttribute('aria-pressed', 'true')
   await search.fill('')
   await category.selectOption('all')
-  await expect(tray.locator('.part-item')).toHaveCount(33)
+  await expect(tray.locator('.part-item')).toHaveCount(39)
 })
 
 test('the expanded catalog and its controls fit a phone without horizontal overflow', async ({ page }) => {
@@ -105,7 +105,7 @@ test('the expanded catalog and its controls fit a phone without horizontal overf
   await page.goto('/')
   await captured(page)
   const tray = library(page)
-  await expect(tray.locator('.part-item')).toHaveCount(33)
+  await expect(tray.locator('.part-item')).toHaveCount(39)
   for (const control of [
     tray.getByRole('textbox', { name: 'Find a component', exact: true }),
     tray.getByRole('combobox', { name: 'Component category', exact: true }),
@@ -148,7 +148,7 @@ test('inductors and the added diodes can be placed, edited, and recovered', asyn
   await expect(voltage).toHaveValue('5.1')
   await page.getByRole('button', { name: 'Redo', exact: true }).click()
   await expect(voltage).toHaveValue('6.8')
-  await expect(tray.getByText('3 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(tray.getByText('3 / 128 parts placed', { exact: true })).toBeVisible()
 
   await page.reload()
   await page.locator('[data-part="L1"]').focus()

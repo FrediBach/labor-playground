@@ -1,3 +1,4 @@
+import { PROJECT_LIMITS } from '@/lib/project-limits'
 import { useRef, useState } from 'react'
 import { Cable, Check, ChevronDown, CircuitBoard, Crosshair, PanelLeftClose, Plus, Search, X } from 'lucide-react'
 import { PARTS, formatValue, type ComponentKind } from '@/lib/circuit'
@@ -12,13 +13,18 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos', 'pmos'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4069', 'cd4053', 'vactrol', 'cd4013', 'cd4070', 'cd4081', 'pc817', 'cd4024', 'cd4093', 'cd4001', 'lm4040'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'spdt', 'dpdt', 'opa197', 'opa4197', 'ssi2162', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4069', 'cd4053', 'vactrol', 'cd4013', 'cd4070', 'cd4081', 'pc817', 'cd4024', 'cd4093', 'cd4001', 'lm4040'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
+  spdt: 'changeover normalled switched jack input routing',
+  dpdt: 'changeover dual pole linked mode routing',
+  opa197: 'precision op amp single buffer mixer soic8',
+  opa4197: 'precision op amp quad buffer mixer soic14',
+  ssi2162: 'dual exponential linear vca voltage controlled amplifier ssop10',
   cd4024: 'binary ripple counter clock divider sub octave seven stage reset dip14',
   cd4093: 'quad schmitt nand hysteresis gated oscillator pulse lfo dip14',
   cd4001: 'quad nor logic gate inhibit pulse combine dip14',
-  lm4040: 'precision shunt voltage reference cv offset 2.5v to92',
+  lm4040: 'precision shunt voltage reference cv offset 2.5v 5v to92',
   cd4013: 'dual d flip flop divider sub octave clock latch memory dip14',
   cd4070: 'quad xor exclusive or logic gate digital ring modulator pulse combine dip14',
   cd4081: 'quad and logic gate clock enable rhythm trigger coincidence dip14',
@@ -101,6 +107,6 @@ export function PartsLibrary({ tool, onToolChange, onPlace, placement, customCom
       </div>)}</section>}
       {count === 0 && <div className="parts-empty" role="status"><p>No components match “{search}”{category !== 'all' ? ` in ${categories.find(group => group.id === category)?.label}` : ''}.</p><button className="subtle-button" onClick={clearSearch}>Clear search</button>{category !== 'all' && <button className="subtle-button" onClick={() => { setCategory('all'); resetScroll() }}>Show all categories</button>}</div>}
     </div>
-    <div className="tray-bottom"><span>{partCount} / 30 parts placed</span><button className="subtle-button" onClick={onClear}>Clear board</button></div>
+    <div className="tray-bottom"><span>{partCount} / {PROJECT_LIMITS.parts} parts placed</span><button className="subtle-button" onClick={onClear}>Clear board</button></div>
   </aside>
 }

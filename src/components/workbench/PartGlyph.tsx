@@ -49,7 +49,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       y: index < rowPins ? -30 : 30,
     }))
     const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
-    const inscription = kind === 'cd4024' ? 'CD4024 STYLE' : kind === 'cd4093' ? 'CD4093 STYLE' : kind === 'cd4001' ? 'CD4001 STYLE' : kind === 'pc817' ? '817' : kind === 'cd4013' ? 'CD4013 STYLE' : kind === 'cd4070' ? 'CD4070 STYLE' : kind === 'cd4081' ? 'CD4081 STYLE' : kind === 'cd4069' ? 'CD4069UB STYLE' : kind === 'cd40106' ? 'CD40106 STYLE' : kind === 'cd4053' ? 'CD4053 STYLE' : kind === 'vactrol' ? 'LED / LDR' : kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
+    const inscription = kind === 'dpdt' ? `DPDT · ${value}` : kind === 'opa197' ? 'OPA197 STYLE' : kind === 'opa4197' ? 'OPA4197 STYLE' : kind === 'ssi2162' ? 'SSI2162 STYLE' : kind === 'cd4024' ? 'CD4024 STYLE' : kind === 'cd4093' ? 'CD4093 STYLE' : kind === 'cd4001' ? 'CD4001 STYLE' : kind === 'pc817' ? '817' : kind === 'cd4013' ? 'CD4013 STYLE' : kind === 'cd4070' ? 'CD4070 STYLE' : kind === 'cd4081' ? 'CD4081 STYLE' : kind === 'cd4069' ? 'CD4069UB STYLE' : kind === 'cd40106' ? 'CD40106 STYLE' : kind === 'cd4053' ? 'CD4053 STYLE' : kind === 'vactrol' ? 'LED / LDR' : kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
     return <g>
       {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>
@@ -91,6 +91,16 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       {leads.map((pin, index) => <text key={index} x={pin.x} y={-3} textAnchor="middle" fill="#576752" fontFamily="monospace" fontSize={6}>{['A', 'W', 'B'][index]}</text>)}
     </g>
   }
+  if (kind === 'spdt') {
+    const leads = pins ?? [{ x: -24, y: 0 }, { x: 0, y: 0 }, { x: 24, y: 0 }]
+    return <g>
+      {selected && <rect x={-36} y={-28} width={72} height={46} rx={8} fill="none" stroke="#a8c55e" strokeDasharray="4 3" />}
+      <rect x={-28} y={-24} width={56} height={32} rx={5} fill="#444c46" stroke="#262e29" />
+      {leads.map((p, i) => <g key={i} data-pin={i + 1}><title>{i + 1}: {PARTS.spdt.pinNames[i]}</title><path d={`M${p.x} ${p.y}V-10`} stroke="#c8c9bd" strokeWidth={3} /><circle cx={p.x} cy={p.y} r={3} fill="#353d35" /></g>)}
+      <path d={`M0-8L${value ? 20 : -20}-18`} stroke="#e2e6d9" strokeWidth={4} strokeLinecap="round" />
+      <text y={-28} textAnchor="middle" fontSize={8} fill="#465743">SPDT · {value}</text>
+    </g>
+  }
   if (kind === 'lm4040' || kind === 'npn' || kind === 'pnp' || kind === 'njfet' || kind === 'nmos' || kind === 'pmos') {
     const fet = kind === 'njfet' || kind === 'nmos' || kind === 'pmos'
     const letters = kind === 'lm4040' ? ['NC', 'K', 'A'] : fet ? ['D', 'G', 'S'] : ['C', 'B', 'E']
@@ -108,7 +118,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       <path d="M-23-14V-27C-23-48 23-48 23-27V-14Z" fill={kind === 'npn' ? '#3d4540' : '#46434a'} stroke="#242d27" strokeWidth={1.3} />
       <path d="M-18-30C-15-41 15-41 18-30" fill="none" stroke="#737b70" strokeWidth={1.2} />
       <path d="M-20-16H20" stroke="#202924" strokeWidth={2} />
-      <text x={0} y={-23} textAnchor="middle" fill={accent} fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={1}>{kind === 'lm4040' ? '2V5' : kind === 'njfet' ? 'JFET' : kind.toUpperCase()}</text>
+      <text x={0} y={-23} textAnchor="middle" fill={accent} fontFamily="monospace" fontSize={8} fontWeight={700} letterSpacing={1}>{kind === 'lm4040' ? `${value}V` : kind === 'njfet' ? 'JFET' : kind.toUpperCase()}</text>
       {leads.map((pin, index) => <text key={index} x={pin.x} y={-5} textAnchor="middle" fill="#465743" stroke="#e8e7d7" strokeWidth={2.2} paintOrder="stroke" fontFamily="monospace" fontSize={7} fontWeight={700}>{letters[index]}</text>)}
     </g>
   }

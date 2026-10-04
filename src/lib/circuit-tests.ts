@@ -1,3 +1,4 @@
+import { isSwitchKind } from './utility-cell-models.ts'
 import { validateDocument, type CircuitDocument } from './circuit.ts'
 import type { CircuitTest, TestFixture } from './automation-graph.ts'
 import type { Capture } from './simulation-types.ts'
@@ -7,7 +8,7 @@ import { executionFingerprint, ENGINE_VERSION, EVALUATOR_VERSION } from './execu
 export type TestVerdict = 'passed' | 'failed' | 'error' | 'inconclusive' | 'canceled' | 'disabled'
 export interface TestReport { testId: string; name: string; verdict: TestVerdict; fingerprint: string; startedAt: string; elapsedMs: number; durationSeconds: number; fixture: TestFixture; engineVersion: string; evaluatorVersion: string; message: string; run?: FlowRun; capture?: Capture; recordingEvicted?: boolean; samples?: number; maximumSampleStepSeconds?: number }
 export type TestExecutor = (document: CircuitDocument, test: CircuitTest, signal?: AbortSignal) => Promise<Capture>
-export function captureFixture(document: CircuitDocument): TestFixture { return { instruments: structuredClone(document.instruments), parts: document.parts.filter(p => p.kind === 'potentiometer' || p.kind === 'switch').map(p => ({ partId: p.id, kind: p.kind, ...(p.kind === 'potentiometer' ? { position: p.position ?? .5 } : { value: p.value }) })) } }
+export function captureFixture(document: CircuitDocument): TestFixture { return { instruments: structuredClone(document.instruments), parts: document.parts.filter(p => p.kind === 'potentiometer' || isSwitchKind(p.kind)).map(p => ({ partId: p.id, kind: p.kind, ...(p.kind === 'potentiometer' ? { position: p.position ?? .5 } : { value: p.value }) })) } }
 export function applyFixture(document: CircuitDocument, fixture: TestFixture): CircuitDocument {
   const snapshot = structuredClone(document); snapshot.instruments = structuredClone(fixture.instruments)
   const partsById = new Map(snapshot.parts.map(part => [part.id, part]))

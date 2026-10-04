@@ -84,7 +84,7 @@ for (const { kind, label, pinsPerRow } of [
   const library = page.getByRole('complementary', { name: 'Parts library' })
   await library.getByRole('button', { name: label }).click()
   await terminal(page, `e${32 - pinsPerRow}`).click()
-  await expect(page.getByText('0 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('0 / 128 parts placed', { exact: true })).toBeVisible()
   await expect(page.getByRole('status', { name: 'Workbench notification', exact: true })).toContainText(`Place all ${pinsPerRow * 2} IC pins across the center trench`)
 
   await terminal(page, 'e7').hover()

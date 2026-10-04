@@ -1,3 +1,4 @@
+import { changeoverPoles, omittedUtilityPin } from './utility-cell-models.ts'
 import { compileCustomModel } from './component-models.ts'
 import { spiceDeviceId, type CircuitDocument } from './circuit.ts'
 import type { OperatingPointBranch, OperatingPointPartDescriptor } from './simulation-types.ts'
@@ -13,7 +14,11 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
     const [a, b, c] = nodes
     const branches: OperatingPointBranch[] = []
     const automated = automatedTransient && document.automations?.some(row => row.enabled && row.action.partId === part.id && !automationIssue(row, document, durationSeconds))
-    if (automated && part.kind === 'switch') {
+    if (part.kind === 'spdt' || part.kind === 'dpdt') {
+      for (const [pole, [common, a, b]] of changeoverPoles(part.kind).entries()) {
+        for (const [state, contact] of [a, b].entries()) branches.push({ kind: 'saved-current', label: `${pole ? 'B' : 'A'} common → ${state}`, fromNode: nodes[common], toNode: nodes[contact], vector: `i(@bsw_${spiceDeviceId(part).toLowerCase()}_${pole}_${state}[i])` })
+      }
+    } else if (automated && part.kind === 'switch') {
       branches.push({ kind: 'saved-current', label: '1 → 2', fromNode: a, toNode: b, vector: `i(@ba_${spiceDeviceId(part).toLowerCase()}[i])` })
     } else if (automated && part.kind === 'potentiometer') {
       const safeId = spiceDeviceId(part).toLowerCase()
@@ -56,7 +61,7 @@ export function operatingPointDescriptors(document: CircuitDocument, nodeByTermi
     // Behavioral IC terminal currents are not exposed as measured chip power.
     // Op-amps omit supply consumption; 555 supply loading is only approximate.
     // Unconnected package pins have no electrical voltage to measure.
-    const measuredNodes = nodes.filter((_, index) => !(part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0))
+    const measuredNodes = nodes.filter((_, index) => !(omittedUtilityPin(part.kind, index) || part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0))
     return { partId: part.id, nodes: measuredNodes, branches }
   })
 }

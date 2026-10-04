@@ -1,14 +1,16 @@
 import { curveIntegral, curveValue } from '@/lib/characteristic-curves'
 import { useMemo } from 'react'
-import { PARTS, formatValue, type Part, type Wire } from '@/lib/circuit'
+import { PARTS, formatValue, type CircuitDocument, type Part, type Wire } from '@/lib/circuit'
 import { useRecording } from '@/lib/recording-context'
 import { formatElectrical } from '@/lib/format-electrical'
 import { InspectorSignals, type InspectorSignal } from './InspectorSignals'
+import { useRecordedAutomationValue } from './useRecordedAutomationValue'
 
 const PIN_COLORS = ['#9bdec8', '#efc17b', '#aebcff', '#e5a1c5', '#aace83', '#86d1ec', '#eaa78d', '#c4a6ed']
 
-export function RecordedMeasurements({ part, nodeByTerminal }: { part: Part; nodeByTerminal: Record<string, string> }) {
+export function RecordedMeasurements({ document, part, nodeByTerminal }: { document: CircuitDocument; part: Part; nodeByTerminal: Record<string, string> }) {
   const { point, playback } = useRecording()
+  const switchValue = useRecordedAutomationValue({ document, target: 'switch', partId: part.id }) ?? part.value
   const model = playback.capture?.recording?.parts.find(p => p.partId === part.id)?.customModel
   const signals = useMemo(() => {
     const pins: InspectorSignal[] = part.pins.map((pin, index) => ({
@@ -31,7 +33,8 @@ export function RecordedMeasurements({ part, nodeByTerminal }: { part: Part; nod
     ? difference === undefined ? undefined : model ? curveIntegral(model.characteristic.points, difference, true) : part.customModelId ? undefined : 0.5 * part.value * difference ** 2
     : part.kind === 'inductor' && current !== undefined ? 0.5 * part.value * current ** 2 : undefined
   const state = !point ? undefined : part.kind === 'led' && current !== undefined ? current > 1e-6 ? 'On' : 'Off'
-    : part.kind === 'switch' ? part.value ? 'Closed' : 'Open'
+    : part.kind === 'spdt' || part.kind === 'dpdt' ? `Throw ${switchValue >= .5 ? 1 : 0}`
+    : part.kind === 'switch' ? switchValue >= .5 ? 'Closed' : 'Open'
       : part.kind === 'timer555' && voltage(2) !== undefined && a !== undefined && voltage(7) !== undefined
         ? voltage(2)! > (a + voltage(7)!) / 2 ? 'Output high' : 'Output low' : undefined
   return <InspectorSignals signals={signals}>
@@ -44,7 +47,7 @@ export function RecordedMeasurements({ part, nodeByTerminal }: { part: Part; nod
         {measured?.power != null && <div><span>Power absorbed</span><output aria-label="Recorded component power">{formatElectrical(measured.power, 'W')}</output></div>}
         {storedEnergy !== undefined && <div><span>Stored energy</span><output aria-label="Recorded stored energy">{formatElectrical(storedEnergy, 'J')}</output></div>}
       </div> : null}
-      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' && part.kind !== 'pc817' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
+      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
     </>}
   </InspectorSignals>
 }

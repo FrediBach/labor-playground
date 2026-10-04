@@ -22,13 +22,15 @@ import { synthLogicExamples } from './synth-logic-examples.ts'
 import { synthUtilityExamples } from './synth-utility-examples.ts'
 import { synthExamples } from './synth-examples.ts'
 import { cd4069Lines, INVERTER_SECTIONS } from './cd4069.ts'
+import { utilityCellParts, isSwitchKind, changeoverPoles, omittedUtilityPin, ssi2162Lines } from './utility-cell-models.ts'
+import { utilityCellExamples } from './utility-cell-examples.ts'
 import { synthDesignExamples } from './synth-design-examples.ts'
 import { timer555Lines } from './timer555.ts'
 import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4069' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4069' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040' | 'spdt' | 'dpdt' | 'opa197' | 'opa4197' | 'ssi2162'
 
 export interface Part {
   id: string
@@ -121,7 +123,7 @@ export interface Terminal {
 }
 
 export interface PartDefinition {
-  package?: 'DIP-4' | 'DIP-8' | 'DIP-14' | 'DIP-16'
+  package?: 'DIP-4' | 'DIP-6' | 'DIP-8' | 'DIP-10' | 'DIP-14' | 'DIP-16'
   supplyHint?: string
   label: string
   unit: string
@@ -134,6 +136,7 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  ...utilityCellParts,
   cd4024: {
     package: 'DIP-14', pinNames: ['CLK', 'RESET', 'Q7', 'Q6', 'Q5', 'Q4', 'VSS', 'NC', 'Q3', 'NC', 'Q2', 'Q1', 'NC', 'VDD'],
     label: 'CD4024-style ripple counter', unit: '', defaultValue: 1, min: 1, max: 1,
@@ -157,10 +160,10 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
   },
   lm4040: {
     pinNames: ['NC / A', 'Cathode', 'Anode'],
-    label: 'LM4040-style 2.5 V reference', unit: 'V', defaultValue: 2.5, min: 2.5, max: 2.5,
+    label: 'LM4040-style shunt reference', unit: 'V', defaultValue: 2.5, min: 2.5, max: 5,
     description: 'A fixed shunt voltage reference for stable CV offsets and control-voltage scaling.',
     supplyHint: 'TI TO-92 pin order: 1 float or anode, 2 cathode, 3 anode. Connect anode to the reference return and feed cathode through a resistor. Allow 60 µA–15 mA shunt current after load current; the reference cannot source current.',
-    model: 'Original nominal 2.5 V shunt approximation, using the TI LM4040 TO-92 pin order (not the SOT-23 order). A soft pre-regulation current rises to 60 µA at 2.5 V, followed by 0.5 Ω incremental resistance. Includes forward diode conduction and 1 nF effective capacitance. Pin 1 is electrically omitted and may only float or connect to anode. No tolerance, temperature coefficient, noise, calibrated startup, or overcurrent failure model. Behavior above 15 mA is not device-qualified.',
+    model: 'Original nominal 2.5 V or 5 V shunt approximation, using the TI LM4040 TO-92 pin order (not the SOT-23 order). A soft pre-regulation current rises to 60 µA at the selected voltage, followed by 0.5 Ω incremental resistance. Includes forward diode conduction and 1 nF effective capacitance. Pin 1 is electrically omitted and may only float or connect to anode. No tolerance, temperature coefficient, noise, calibrated startup, or overcurrent failure model. Behavior above 15 mA is not device-qualified.',
   },
   cd4013: {
     package: 'DIP-14', pinNames: ['Q A', '/Q A', 'CLK A', 'RST A', 'D A', 'SET A', 'VSS', 'SET B', 'D B', 'RST B', 'CLK B', '/Q B', 'Q B', 'VDD'],
@@ -371,6 +374,8 @@ interface AmplifierPins {
   sections: [number, number, number][]
 }
 const amplifierPinouts: Partial<Record<ComponentKind, AmplifierPins>> = {
+  opa197: { negative: 3, positive: 6, sections: [[5, 1, 2]] },
+  opa4197: { negative: 10, positive: 3, sections: [[0, 1, 2], [6, 5, 4], [7, 8, 9], [13, 12, 11]] },
   opamp: { negative: 3, positive: 7, sections: [[0, 1, 2], [6, 5, 4]] },
   quadopamp: { negative: 10, positive: 3, sections: [[0, 1, 2], [6, 5, 4], [7, 8, 9], [13, 12, 11]] },
 }
@@ -532,8 +537,8 @@ export function validateDocument(input: unknown): CircuitDocument {
   const raw = object(input, 'Circuit')
   if (![1, 2, 3, 4].includes(raw.schemaVersion as number) || raw.boardVersion !== 'virtual-1') throw new Error('Unsupported circuit or board version.')
   if (typeof raw.title !== 'string' || raw.title.length > 100) throw new Error('Circuit title must contain at most 100 characters.')
-  if (!Array.isArray(raw.parts) || raw.parts.length > 30) throw new Error('A circuit may contain up to 30 components.')
-  if (!Array.isArray(raw.wires) || raw.wires.length > 120) throw new Error('A circuit may contain up to 120 wires.')
+  if (!Array.isArray(raw.parts) || raw.parts.length > PROJECT_LIMITS.parts) throw new Error(`A circuit may contain up to ${PROJECT_LIMITS.parts} components.`)
+  if (!Array.isArray(raw.wires) || raw.wires.length > PROJECT_LIMITS.wires) throw new Error(`A circuit may contain up to ${PROJECT_LIMITS.wires} wires.`)
   if (raw.schemaVersion === 4 && (raw.automationProgram === undefined || raw.automations !== undefined)) throw new Error('Schema 4 requires one automationProgram and no legacy automations.')
   if (raw.schemaVersion !== 4 && raw.automationProgram !== undefined) throw new Error('Automation flows require schema version 4.')
   if (raw.pico !== undefined && raw.schemaVersion === 1) throw new Error('Pico projects require schema version 2 or 3.')
@@ -570,9 +575,10 @@ export function validateDocument(input: unknown): CircuitDocument {
     let value = finiteNumber(part.value, `${id} value`, definition.min, definition.max)
     const model = resolvePartModel({ customComponents }, { kind, customModelId: part.customModelId as string | undefined })
     if (model) value = nominalValue(model)
-    if (kind === 'switch' && value !== 0 && value !== 1) throw new Error(`${id} must be either open (0) or closed (1).`)
+    if (isSwitchKind(kind) && value !== 0 && value !== 1) throw new Error(`${id} must be either open (0) or closed (1).`)
     if (!Array.isArray(part.pins) || part.pins.length !== definition.pinNames.length) throw new Error(`${id} requires exactly ${definition.pinNames.length} pins.`)
     const pins = part.pins.map(readTerminal)
+    if (kind === 'lm4040' && value !== 2.5 && value !== 5) throw new Error('Choose a 2.5 V or 5 V LM4040 reference.')
     if (!isValidFootprint(kind, pins, { board })) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
@@ -700,7 +706,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const control = (key: string, fallback: number) => controlNodes.has(key) ? `v(${controlNodes.get(key)})` : spiceNumber(fallback)
   const usedTerminals = [...doc.parts.flatMap((part) => part.pins), ...doc.wires.flatMap((wire) => [wire.from, wire.to]), ...Object.values(doc.probes).filter((probe): probe is string => probe !== null)]
   const activeNodes = new Set(usedTerminals.map((terminal) => nodeByTerminal[terminal]))
-  if (activeNodes.size > 60) diagnostics.push({ severity: 'error', message: 'This workbench supports up to 60 connected circuit nodes. Simplify the circuit before capturing.' })
+  if (activeNodes.size > PROJECT_LIMITS.nodes) diagnostics.push({ severity: 'error', message: `This workbench supports up to ${PROJECT_LIMITS.nodes} connected circuit nodes. Simplify the circuit before capturing.` })
   if (doc.pico && nodeByTerminal[picoGround] !== '0') diagnostics.push({ severity: 'error', message: 'Connect a Pico GND pin to workbench GND before capturing.' })
   try { oledConnections(doc, nodeByTerminal) }
   catch (error) { diagnostics.push({ severity: 'error', message: error instanceof Error ? error.message : 'Invalid OLED wiring.' }) }
@@ -741,6 +747,10 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       continue
     }
     if (part.kind === 'vactrol' || part.kind === 'pc817') { addEdge(a, b); addEdge(nodes[2], nodes[3]); continue }
+    if (part.kind === 'spdt' || part.kind === 'dpdt') {
+      for (const [common, a, b] of changeoverPoles(part.kind)) { addEdge(nodes[common], nodes[a]); addEdge(nodes[common], nodes[b]) }
+      continue
+    }
     if (PARTS[part.kind].package) continue
     if (part.kind === 'potentiometer' || part.kind === 'npn' || part.kind === 'pnp') {
       if (a === b || b === c || a === c) diagnostics.push({ severity: 'warning', message: `${part.id} has terminals on the same electrical net. ${part.kind === 'potentiometer' ? 'A potentiometer needs three separate strips to act as a divider.' : 'Use three separate strips for the collector, base, and emitter.'}`, partId: part.id })
@@ -799,8 +809,26 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
   }
   traceReferences()
+  for (const part of doc.parts.filter(part => part.kind === 'ssi2162')) {
+    const nodes = part.pins.map(pin => nodeByTerminal[pin])
+    let powered = true
+    for (const index of [4, 5, 9]) if (!referenced.has(nodes[index])) {
+      diagnostics.push({ severity: 'error', message: `${part.id} ${PARTS.ssi2162.pinNames[index]} needs an explicit referenced supply connection.`, partId: part.id })
+      powered = false
+    }
+    for (const [high, low] of [[9, 4], [4, 5]]) {
+      const a = fixedVoltages.get(nodes[high]), b = fixedVoltages.get(nodes[low])
+      if (nodes[high] === nodes[low] || a !== undefined && b !== undefined && (a - b < 4 || a - b > 18)) {
+        diagnostics.push({ severity: 'error', message: `${part.id} needs V+ 4–18 V above GND and V− 4–18 V below GND.`, partId: part.id })
+        powered = false
+      }
+    }
+    if (powered) for (const index of [1, 2, 7, 8]) addEdge(nodes[index], nodes[4])
+  }
+  traceReferences()
   for (const part of doc.parts.filter(part => amplifierPinouts[part.kind])) {
     const layout = amplifierPinouts[part.kind]!
+    const precision = part.kind === 'opa197' || part.kind === 'opa4197'
     const nodes = part.pins.map(pin => nodeByTerminal[pin])
     const negative = nodes[layout.negative]
     const positive = nodes[layout.positive]
@@ -817,12 +845,12 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       powered = false
     } else if (fixedVoltages.has(positive) && fixedVoltages.has(negative)) {
       const span = fixedVoltages.get(positive)! - fixedVoltages.get(negative)!
-      if (span <= 2) {
-        diagnostics.push({ severity: 'error', message: `${part.id} ${span < 0 ? 'supply polarity is reversed' : 'supply voltage is insufficient'}. V+ must be more than 2 V above V− for this model.`, partId: part.id })
+      if (precision ? span < 4.5 || span > 36 : span <= 2) {
+        diagnostics.push({ severity: 'error', message: `${part.id} ${span < 0 ? 'supply polarity is reversed' : 'supply voltage is insufficient'}. ${precision ? 'Keep V+ 4.5–36 V above V−' : 'V+ must be more than 2 V above V−'} for this model.`, partId: part.id })
         powered = false
       }
     } else if (powered) {
-      diagnostics.push({ severity: 'warning', message: `${part.id} supply voltage depends on the circuit. Verify that V+ stays more than 2 V above V−; the output model shuts down below that separation.`, partId: part.id })
+      diagnostics.push({ severity: 'warning', message: `${part.id} supply voltage depends on the circuit. Verify that V+ stays ${precision ? '4.5–36 V' : 'more than 2 V'} above V−.`, partId: part.id })
     }
     if (powered) {
       // An output is driven relative to the connected negative supply. This does
@@ -947,7 +975,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   const warnedFloating = new Set<string>()
   for (const part of doc.parts) {
     for (const [index, pin] of part.pins.entries()) {
-      if (part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0) continue
+      if (omittedUtilityPin(part.kind, index) || part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0) continue
       const node = nodeByTerminal[pin]
       if (!referenced.has(node) && !warnedFloating.has(node)) {
         const input = amplifierPinouts[part.kind]?.sections.some(([, minus, plus]) => index === minus || index === plus)
@@ -1046,10 +1074,20 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       if (part.kind === 'njfet') lines.push(`.model JF_${safeId} NJF(Vto=-2 Beta=1m Lambda=0.01 Rd=10 Rs=10 Cgs=5p Cgd=2p Is=1p)`, `J_${safeId} fd_${safeId} fg_${safeId} ${c} JF_${safeId}`)
       else lines.push(`.model MF_${safeId} ${part.kind === 'pmos' ? 'PMOS(Level=1 Vto=-2 Kp=10m' : 'NMOS(Level=1 Vto=2 Kp=20m'} Lambda=0.02 Rd=2 Rs=2 Cbd=10p Is=1p)`, `M_${safeId} fd_${safeId} fg_${safeId} ${c} ${c} MF_${safeId} W=10u L=10u`, `CGS_${safeId} fg_${safeId} ${c} 30p`, `CGD_${safeId} fg_${safeId} fd_${safeId} 5p`, `RG_${safeId} fg_${safeId} ${c} 1e12`)
     }
-    if (part.kind === 'cd4024' || part.kind === 'cd4093' || part.kind === 'lm4040') lines.push(...synthTimingLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    if (part.kind === 'cd4024' || part.kind === 'cd4093' || part.kind === 'lm4040') lines.push(...synthTimingLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin]), part.value))
     if (part.kind === 'cd4001' || part.kind === 'cd4013' || part.kind === 'cd4070' || part.kind === 'cd4081' || part.kind === 'pc817') lines.push(...synthLogicLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin]), part.value))
     if (part.kind === 'cd40106' || part.kind === 'cd4053' || part.kind === 'vactrol') lines.push(...synthUtilityLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm393' || part.kind === 'cd4066') lines.push(...synthIcLines(part.kind, safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    if (part.kind === 'ssi2162') lines.push(...ssi2162Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
+    if (part.kind === 'spdt' || part.kind === 'dpdt') {
+      const nodes = part.pins.map(pin => nodeByTerminal[pin])
+      for (const [pole, [common, a, b]] of changeoverPoles(part.kind).entries()) {
+        for (const [state, contact] of [a, b].entries()) {
+          const selected = state === 1 ? control(`switch:${part.id}`, part.value) : `(1-${control(`switch:${part.id}`, part.value)})`
+          lines.push(`BSW_${safeId}_${pole}_${state} ${nodes[common]} ${nodes[contact]} I = v(${nodes[common]},${nodes[contact]})/(1+(1-${selected})*999999999)`)
+        }
+      }
+    }
     if (part.kind === 'switch') lines.push(timelines.has(`switch:${part.id}`)
       ? `BA_${safeId} ${a} ${b} I = v(${a},${b})/(1+(1-${control(`switch:${part.id}`, part.value)})*999999999)`
       : `R_${safeId} ${a} ${b} ${part.value === 1 ? '1' : '1e9'}`)
@@ -1074,7 +1112,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       const positive = nodes[layout.positive]
       // Lower finite gain keeps cascaded quad sections numerically stable when
       // clipping while retaining <0.1% closed-loop error in the tested utilities.
-      const gain = part.kind === 'quadopamp' ? '1e4' : '1e5'
+      const precision = part.kind === 'opa197' || part.kind === 'opa4197'
+      const gain = part.kind === 'quadopamp' || precision ? '1e4' : '1e5'
       for (const [section, pins] of layout.sections.entries()) {
         const half = 'abcd'[section]
         const [output, inverting, noninverting] = pins.map(index => nodes[index])
@@ -1083,10 +1122,18 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
         // The behavioral source returns to the visible V− pin, never to an
         // invented power rail. The available swing collapses continuously as
         // supplies ramp down, keeping .op source stepping well-conditioned.
-        const swing = `max(0,${span}/2-1)`
-        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = max(0,${span})/2+max(-${swing},min(${swing},${gain}*v(${noninverting},${inverting})))`)
-        lines.push(`RO_${safeId}_${half} ${internal} ${output} 50`)
-        lines.push(`RI_${safeId}_${half} ${noninverting} ${inverting} 1e8`)
+        const swing = `max(0,${span}/2-${precision ? 0.1 : 1})`
+        const differential = `${gain}*v(${noninverting},${inverting})`
+        const limited = precision
+          ? `(${differential})/sqrt(1+pow((${differential})/max(1m,${swing}),2))`
+          : `max(-${swing},min(${swing},${differential}))`
+        lines.push(`BO_${safeId}_${half} ${internal} ${negative} V = max(0,${span})/2+${limited}`)
+        // One nominal dominant pole for OPAx197: 10 MHz gain-bandwidth at
+        // gain 10,000. This also avoids an instantaneous capacitive feedback
+        // loop in the utility's dual-feedback output driver.
+        if (precision) lines.push(`RPOLE_${safeId}_${half} ${internal} ${internal}_pole 1k`, `CPOLE_${safeId}_${half} ${internal}_pole ${negative} 159.154943n`)
+        lines.push(`RO_${safeId}_${half} ${precision ? `${internal}_pole` : internal} ${output} 50`)
+        lines.push(`RI_${safeId}_${half} ${noninverting} ${inverting} ${precision ? '1e12' : '1e8'}`)
       }
     }
   }
@@ -1115,6 +1162,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     const custom = compileCustomModel(doc, part, part.pins.map(pin => nodeByTerminal[pin]))
     if (custom) return custom.savedVectors
     const safeId = spiceDeviceId(part)
+    if (part.kind === 'spdt' || part.kind === 'dpdt') return changeoverPoles(part.kind).flatMap((_, pole) => [0, 1].map(state => `@BSW_${safeId}_${pole}_${state}[i]`))
     if (timelines.has(`switch:${part.id}`)) return [`@BA_${safeId}[i]`]
     if (timelines.has(`potentiometer:${part.id}`)) return [`@BA_${safeId}_ccw[i]`, `@BA_${safeId}_cw[i]`]
     if (part.kind === 'diode' || part.kind === 'led' || part.kind === 'schottky' || part.kind === 'zener') return [`@D_${safeId}[id]`]
@@ -1164,7 +1212,11 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'cd4024') return '7-stage · DIP-14'
   if (kind === 'cd4093') return 'Quad Schmitt NAND · DIP-14'
   if (kind === 'cd4001') return 'Quad NOR · DIP-14'
-  if (kind === 'lm4040') return '2.5 V shunt · TO-92'
+  if (kind === 'lm4040') return `${value} V shunt · TO-92`
+  if (kind === 'spdt' || kind === 'dpdt') return `Throw ${value}`
+  if (kind === 'opa197') return 'Single · SOIC-8 adapter'
+  if (kind === 'opa4197') return 'Quad · SOIC-14 adapter'
+  if (kind === 'ssi2162') return 'Dual VCA · SSOP-10 adapter'
   if (kind === 'cd4013') return 'Dual D-type · DIP-14'
   if (kind === 'cd4070') return 'Quad XOR · DIP-14'
   if (kind === 'cd4081') return 'Quad AND · DIP-14'
@@ -1306,10 +1358,11 @@ export const examples: CircuitExample[] = [
   ...synthLogicExamples,
   ...synthTimingExamples,
   ...synthDesignExamples,
+  ...utilityCellExamples,
   ...picoExamples,
 ]
 
-for (const example of examples) example.document.documentation = exampleDocumentation(example)
+for (const example of examples) example.document.documentation ??= exampleDocumentation(example)
 
 /** Resolve only directly wired, powered peripherals; never invent a device on a bus. */
 export function oledConnections(doc: CircuitDocument, nodes = resolveTopology(doc).nodeByTerminal): OledConnection[] {

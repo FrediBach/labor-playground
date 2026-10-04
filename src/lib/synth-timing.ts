@@ -5,13 +5,13 @@ import { QUAD_GATE_SECTIONS } from './synth-logic.ts'
 export const COUNTER_OUTPUTS = [11, 10, 8, 5, 4, 3, 2] as const
 export const COUNTER_NC = [7, 9, 12] as const
 
-export function synthTimingLines(kind: 'cd4024' | 'cd4093' | 'lm4040', id: string, n: string[]): string[] {
+export function synthTimingLines(kind: 'cd4024' | 'cd4093' | 'lm4040', id: string, n: string[], reference = 2.5): string[] {
   if (kind === 'lm4040') {
     // TI TO-92: pin 1 must float or connect to anode; 2 cathode; 3 anode.
     const [, cathode, anode] = n, internal = `ref_${id}`, v = `v(${internal},${anode})`
     return [
       `VREF_${id} ${cathode} ${internal} 0`,
-      `BREF_${id} ${internal} ${anode} I = ${v}>2.5 ? 60u+(${v}-2.5)/0.5 : 60u*pow(max(0,${v})/2.5,8)`,
+      `BREF_${id} ${internal} ${anode} I = ${v}>${reference} ? 60u+(${v}-${reference})/0.5 : 60u*pow(max(0,${v})/${reference},8)`,
       `.model DREF_${id} D(Is=1p N=1 Rs=1 Cjo=20p)`,
       `DREF_${id} ${anode} ${internal} DREF_${id}`,
       `CREF_${id} ${internal} ${anode} 1n`,

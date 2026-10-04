@@ -90,12 +90,12 @@ test('real ngspice capture changes when capacitance changes, and Undo restores i
 test('build a divider with placement, wiring and probes, then undo a component move', async ({ page }) => {
   await page.goto('/')
   await page.getByRole('button', { name: 'Clear board', exact: true }).click()
-  await expect(page.getByText('0 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('0 / 128 parts placed', { exact: true })).toBeVisible()
   const library = page.getByRole('complementary', { name: 'Parts library' })
   await library.getByRole('button', { name: /Resistor/ }).click()
   await terminal(page, 'a6').click()
   await terminal(page, 'c9').click()
-  await expect(page.getByText('2 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('2 / 128 parts placed', { exact: true })).toBeVisible()
 
   // Every lead uses its own hole. Vertical strips provide the connections.
   await page.getByRole('button', { name: 'Wire tool', exact: true }).click()
@@ -187,7 +187,7 @@ test('malformed import preserves the circuit; export imports and recovery surviv
   await page.getByRole('button', { name: 'Clear board', exact: true }).click()
   await page.locator('input[type="file"]').setInputFiles(path!)
   await expect(page.getByRole('status', { name: 'Workbench notification', exact: true })).toContainText('Imported RC low-pass filter.')
-  await expect(page.getByText('2 / 30 parts placed', { exact: true })).toBeVisible()
+  await expect(page.getByText('2 / 128 parts placed', { exact: true })).toBeVisible()
   await page.reload()
   await captured(page)
   expect(await peakToPeak(page, 'CH2')).toBeCloseTo(original, 1)

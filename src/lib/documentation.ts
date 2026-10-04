@@ -1,7 +1,7 @@
 import { PARTS, formatValue, type CircuitDocument, type CircuitExample } from './circuit.ts'
 import { programFor } from './automation-migration.ts'
 
-export const DOCUMENTATION_LIMITS = { sections: 100, title: 120, body: 8000, total: 60000 } as const
+export const DOCUMENTATION_LIMITS = { sections: 192, title: 120, body: 8000, total: 60000 } as const
 export const SECTION_KINDS = { explanation: 'Circuit explanation', component: 'Component note', automation: 'Automation note', experiment: 'Experiment', note: 'Additional note' } as const
 export type SectionKind = keyof typeof SECTION_KINDS
 export interface DocumentationSection {
@@ -15,7 +15,7 @@ export interface DocumentationSection {
 export interface CircuitDocumentation { sections: DocumentationSection[] }
 
 export function validateDocumentation(input: unknown): CircuitDocumentation {
-  if (!input || typeof input !== 'object' || !('sections' in input) || !Array.isArray(input.sections) || input.sections.length > DOCUMENTATION_LIMITS.sections) throw new Error('Documentation requires at most 100 sections.')
+  if (!input || typeof input !== 'object' || !('sections' in input) || !Array.isArray(input.sections) || input.sections.length > DOCUMENTATION_LIMITS.sections) throw new Error('Documentation requires at most 192 sections.')
   const ids = new Set<string>()
   let total = 0
   const sections = input.sections.map((entry: unknown): DocumentationSection => {

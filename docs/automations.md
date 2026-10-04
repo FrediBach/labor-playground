@@ -91,3 +91,9 @@ Versions 1–3 remain importable. Saving a graph edit or test upgrades that docu
 Limits are 32 definitions (including capture/test entry flows), 32 cases, 256 stored nodes, 64 nodes per flow, four call levels, 256 expanded steps, 512 committed node events, and 32 causal solver passes. Existing sample, memory, duration and worker limits still apply. A valid-sized graph can exceed the runtime pass budget and receives an Error. Loops, scripts, automatic checking after edits, physical hardware, and analog GPIO/ADC feedback remain outside this release.
 
 A local Node/ngspice benchmark on 2026-10-03 (`node --experimental-strip-types scripts/benchmark-automation-flows.ts`, 100 ms captures) measured eight dependent ramps at 267 ms / 9 solver passes / 8,032 samples, and 24 one-shot voltage automations at 767 ms / 25 passes / 8,272 samples. Process RSS was 545–552 MiB including the engine. These are fixture measurements, not a latency or memory guarantee for arbitrary circuits; watchdogs were not increased.
+
+## Cascadable utility experiment
+
+The Advanced **Cascadable 1U utility cells** example includes a capture flow and eight saved tests. **Run all tests** checks references, level polarity, linear CV/cutoff, offset, DIRECT, source override, mix segmentation, output taps, and bipolar range conversion. Tests use physical terminal signals and frozen controls; moving scope probes does not change these expectations. See the [guide and CLI command](utility-cell.md).
+
+The existing switch action also operates SPDT and DPDT parts: value 0 selects throw 0, value 1 selects throw 1, with both DPDT poles moving together. The ordinary SPST keeps its open/closed meaning. These settings participate in fixtures and execution fingerprints like the other controls.

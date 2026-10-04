@@ -12,7 +12,7 @@ test('timing components expose real pin labels and survive moving, undo, and rel
     ['ripple', 'CD4024-style ripple counter', 'U1', 'E2', ['CLK', 'RESET', 'Q7', 'Q6', 'Q5', 'Q4', 'VSS', 'NC', 'Q3', 'NC', 'Q2', 'Q1', 'NC', 'VDD']],
     ['nand', 'CD4093-style Schmitt NAND gates', 'U2', 'E10', ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD']],
     ['nor', 'CD4001-style NOR gates', 'U3', 'E18', ['A1', 'B1', 'Y1', 'Y2', 'A2', 'B2', 'VSS', 'A3', 'B3', 'Y3', 'Y4', 'A4', 'B4', 'VDD']],
-    ['shunt reference', 'LM4040-style 2.5 V reference', 'U4', 'A26', ['NC / A', 'Cathode', 'Anode']],
+    ['shunt reference', 'LM4040-style shunt reference', 'U4', 'A26', ['NC / A', 'Cathode', 'Anode']],
   ] as const) {
     await search.fill(query)
     await library.getByRole('button', { name, exact: true }).click()

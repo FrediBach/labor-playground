@@ -21,7 +21,7 @@ export function legacySymbolDefinition(symbol: SchematicSymbol, symbolName: stri
   const transistor = ['npn', 'pnp', 'nmos', 'pmos', 'njfet'].includes(symbol.kind)
   const potentiometer = symbol.kind === 'potentiometer'
   const block = !passive && !transistor && !potentiometer
-  const reference = ({ resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'D', npn: 'Q', pnp: 'Q', nmos: 'Q', pmos: 'Q', njfet: 'Q', switch: 'SW', potentiometer: 'RV' } as Record<string, string>)[symbol.kind] ?? 'U'
+  const reference = ({ resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'D', npn: 'Q', pnp: 'Q', nmos: 'Q', pmos: 'Q', njfet: 'Q', switch: 'SW', spdt: 'SW', dpdt: 'SW', potentiometer: 'RV' } as Record<string, string>)[symbol.kind] ?? 'U'
   const angle = symbol.rotation * Math.PI / 180
   const cos = Math.cos(angle), sin = Math.sin(angle)
   const mil = (value: number) => Math.round(value * KICAD_SCALE)

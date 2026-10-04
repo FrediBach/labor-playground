@@ -1,3 +1,4 @@
+import { PROJECT_LIMITS } from '@/lib/project-limits'
 import { parsePlacement, resolvePartModel, nominalValue, partDisplayName, partValueSummary, type PartPlacement } from '@/lib/custom-components'
 import { PICO_PINS } from '@/lib/pico/profile'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
@@ -88,7 +89,7 @@ function makeId(prefix: string, document: CircuitDocument) {
   return `${prefix}${value}`
 }
 
-const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', njfet: 'J', nmos: 'M', pmos: 'M', vactrol: 'O', pc817: 'O', cd4024: 'U', cd4093: 'U', cd4001: 'U', lm4040: 'U', cd4013: 'U', cd4070: 'U', cd4081: 'U', cd40106: 'U', cd4069: 'U', cd4053: 'U', lm393: 'U', cd4066: 'U', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
+const PREFIXES: Record<ComponentKind, string> = { spdt: 'S', dpdt: 'S', opa197: 'U', opa4197: 'U', ssi2162: 'U', resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', njfet: 'J', nmos: 'M', pmos: 'M', vactrol: 'O', pc817: 'O', cd4024: 'U', cd4093: 'U', cd4001: 'U', lm4040: 'U', cd4013: 'U', cd4070: 'U', cd4081: 'U', cd40106: 'U', cd4069: 'U', cd4053: 'U', lm393: 'U', cd4066: 'U', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, placement, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const geometry = useMemo(() => boardGeometry({ board: document.board }), [document.board])
@@ -177,8 +178,8 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
   function place(selection: PartPlacement, terminal: Terminal) {
     const { kind, customModelId } = selection
     const model = resolvePartModel(document, selection)
-    if (document.parts.length >= 30) {
-      onMessage('This workbench supports up to 30 components. Remove a component before adding another.')
+    if (document.parts.length >= PROJECT_LIMITS.parts) {
+      onMessage(`This workbench supports up to ${PROJECT_LIMITS.parts} components. Remove a component before adding another.`)
       return
     }
     const pins = getPlacement(kind, terminal.id, rotation, document)
@@ -225,8 +226,8 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
         return
       }
       if (terminal.id === wireStart) { setWireStart(null); setEditingWire(null); return }
-      if (!editingWire && document.wires.length >= 120) {
-        onMessage('This workbench supports up to 120 jumper wires. Remove a wire before adding another.')
+      if (!editingWire && document.wires.length >= PROJECT_LIMITS.wires) {
+        onMessage(`This workbench supports up to ${PROJECT_LIMITS.wires} jumper wires. Remove a wire before adding another.`)
         return
       }
       if (!canPlace(document, [wireStart, terminal.id], editingWire?.id)) {

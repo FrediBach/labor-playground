@@ -1,3 +1,4 @@
+import { isSwitchKind } from './utility-cell-models.ts'
 import type { CircuitDocument, Part } from './circuit.ts'
 import type { Capture } from './simulation-types.ts'
 
@@ -71,7 +72,7 @@ export function automationIssue(automation: Automation, document: CircuitDocumen
   const { action, trigger } = automation
   if (action.target === 'switch' || action.target === 'potentiometer') {
     const part = document.parts.find(part => part.id === action.partId)
-    if (!part || part.kind !== action.target) return `Choose an existing ${action.target === 'switch' ? 'switch' : 'potentiometer'}; ${action.partId ?? 'the target'} is unavailable.`
+    if (!part || (action.target === 'switch' ? !isSwitchKind(part.kind) : part.kind !== action.target)) return `Choose an existing ${action.target === 'switch' ? 'switch' : 'potentiometer'}; ${action.partId ?? 'the target'} is unavailable.`
   }
   if (action.target === 'gate' && document.instruments.envelope?.mode !== 'gate') return 'Set EG to Gate mode to automate its button.'
   if (action.target === 'frequency' && document.stimulus === 'step') return 'Frequency automation requires a periodic oscillator stimulus.'
@@ -138,7 +139,7 @@ export function automationTimelines(document: CircuitDocument, events: readonly 
 
 export function automationControlValues(document: CircuitDocument, events: readonly AutomationEvent[], timeSeconds: number) {
   const result = { cv: document.instruments.cv, amplitude: document.instruments.amplitude, frequency: document.instruments.frequency, gate: Number(document.instruments.envelope?.gateHigh ?? false), parts: {} as Record<string, number> }
-  for (const part of document.parts) if (part.kind === 'switch' || part.kind === 'potentiometer') result.parts[part.id] = part.kind === 'switch' ? part.value : part.position ?? 0.5
+  for (const part of document.parts) if (isSwitchKind(part.kind) || part.kind === 'potentiometer') result.parts[part.id] = isSwitchKind(part.kind) ? part.value : part.position ?? 0.5
   for (const [key, points] of automationTimelines(document, events)) {
     const value = automationValueAt(points, timeSeconds)
     if (key.includes(':')) result.parts[key.slice(key.indexOf(':') + 1)] = value
