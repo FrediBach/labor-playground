@@ -18,6 +18,10 @@
 .pico-panel button:focus-visible, .pico-panel input:focus-visible, .pico-panel summary:focus-visible { outline: 2px solid #d5e6cb; outline-offset: 3px; }
 .pico-panel button:disabled { opacity: .45; cursor: default; }
 .pico-toolbar .pico-remove { margin-left: auto; background: transparent; color: #c0cfc5; }
+.pico-transfer { border-block: 1px solid #45554a; }
+.pico-transfer label { display: flex; align-items: center; gap: 8px; }
+.pico-transfer input { accent-color: #adccb2; width: 16px; height: 16px; }
+.pico-transfer p:empty { display: none; }
 .pico-editor { height: 300px; min-height: 180px; max-height: 650px; resize: vertical; overflow: hidden; }
 .pico-language { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 10px 16px; border-top: 1px solid #34483a; }
 .pico-language label { display: flex; align-items: center; gap: 9px; }

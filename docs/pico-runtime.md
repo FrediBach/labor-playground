@@ -4,6 +4,21 @@ LABOR's first Pico profile is `rp2-pico-1.20.0-v1`. Select a Pico example or add
 
 The dock represents the original, non-wireless RP2040 Pico. Its 40 numbered header positions follow the [official board layout](https://www.raspberrypi.com/documentation/microcontrollers/pico-series.html#non-wireless-board-layout). GP25 is the onboard LED and has no header terminal. GND and AGND join inside the board; neither connects to breadboard ground without a jumper. Unsupported power/control terminals are labeled but cannot be wired. No additional Pico instance is accepted.
 
+## Send code to a physical Pico
+
+1. Install the appropriate MicroPython firmware for your Pico if needed, following the [RP2 setup guide](https://docs.micropython.org/en/latest/rp2/tutorial/intro.html). This feature transfers Python source; it does not flash UF2 firmware.
+2. Open the workbench in desktop Chrome or Edge on HTTPS or localhost. Connect the Pico with a USB data cable, without holding BOOTSEL. Close Thonny, other serial terminals, and other tabs using the port.
+3. Open **Pico Code**, edit `main.py`, and click **Send to Pico**. Select the board in the browser’s port picker. Sending interrupts the current program, resets the interpreter, and replaces the board’s startup file, `main.py`.
+4. Leave **Run after upload** checked to restart the Pico after saving. Uncheck it to leave the board at the REPL; the saved program will run on its next reset. The USB port is released when the operation finishes, including on errors or cancellation.
+
+The uploader freezes the editor source when clicked, uses MicroPython’s [raw REPL protocol](https://docs.micropython.org/en/latest/reference/repl.html#raw-mode-and-raw-paste-mode) with paced, bounded commands, and checks that the device reports the RP2 platform. It sends UTF-8 bytes to a uniquely named `.labor-….py` temporary file, checks its size and compiles it on the board, then renames it over `main.py`. A failed transfer or syntax check before that rename preserves the previous startup file. Interrupted uploads can leave a temporary file on the board; it can be removed with a MicroPython file manager. Cancelling after the rename cannot undo the saved file.
+
+The 32 KiB source limit applies. The board compiles with its installed firmware version, which may differ from the simulator’s pinned version. Only `main.py` is uploaded; imported libraries must already be installed. The simulator’s `scope` module is unavailable on hardware: remove its import and logging calls before sending. Wire physical peripherals to match the program. Simulation capture duration does not limit execution on the board.
+
+The success message confirms saving and, when selected, the soft reboot acknowledgement. It does not verify that the program runs successfully. The console in the code panel remains the **simulation** console; this uploader does not capture hardware output. Serial permission is requested only by the Send button; loading projects, editing, and simulating never access hardware. [Web Serial](https://developer.chrome.com/docs/capabilities/serial) requires browser support and a secure context. Unsupported browsers show an explanation and disable the button.
+
+Validation covers fragmented serial responses, UTF-8 transfers, cancellation, timeouts, disconnection, syntax failures, save-only mode, and mocked browser port selection. The generated file-writing commands also run against the bundled MicroPython firmware in the emulator. A physical USB transfer still requires validation with a connected Pico.
+
 ## Pinned assets
 
 | Asset | Version / provenance |

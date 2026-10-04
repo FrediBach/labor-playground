@@ -6,6 +6,8 @@ This build implements the editable workbench, thirty-three-part component librar
 
 The [Pico runtime](./docs/pico-runtime.md) adds local MicroPython execution, Monaco semantic IntelliSense, and GPIO/PWM-to-ngspice captures. Select a Pico example, edit `main.py`, and press **Simulate** in the top bar (or **Run** in the editor). Circuit-fed inputs, ADC feedback, PIO and multicore are unsupported. The [implementation plan](./docs/pico-implementation-plan.md) records the release scope and later feedback milestone.
 
+**Send to Pico** in **Pico Code** uploads the current source directly to a physical Pico over USB using Web Serial. Use desktop Chrome/Edge on HTTPS or localhost, with MicroPython already installed. Sending replaces the board’s `main.py`; **Run after upload** restarts it. See [USB transfer](./docs/pico-runtime.md#send-code-to-a-physical-pico) for setup and behavior.
+
 **Pico · OLED display** demonstrates a four-wire SSD1306 128×64 display with text, a counter, and an animated progress bar. Load the example, Simulate, then play or scrub its one-second recording. The self-contained MicroPython example also runs on a physical Pico; see the [OLED guide](./docs/pico-runtime.md#ssd1306-oled-display) for wiring and model limits.
 
 ## Try it

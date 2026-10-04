@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { languageWorkspace, listenLanguage, monaco, MAIN_URI } from '@/lib/pico/language'
 import { PROJECT_LIMITS } from '@/lib/pico/profile'
+import { PicoTransfer } from './PicoTransfer'
 import './PicoPanel.css'
 interface Props { sourceSession: number; source: string; durationSeconds?: number; onChange: (source: string) => void; onRun: () => void; onStop: () => void; onReset: () => void; onRemove: () => void; serial: string; phase: string; error: string | null; busy: boolean }
 export default function PicoPanel(props: Props) {
@@ -61,6 +62,7 @@ export default function PicoPanel(props: Props) {
       <div className="pico-language"><label>Editor size <input type="range" aria-label="Pico editor height" min={180} max={650} step={10} value={height} onChange={event => setHeight(Number(event.target.value))} /></label><span role="status">{language}</span><button onClick={() => void (workspace?.restart() ?? languageWorkspace(props.source).then(setWorkspace).catch(error => setLanguage(String(error))))}>Retry analysis</button></div>
     </div>
     <div className="pico-toolbar"><button onClick={props.onRun} disabled={props.busy}>Run · {durationLabel}</button><button onClick={props.onStop} disabled={!props.busy}>Stop</button><button onClick={props.onReset}>Reset</button><span role="status">{props.phase}</span></div>
+    <PicoTransfer key={props.sourceSession} source={props.source} />
     {props.error && <div className="pico-error" role="alert">{props.error}{tracebackLine && <button onClick={() => showLine(Number(tracebackLine[1]))}>Go to line {tracebackLine[1]}</button>}</div>}
     <details open={problems.length > 0}><summary>Problems ({problems.length})</summary>{problems.map((problem, index) => <button className="pico-problem" key={index} onClick={() => showLine(problem.startLineNumber)}>Line {problem.startLineNumber}: {problem.message}</button>)}</details>
     <pre className="pico-console" aria-label="Pico serial console">{props.serial || 'Use print() in your code, then Simulate to see serial output here.'}</pre>
