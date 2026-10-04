@@ -10,8 +10,8 @@ export interface NodeResult { path: string; flowId: string; nodeId: string; labe
 export interface FlowRun { runId: string; flowId: string; status: 'done' | 'failed' | 'error' | 'inconclusive'; nodes: NodeResult[]; solverPasses: number; actions: Automation[]; events: AutomationEvent[] }
 export interface FlowSolve { capture: Capture; nodeByTerminal: Record<string, string> }
 export type FlowSolver = (actions: Automation[], events: AutomationEvent[]) => Promise<FlowSolve>
-interface State { node: FlowNode; result: NodeResult; invocation: Invocation; child?: Invocation; actionId?: string; completeAt?: number; disabled?: boolean }
-interface Invocation { path: string; definition: FlowDefinition; start: number; inputs: Record<string, number>; states: State[] }
+interface State { node: FlowNode; result: NodeResult; invocation: Invocation; child?: Invocation; action?: Automation; completeAt?: number; disabled?: boolean }
+interface Invocation { path: string; definition: FlowDefinition; start: number; inputs: Record<string, number>; states: State[]; caller?: State }
 interface Candidate { state: State; at: number; outcome?: Outcome; evidence?: Evidence; value?: number; activate?: boolean; message?: string; status?: NodeStatus }
 const terminal = (s: State) => !['waiting', 'running'].includes(s.result.status)
 const successful = (s: State) => s.result.status === 'done'
@@ -25,13 +25,18 @@ export function actionCompletion(action: Automation['action'], start: number): n
 export async function runAutomationFlow(document: CircuitDocument, raw: AutomationProgram, flowId: string, duration: number, solve: FlowSolver, options: { signal?: AbortSignal; runId?: string; onProgress?: (result: NodeResult) => void } = {}): Promise<{ capture: Capture; run: FlowRun }> {
   const startedAt = performance.now()
   const program = validateAutomationProgram(raw)
+  const definitionsById = new Map(program.definitions.map(definition => [definition.id, definition]))
+  const getDefinition = (id: string) => {
+    const definition = definitionsById.get(id)
+    if (!definition) throw new Error('The selected flow does not exist.')
+    return definition
+  }
   if (!Number.isFinite(duration) || duration < 0.001 || duration > 10) throw new Error('Flow duration must be between 1 ms and 10 s.')
   const all: State[] = [], actions: Automation[] = [], events: AutomationEvent[] = []
   // Register reachable controls before the first solve. Their electrical models
   // and native waveform breakpoints must not change when a later event is found.
   const reachable = new Set<string>()
-  const collect = (id: string) => { if (reachable.has(id)) return; reachable.add(id); for (const n of program.definitions.find(f => f.id === id)!.nodes) if (n.kind === 'call') collect(n.flowId) }
-  if (!program.definitions.some(f => f.id === flowId)) throw new Error('The selected flow does not exist.')
+  const collect = (id: string) => { if (reachable.has(id)) return; reachable.add(id); for (const n of getDefinition(id).nodes) if (n.kind === 'call') collect(n.flowId) }
   collect(flowId)
   for (const definition of program.definitions.filter(f => reachable.has(f.id))) for (const n of definition.nodes) if (n.kind === 'action') {
     const planned: Automation = { id: `Planned${actions.length}`, name: n.label, enabled: true, trigger: { kind: 'time', atMs: 0 }, action: n.action }
@@ -39,10 +44,9 @@ export async function runAutomationFlow(document: CircuitDocument, raw: Automati
   }
   const run: FlowRun = { runId: options.runId ?? crypto.randomUUID(), flowId, status: 'done', nodes: [], solverPasses: 0, actions, events }
   let committed = 0, cursor = 0, solved: FlowSolve | undefined, dirty = true
-  const instantiate = (id: string, path: string, start: number, inputs: Record<string, number>): Invocation => {
-    const definition = program.definitions.find(f => f.id === id)
-    if (!definition) throw new Error('The selected flow does not exist.')
-    const invocation: Invocation = { path, definition, start, inputs, states: [] }
+  const instantiate = (id: string, path: string, start: number, inputs: Record<string, number>, caller?: State): Invocation => {
+    const definition = getDefinition(id)
+    const invocation: Invocation = { path, definition, start, inputs, states: [], caller }
     invocation.states = definition.nodes.map(node => ({ node, invocation, result: { path: `${path}/${node.id}`, flowId: id, nodeId: node.id, label: node.label, kind: node.kind, status: 'waiting', values: {}, ...(node.kind === 'expect' ? { required: node.required } : {}) } }))
     all.push(...invocation.states)
     return invocation
@@ -145,7 +149,10 @@ export async function runAutomationFlow(document: CircuitDocument, raw: Automati
         if (next.evidence) s.result.evidence = next.evidence
         if (node.kind === 'watch' && next.outcome === 'done') s.result.values.value = createVoltageSampler(solved!.capture.time, signalValues(getSignal(node.signalId), solved!.capture, solved!.nodeByTerminal))!(cursor)!
         if (node.kind === 'measure' && next.value !== undefined) s.result.values[node.output] = next.value
-        if (node.kind === 'action' && next.outcome === 'done') s.result.values.value = actions.find(a => a.id === s.actionId)!.action.value
+        if (node.kind === 'action' && next.outcome === 'done') {
+          if (!s.action) throw new Error(`${node.label} has no scheduled action.`)
+          s.result.values.value = s.action.action.value
+        }
         finish(s, next.outcome ?? 'failed', cursor, next.message ?? next.evidence?.message, next.status)
         continue
       }
@@ -156,11 +163,11 @@ export async function runAutomationFlow(document: CircuitDocument, raw: Automati
       }
       if (node.kind === 'call') {
         if (!node.enabled) { s.disabled = true; finish(s, 'interrupted', cursor, 'Invocation is disabled.', 'skipped'); continue }
-        s.child = instantiate(node.flowId, s.result.path, cursor, Object.fromEntries(Object.entries(node.inputs).map(([key, b]) => [key, binding(b, s)])))
+        s.child = instantiate(node.flowId, s.result.path, cursor, Object.fromEntries(Object.entries(node.inputs).map(([key, b]) => [key, binding(b, s)])), s)
       } else if (node.kind === 'action') {
         if (cursor >= duration) { finish(s, 'timed-out', duration, 'Action starts at or after recording end.'); continue }
         const action = { ...node.action, ...(node.value ? { value: binding(node.value, s) } : {}) }
-        const parent = all.find(t => t.child === s.invocation)
+        const parent = s.invocation.caller
         const legacyId = parent?.node.kind === 'call' ? parent.node.legacyId : undefined
         const id = legacyId && !actions.some(a => a.id === legacyId) ? legacyId : `Run${actions.length}`
         const automation: Automation = { id, name: node.label, enabled: true, trigger: { kind: 'time', atMs: cursor * 1000 }, action }
@@ -169,7 +176,7 @@ export async function runAutomationFlow(document: CircuitDocument, raw: Automati
         const overlapping = all.filter(t => t !== s && t.node.kind === 'action' && t.result.status === 'running' && t.completeAt! > cursor && automationTargetKey(t.node.action) === automationTargetKey(action))
         if (overlapping.length && s.invocation.definition.conflictPolicy === 'error' && root.definition.conflictPolicy !== 'replace') throw new Error(`Concurrent actions write ${automationTargetKey(action)}. Choose Replace current action explicitly.`)
         for (const previous of overlapping) finish(previous, 'interrupted', cursor, `Replaced by ${node.label}.`)
-        s.actionId = id; s.completeAt = actionCompletion(action, cursor); actions.push(automation); events.push({ automationId: id, time: cursor }); dirty = true
+        s.action = automation; s.completeAt = actionCompletion(action, cursor); actions.push(automation); events.push({ automationId: id, time: cursor }); dirty = true
       } else if (node.kind === 'condition') finish(s, compare(binding(node.left, s), node.operator, binding(node.right, s)) ? 'yes' : 'no', cursor)
       else if (node.kind === 'finish') { s.result.values = Object.fromEntries(Object.entries(node.outputs).map(([id, b]) => [id, binding(b, s)])); finish(s, 'done', cursor) }
       else if (node.kind === 'start' || node.kind === 'join') finish(s, 'done', cursor)

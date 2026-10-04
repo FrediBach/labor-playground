@@ -79,6 +79,48 @@ test('recordings are evicted by budget, independently of structured evidence', a
   assert.equal(oversized.reports[0].capture, undefined, 'UTF-8 Pico payload bytes count even when waveform arrays fit')
 })
 const fake: Capture = { revision: 1, duration: .1, elapsedMs: 0, time: [0, .1], channels: { CH1: [0, 0], CH2: [0, 0] } }
+
+test('suite selection preserves saved order and distinguishes empty from omitted selection', async () => {
+  const document = fixture(), first = document.automationProgram!.tests[0]
+  first.enabled = false
+  document.automationProgram!.tests.push({ ...structuredClone(first), id: 'Second', name: 'Second' }, { ...structuredClone(first), id: 'Third', name: 'Third' })
+  const execute = async (): Promise<Capture> => { throw new Error('Disabled tests must not execute.') }
+  const selected = await runCircuitTestSuite(document, execute, { testIds: ['Third', 'Divider', 'Third', 'Missing'] })
+  assert.deepEqual(selected.reports.map(report => report.testId), ['Divider', 'Third'])
+  assert.equal(selected.counts.disabled, 2)
+  assert.deepEqual((await runCircuitTestSuite(document, execute, { testIds: [] })).reports, [])
+  assert.equal((await runCircuitTestSuite(document, execute)).reports.length, 3)
+})
+
+test('a missing entry flow fails before invoking the solver', async () => {
+  await assert.rejects(runAutomationFlow(createEmptyDocument(), programFor(createEmptyDocument()), 'Missing', .1, async () => {
+    assert.fail('A missing flow must not invoke the solver.')
+  }), /selected flow does not exist/)
+})
+
+test('repeated calls retain their own action values and legacy event identities', async () => {
+  const document = createEmptyDocument(), program = programFor(document), capture = program.definitions[0]
+  const shared = emptyFlow('Shared', 'Shared control')
+  shared.inputs = [{ id: 'voltage', unit: 'V' }]
+  shared.outputs = [{ id: 'value', unit: 'V' }]
+  shared.nodes.push(
+    { id: 'Action', label: 'Set CV', kind: 'action', order: 1, action: { target: 'cv', value: 1, durationMs: 0 }, value: { kind: 'input', inputId: 'voltage', unit: 'V' } },
+    { id: 'Finish', label: 'Finish', kind: 'finish', order: 2, outputs: { value: { kind: 'result', nodeId: 'Action', output: 'value', unit: 'V' } } },
+  )
+  shared.edges = [{ id: 'Begin', source: 'Start', target: 'Action', outcome: 'done' }, { id: 'End', source: 'Action', target: 'Finish', outcome: 'done' }]
+  program.definitions.push(shared)
+  for (const [index, voltage] of [0, 2].entries()) {
+    const id = `Call${index}`
+    capture.nodes.push({ id, label: id, kind: 'call', order: index + 1, flowId: shared.id, enabled: true, legacyId: `Legacy${index}`, inputs: { voltage: { kind: 'constant', value: voltage, unit: 'V' } } })
+    capture.edges.push({ id: `Edge${index}`, source: index ? 'Call0' : 'Start', target: id, outcome: 'done' })
+  }
+  const result = await runAutomationFlow(document, program, capture.id, .1, async () => ({ capture: fake, nodeByTerminal: {} }))
+  assert.equal(result.run.status, 'done')
+  assert.deepEqual(result.run.events.map(event => event.automationId), ['Legacy0', 'Legacy1'])
+  assert.deepEqual(result.run.nodes.filter(node => node.kind === 'action').map(node => node.values.value), [0, 2])
+  assert.deepEqual(result.run.nodes.filter(node => node.kind === 'call').map(node => node.values.value), [0, 2])
+})
+
 function graph(nodes: FlowNode[], connections: [string, string, string][]) {
   const program = programFor(createEmptyDocument()), f = program.definitions[0]; f.nodes.push(...nodes); f.edges = connections.map(([source, outcome, target], i) => ({ id: `E${i}`, source, outcome: outcome as 'done', target })); return program
 }

@@ -3,6 +3,7 @@ import test from 'node:test'
 import { Simulation } from 'eecircuit-engine'
 import { compileCircuit, createEmptyDocument, validateDocument, type CircuitDocument } from '../src/lib/circuit.ts'
 import { migrateAutomations, withProgram } from '../src/lib/automation-migration.ts'
+import { deleteSimple, toggleSimple } from '../src/lib/automation-editing.ts'
 import { emptyFlow, validateAutomationProgram, type AutomationProgram, type FlowNode } from '../src/lib/automation-graph.ts'
 import { runCircuitCapture } from '../src/lib/simulation-analysis.ts'
 import { operatingPointDescriptors } from '../src/lib/simulation-descriptors.ts'
@@ -24,6 +25,15 @@ function sequential(nodes: FlowNode[]): AutomationProgram {
   return { version: 1, captureFlowId: f.id, definitions: [f], signals: [{ id: 'CV', name: 'CV', kind: 'voltage', positive: 'cv' }], tests: [] }
 }
 const end: FlowNode = { id: 'Finish', label: 'Finish', kind: 'finish', order: 100, outputs: {} }
+
+test('stale Simple actions fail clearly without changing the document', () => {
+  const document = structuredClone(automationExamples[0].document)
+  const original = structuredClone(document)
+  for (const update of [toggleSimple, deleteSimple]) {
+    assert.throws(() => update(document, 'Missing'), /no longer available in Simple view/)
+    assert.deepEqual(document, original)
+  }
+})
 
 test('schema 4 migration is deterministic, idempotent, and has one executable representation', () => {
   const legacy = automationExamples[0].document

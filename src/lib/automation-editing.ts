@@ -27,11 +27,13 @@ export function simpleRows(program: AutomationProgram): SimpleRow[] {
 }
 export function saveSimple(document: CircuitDocument, automation: Automation, predecessor?: string, delay = 0): CircuitDocument {
   const program = structuredClone(programFor(document)), existing = simpleRows(program).find(r => r.automation.id === automation.id), capture = program.definitions.find(f => f.id === program.captureFlowId)!
+  const start = capture.nodes.find(node => node.kind === 'start')
+  if (!start) throw new Error('The capture flow has no Start step. Open Flow to inspect it.')
   if (!existing) {
     const migrated = migrateAutomations([automation]), definition = migrated.definitions[1]
     definition.conflictPolicy = 'error'
     program.definitions.push(definition)
-    const source = migrated.definitions[0], start = capture.nodes.find(n => n.kind === 'start')!
+    const source = migrated.definitions[0]
     capture.nodes.push(...source.nodes.filter(n => n.kind !== 'start').map((n, i) => ({ ...n, order: capture.nodes.length + i })))
     capture.edges.push(...source.edges.map(e => ({ ...e, source: e.source === 'Start' ? start.id : e.source })))
     for (const signal of migrated.signals) if (!program.signals.some(s => s.id === signal.id)) program.signals.push(signal)
@@ -43,16 +45,18 @@ export function saveSimple(document: CircuitDocument, automation: Automation, pr
   const row = simpleRows(program).find(r => r.automation.id === automation.id)!, wait = capture.nodes.find(n => n.id === row.waitId)!
   const replacement: FlowNode = predecessor ? { id: wait.id, label: `Wait ${delay * 1000} ms`, order: wait.order, kind: 'wait', mode: 'delay', seconds: delay, reference: 'activation' } : automation.trigger.kind === 'time' ? { id: wait.id, label: `At ${automation.trigger.atMs} ms`, order: wait.order, kind: 'wait', mode: 'time', seconds: automation.trigger.atMs / 1000, reference: 'capture' } : { id: wait.id, label: `${automation.trigger.channel} ${automation.trigger.direction}`, order: wait.order, kind: 'watch', signalId: automation.trigger.channel, direction: automation.trigger.direction, threshold: automation.trigger.threshold, after: automation.trigger.afterMs / 1000, deadline: 10, reference: 'capture' }
   capture.nodes = capture.nodes.map(n => n.id === wait.id ? replacement : n)
-  capture.edges = capture.edges.map(e => e.target === wait.id ? { ...e, source: predecessor ?? capture.nodes.find(n => n.kind === 'start')!.id, outcome: 'done' } : e)
+  capture.edges = capture.edges.map(e => e.target === wait.id ? { ...e, source: predecessor ?? start.id, outcome: 'done' } : e)
   return withProgram(document, program)
 }
 export function toggleSimple(document: CircuitDocument, id: string): CircuitDocument {
-  const program = structuredClone(programFor(document)), row = simpleRows(program).find(r => r.automation.id === id)!, capture = program.definitions.find(f => f.id === program.captureFlowId)!
+  const program = structuredClone(programFor(document)), row = simpleRows(program).find(r => r.automation.id === id), capture = program.definitions.find(f => f.id === program.captureFlowId)!
+  if (!row) throw new Error('This automation is no longer available in Simple view. Open Flow to inspect it.')
   capture.nodes = capture.nodes.map(n => n.id === row.callId && n.kind === 'call' ? { ...n, enabled: !n.enabled } : n)
   return withProgram(document, program)
 }
 export function deleteSimple(document: CircuitDocument, id: string): CircuitDocument {
-  const program = structuredClone(programFor(document)), row = simpleRows(program).find(r => r.automation.id === id)!, capture = program.definitions.find(f => f.id === program.captureFlowId)!
+  const program = structuredClone(programFor(document)), row = simpleRows(program).find(r => r.automation.id === id), capture = program.definitions.find(f => f.id === program.captureFlowId)!
+  if (!row) throw new Error('This automation is no longer available in Simple view. Open Flow to inspect it.')
   if (capture.edges.some(e => e.source === row.callId)) throw new Error('Other steps depend on this invocation. Reconnect them in Flow before deleting it.')
   const removed = new Set([row.callId, row.waitId]); capture.nodes = capture.nodes.filter(n => !removed.has(n.id)); capture.edges = capture.edges.filter(e => !removed.has(e.source) && !removed.has(e.target))
   return withProgram(document, program)

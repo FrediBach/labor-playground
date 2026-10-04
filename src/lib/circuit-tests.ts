@@ -10,8 +10,9 @@ export type TestExecutor = (document: CircuitDocument, test: CircuitTest, signal
 export function captureFixture(document: CircuitDocument): TestFixture { return { instruments: structuredClone(document.instruments), parts: document.parts.filter(p => p.kind === 'potentiometer' || p.kind === 'switch').map(p => ({ partId: p.id, kind: p.kind, ...(p.kind === 'potentiometer' ? { position: p.position ?? .5 } : { value: p.value }) })) } }
 export function applyFixture(document: CircuitDocument, fixture: TestFixture): CircuitDocument {
   const snapshot = structuredClone(document); snapshot.instruments = structuredClone(fixture.instruments)
+  const partsById = new Map(snapshot.parts.map(part => [part.id, part]))
   for (const override of fixture.parts) {
-    const part = snapshot.parts.find(p => p.id === override.partId)
+    const part = partsById.get(override.partId)
     if (!part || part.kind !== override.kind) throw new Error(`Fixture target ${override.partId} is missing or changed kind.`)
     if (override.position !== undefined && part.kind !== 'potentiometer') throw new Error(`Only potentiometers support a position override.`)
     if (override.value !== undefined) part.value = override.value
@@ -52,7 +53,8 @@ function recordingSize(capture: Capture | undefined): number {
 }
 /** One immutable snapshot and one awaited request at a time: no replaceable queue. */
 export async function runCircuitTestSuite(document: CircuitDocument, execute: TestExecutor, options: { signal?: AbortSignal; testIds?: string[]; onCase?: (report: TestReport, index: number, total: number) => void; onStart?: (test: CircuitTest, index: number, total: number) => void; recordingBudgetBytes?: number } = {}): Promise<SuiteReport> {
-  const snapshot = structuredClone(document), tests = snapshot.automationProgram?.tests.filter(t => !options.testIds || options.testIds.includes(t.id)) ?? [], reports: TestReport[] = []
+  const selectedIds = options.testIds ? new Set(options.testIds) : null
+  const snapshot = structuredClone(document), tests = snapshot.automationProgram?.tests.filter(t => !selectedIds || selectedIds.has(t.id)) ?? [], reports: TestReport[] = []
   const recordingSizes = new Map<TestReport, number>()
   let bytes = 0
   for (const [index, test] of tests.entries()) {
