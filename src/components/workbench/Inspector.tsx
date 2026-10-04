@@ -1,14 +1,51 @@
-import { useState } from 'react'
+import { useId, useRef, useState } from 'react'
 import { resolvePartModel, partDisplayName, partValueSummary, assignCustomComponent, duplicateCustomComponent, type CustomComponent } from '@/lib/custom-components'
 import { CurvePreview } from './CustomComponentEditor'
 import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2 } from 'lucide-react'
-import { PARTS, type CircuitDocument } from '@/lib/circuit'
+import { assignSchemaGroup, PARTS, SCHEMA_GROUP_NAME_LIMIT, type CircuitDocument } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
 import { formatElectrical } from '@/lib/format-electrical'
 import { hasEditableLeads, type LeadEdit } from '@/lib/part-editing'
 import { RecordedMeasurements, RecordedWireVoltage } from './RecordedMeasurements'
+import './InspectorSchemaGroup.css'
+
+function SchemaGroupField({ value, groups, onCommit }: { value: string; groups: string[]; onCommit: (value: string) => void }) {
+  const listId = useId()
+  const [editing, setEditing] = useState({ source: value, text: value })
+  if (editing.source !== value) setEditing({ source: value, text: value })
+  const cancelled = useRef(false)
+  const draft = editing.source === value ? editing.text : value
+  return <div className="inspector-section schema-group-field">
+    <label>
+      <span>Schema group</span>
+      <input
+        type="text" value={draft} list={listId} maxLength={SCHEMA_GROUP_NAME_LIMIT} placeholder="Ungrouped"
+        aria-describedby={`${listId}-hint`}
+        onChange={event => setEditing({ source: value, text: event.target.value })}
+        onBlur={() => {
+          if (cancelled.current) { cancelled.current = false; return }
+          const name = draft.trim()
+          setEditing({ source: name, text: name })
+          if (name !== value) onCommit(name)
+        }}
+        onKeyDown={event => {
+          if (event.key === 'Enter') event.currentTarget.blur()
+          if (event.key === 'Escape') {
+            event.preventDefault()
+            event.stopPropagation()
+            cancelled.current = true
+            setEditing({ source: value, text: value })
+            event.currentTarget.blur()
+          }
+        }}
+      />
+    </label>
+    <datalist id={listId}>{groups.map(group => <option key={group} value={group} />)}</datalist>
+    <p className="micro-copy" id={`${listId}-hint`}>Components with the same group appear together in Schema. Leave empty to ungroup.</p>
+  </div>
+}
 
 interface InspectorProps {
   onEditModel: (model: CustomComponent) => void
@@ -88,6 +125,11 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
           {model ? <><CurvePreview points={model.characteristic.points} xLabel={model.baseKind === 'resistor' ? '|Current| (A)' : 'Voltage (V)'} yLabel={model.baseKind === 'resistor' ? 'Resistance (Ω)' : 'Capacitance (F)'} /><button onClick={() => onEditModel(model)}>Edit model</button><button onClick={() => modelAction(() => duplicateCustomComponent(document, model.id, part.id).document)}>Make independent copy</button></> : <button onClick={() => onCreateModel(part)}>Create custom model from this value</button>}
           {modelError && <p role="alert">{modelError}</p>}
         </div>}
+        <SchemaGroupField
+          key={`schema-group-${part.id}`} value={part.schemaGroup ?? ''}
+          groups={[...new Set(document.parts.flatMap(item => item.schemaGroup ? [item.schemaGroup] : []))].sort((a, b) => a.localeCompare(b))}
+          onCommit={name => onChange(assignSchemaGroup(document, [part.id], name))}
+        />
         <RecordedMeasurements key={part.id} part={part} nodeByTerminal={nodeByTerminal} />
         <div className="inspector-section">
           <div className="section-overline">{integratedCircuit || transistor ? 'PIN CONNECTIONS' : 'CONNECTIONS'}</div>

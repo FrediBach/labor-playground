@@ -36,6 +36,30 @@ export interface Part {
   /** Potentiometer wiper position: 0 at CCW, 1 at CW; omitted means 0.5. */
   customModelId?: string
   position?: number
+  /** Presentation-only group shared by matching names in the schematic. */
+  schemaGroup?: string
+}
+
+export const SCHEMA_GROUP_NAME_LIMIT = 60
+
+function readSchemaGroup(value: unknown): string | undefined {
+  if (value === undefined) return undefined
+  if (typeof value !== 'string' || value.trim().length > SCHEMA_GROUP_NAME_LIMIT) throw new Error(`Schema group must contain at most ${SCHEMA_GROUP_NAME_LIMIT} characters.`)
+  return value.trim() || undefined
+}
+
+/** Assign presentation groups without changing electrical state or legacy parts. */
+export function assignSchemaGroup(document: CircuitDocument, partIds: readonly string[], name: string): CircuitDocument {
+  const schemaGroup = readSchemaGroup(name)
+  const ids = new Set(partIds)
+  let changed = false
+  const parts = document.parts.map(part => {
+    if (!ids.has(part.id) || part.schemaGroup === schemaGroup) return part
+    changed = true
+    const { schemaGroup: _previousGroup, ...rest } = part
+    return schemaGroup ? { ...rest, schemaGroup } : rest
+  })
+  return changed ? { ...document, parts } : document
 }
 
 export interface Wire {
@@ -486,7 +510,8 @@ export function validateDocument(input: unknown): CircuitDocument {
     if (!isValidFootprint(kind, pins)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
-    return { id, kind, value, pins, ...(model ? { customModelId: model.id } : {}), ...(position === undefined ? {} : { position }) }
+    const schemaGroup = readSchemaGroup(part.schemaGroup)
+    return { id, kind, value, pins, ...(model ? { customModelId: model.id } : {}), ...(position === undefined ? {} : { position }), ...(schemaGroup ? { schemaGroup } : {}) }
   })
   const wires: Wire[] = raw.wires.map((entry, index) => {
     const wire = object(entry, `Wire ${index + 1}`)

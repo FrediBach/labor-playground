@@ -1,0 +1,4 @@
+.schema-group-field label { display: grid; gap: 7px; color: #bec8bf; font-size: 12px; }
+.schema-group-field input { width: 100%; min-width: 0; min-height: 40px; padding: 8px 10px; border: 1px solid #4d574e; border-radius: 4px; background: #232824; color: #dfe5df; font: inherit; }
+.schema-group-field input::placeholder { color: #929e94; }
+.schema-group-field input:focus-visible { outline: 2px solid #8ea17b; outline-offset: 2px; }

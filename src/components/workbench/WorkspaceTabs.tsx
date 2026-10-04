@@ -1,7 +1,7 @@
-import { Activity, CircuitBoard, ClipboardList, Code2, ListStart } from 'lucide-react'
+import { Activity, CircuitBoard, ClipboardList, Code2, ListStart, Workflow } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 
-export type WorkspaceTab = 'circuit' | 'results' | 'automations' | 'code' | 'overview'
+export type WorkspaceTab = 'circuit' | 'schema' | 'results' | 'automations' | 'code' | 'overview'
 
 export function WorkspaceTabs({ active, onChange, hasPico, automationCount, issueCount }: {
   active: WorkspaceTab
@@ -12,6 +12,7 @@ export function WorkspaceTabs({ active, onChange, hasPico, automationCount, issu
 }) {
   const tabs = [
     { id: 'circuit' as const, label: 'Circuit', icon: CircuitBoard },
+    { id: 'schema' as const, label: 'Schema', icon: Workflow },
     { id: 'results' as const, label: 'Results', icon: Activity },
     { id: 'automations' as const, label: 'Automations', icon: ListStart },
     ...(hasPico ? [{ id: 'code' as const, label: 'Pico Code', icon: Code2 }] : []),

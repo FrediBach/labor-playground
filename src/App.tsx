@@ -17,6 +17,7 @@ import { BoardViewport, type BoardViewportHandle } from '@/components/workbench/
 import type { LeadEdit } from '@/lib/part-editing'
 import { Inspector } from '@/components/workbench/Inspector'
 import { OverviewPanel } from '@/components/workbench/OverviewPanel'
+import { SchemaPanel } from '@/components/workbench/SchemaPanel'
 import { PartsLibrary } from '@/components/workbench/PartsLibrary'
 import { RotaryControl, FrequencyKnob } from '@/components/workbench/ParameterControls'
 import { EnvelopeControls } from '@/components/workbench/EnvelopeControls'
@@ -163,8 +164,8 @@ export default function App() {
       }
       if (editable) return
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setHelpOpen(true); return }
-      if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-5]$/.test(e.code)) {
-        const tab = (['circuit', 'code', 'automations', 'results', 'overview'] as const)[Number(e.code.slice(-1)) - 1]
+      if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-6]$/.test(e.code)) {
+        const tab = (['circuit', 'code', 'automations', 'results', 'overview', 'schema'] as const)[Number(e.code.slice(-1)) - 1]
         if (tab !== 'code' || document.pico) { e.preventDefault(); openTab(tab) }
         return
       }
@@ -304,6 +305,9 @@ export default function App() {
         <RecordingTransport document={document} probes={{ CH1: document.probes.CH1 ? simulation.nodeByTerminal[document.probes.CH1] ?? null : null, CH2: document.probes.CH2 ? simulation.nodeByTerminal[document.probes.CH2] ?? null : null }} />
         <OperatingPointPanel operatingPoint={operatingPoint} probes={document.probes} nodeByTerminal={simulation.nodeByTerminal} onHighlight={highlightChannel} />
         </div>
+        </div>
+        <div className="workspace-panel" id="workspace-panel-schema" role="tabpanel" aria-labelledby="workspace-tab-schema" hidden={workspaceTab !== 'schema'}>
+          <SchemaPanel document={document} onChange={change} selectedId={selectedId} onSelect={id => { setSelectedId(id); setInspectorOpen(true) }} visible={workspaceTab === 'schema'} recordingAvailable={simulation.status === 'ready' && !inspectedTest} recordingNote={inspectedTest ? 'Return to the ordinary recording in Results to view this circuit’s voltages.' : undefined} />
         </div>
         <div className="workspace-panel" id="workspace-panel-overview" role="tabpanel" aria-labelledby="workspace-tab-overview" hidden={workspaceTab !== 'overview'}>
           <OverviewPanel document={document} example={currentExample} onRestore={loadExample} status={simulation.status} diagnostics={circuitIssues} netlist={simulation.netlist} onInspect={inspectComponent} onOpenCircuit={() => openTab('circuit')} onViewResults={() => openTab('results')} />
