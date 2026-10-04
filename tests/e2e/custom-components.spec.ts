@@ -14,6 +14,24 @@ async function create(page: Page, name: string, kind = 'resistor') {
   await editor.getByRole('button', { name: 'Save model' }).click()
 }
 
+test('curve points retain their inputs when sorted, converted, and removed', async ({ page }) => {
+  await page.goto('/')
+  await library(page).getByRole('button', { name: 'Create custom component' }).click()
+  const dialog = page.getByRole('dialog')
+  await dialog.getByRole('button', { name: 'Add point', exact: true }).click()
+  await dialog.getByRole('spinbutton', { name: 'Row 3 axis', exact: true }).fill('5')
+  const middlePoint = await dialog.getByRole('spinbutton', { name: 'Row 3 axis', exact: true }).elementHandle()
+  await dialog.getByRole('button', { name: 'Sort by axis', exact: true }).click()
+  expect(await middlePoint!.evaluate(input => ({ connected: input.isConnected, label: input.getAttribute('aria-label'), value: (input as HTMLInputElement).value }))).toEqual({ connected: true, label: 'Row 2 axis', value: '5' })
+  await dialog.getByRole('combobox', { name: 'Axis unit', exact: true }).selectOption('1')
+  expect(await middlePoint!.evaluate(input => (input as HTMLInputElement).value)).toBe('0.005')
+  await dialog.getByRole('button', { name: 'Remove row 1', exact: true }).click()
+  expect(await middlePoint!.evaluate(input => ({ connected: input.isConnected, label: input.getAttribute('aria-label'), value: (input as HTMLInputElement).value }))).toEqual({ connected: true, label: 'Row 1 axis', value: '0.005' })
+  await dialog.getByRole('button', { name: 'Add point', exact: true }).click()
+  await expect(dialog.getByRole('spinbutton', { name: 'Row 3 axis', exact: true })).toHaveValue('')
+  expect(await middlePoint!.evaluate(input => input.isConnected)).toBe(true)
+})
+
 test('keyboard drafts, validation, cancellation, shared edits, copies and undo preserve model identity', async ({ page }) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
   await page.goto('/')

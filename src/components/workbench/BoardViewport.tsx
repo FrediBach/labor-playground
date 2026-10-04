@@ -1,4 +1,4 @@
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { forwardRef, useCallback, useEffect, useEffectEvent, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
 import { boardViewportCenter, boardViewportFit, boardViewportLayout, boardViewportScroll, clampBoardZoom } from '@/lib/board-viewport'
 import type { BoardFit, BoardViewportLayout, ViewportPoint, ViewportSize } from '@/lib/board-viewport'
@@ -105,34 +105,34 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
     if (!cancelled) window.setTimeout(() => { suppressClick.current = false }, 0)
   }, [position])
 
-  useEffect(() => {
-    const keyDown = (event: globalThis.KeyboardEvent) => {
-      const element = viewport.current
-      if (!element?.clientWidth || !element.clientHeight) return
-      if (heldSpace.current && event.code !== 'Space') spaceActivation.current = null
-      const target = event.target instanceof Element ? event.target : null
-      const inside = !!target && !!viewport.current?.contains(target)
-      const interactive = target?.closest('button, a[href], summary, [role="button"]')
-      if (event.code === 'Space' && !replayingSpace.current && !event.altKey && !event.ctrlKey && !event.metaKey && !isEditable(target)
-        && !(interactive && !inside) && (hovered.current || inside)) {
-        event.preventDefault()
-        event.stopPropagation()
-        if (!heldSpace.current) {
-          // Space still activates a focused board terminal when released without a drag.
-          spaceActivation.current = !panEnabled && inside ? interactive ?? null : null
-          spaceGestureUsed.current = false
-        }
-        heldSpace.current = true
-        setSpaceHeld(true)
+  const keyDown = useEffectEvent((event: globalThis.KeyboardEvent) => {
+    const element = viewport.current
+    if (!element?.clientWidth || !element.clientHeight) return
+    if (heldSpace.current && event.code !== 'Space') spaceActivation.current = null
+    const target = event.target instanceof Element ? event.target : null
+    const inside = !!target && !!viewport.current?.contains(target)
+    const interactive = target?.closest('button, a[href], summary, [role="button"]')
+    if (event.code === 'Space' && !replayingSpace.current && !event.altKey && !event.ctrlKey && !event.metaKey && !isEditable(target)
+      && !(interactive && !inside) && (hovered.current || inside)) {
+      event.preventDefault()
+      event.stopPropagation()
+      if (!heldSpace.current) {
+        // Space still activates a focused board terminal when released without a drag.
+        spaceActivation.current = !panEnabled && inside ? interactive ?? null : null
+        spaceGestureUsed.current = false
       }
-      if (event.key === 'Escape') {
-        finishPan(true)
-        heldSpace.current = false
-        spaceActivation.current = null
-        setSpaceHeld(false)
-        if (panEnabled) onPanEnabledChange?.(false)
-      }
+      heldSpace.current = true
+      setSpaceHeld(true)
     }
+    if (event.key === 'Escape') {
+      finishPan(true)
+      heldSpace.current = false
+      spaceActivation.current = null
+      setSpaceHeld(false)
+      if (panEnabled) onPanEnabledChange?.(false)
+    }
+  })
+  useEffect(() => {
     const keyUp = (event: globalThis.KeyboardEvent) => {
       if (event.code !== 'Space' || !heldSpace.current) return
       heldSpace.current = false
@@ -160,7 +160,7 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
       window.removeEventListener('keyup', keyUp, true)
       window.removeEventListener('blur', blur)
     }
-  }, [finishPan, onPanEnabledChange, panEnabled])
+  }, [finishPan])
 
   function pointerDown(event: PointerEvent<HTMLDivElement>) {
     if (!gesture.current) { blockedPointer.current = null; suppressClick.current = false }

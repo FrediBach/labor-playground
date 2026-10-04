@@ -82,14 +82,27 @@ export default function FlowEditor({ program, flowId: selectedFlow, document, on
   const [drag, setDrag] = useState<GraphNode[] | null>(null), [showValues, setShowValues] = useState(false), [inputUnit, setInputUnit] = useState<Unit>('V')
   const fallback = useMemo(() => arrangedLayout(flow), [flow])
   const nodes = useMemo<GraphNode[]>(() => flow.nodes.map(step => ({ id: step.id, type: 'step', position: flow.layout[step.id] ?? fallback[step.id], data: { step, values: step.kind === 'measure' ? [{ id: step.output, unit: outputUnit(step, step.output, program)! }] : step.kind === 'call' ? program.definitions.find(f => f.id === step.flowId)?.outputs ?? [] : step.kind === 'action' || step.kind === 'watch' ? [{ id: 'value', unit: outputUnit(step, 'value', program)! }] : [], result: run?.nodes.find(n => n.flowId === flow.id && n.nodeId === step.id) }, selected: step.id === selected, ariaLabel: `${step.label}, ${NODE_LABELS[step.kind]}` })), [flow, fallback, run, selected, program])
-  const edges = useMemo(() => [...flow.edges.map(e => ({ ...e, sourceHandle: e.outcome, label: e.outcome, type: 'smoothstep' })), ...flow.nodes.flatMap(n => nodeBindings(n).flatMap((b, i) => b.kind === 'result' && (showValues || selected === n.id || selected === b.nodeId) ? [{ id: `Value_${n.id}_${i}`, source: b.nodeId, target: n.id, sourceHandle: b.output === 'time' ? outcomes(flow.nodes.find(s => s.id === b.nodeId)!)[0] : `value:${b.output}`, label: `${b.output} (${b.unit})`, type: 'smoothstep', style: { strokeDasharray: '5 4', stroke: '#91bfad' } }] : []))], [flow, selected, showValues])
+  const edges = useMemo(() => {
+    const executionEdges = flow.edges.map(edge => ({ ...edge, sourceHandle: edge.outcome, label: edge.outcome, type: 'smoothstep' }))
+    const nodesById = new Map(flow.nodes.map(node => [node.id, node]))
+    const valueEdges = flow.nodes.flatMap(node => nodeBindings(node).flatMap((binding, index) => {
+      if (binding.kind !== 'result' || !(showValues || selected === node.id || selected === binding.nodeId)) return []
+      const source = nodesById.get(binding.nodeId)
+      if (!source) return []
+      return [{ id: `Value_${node.id}_${index}`, source: source.id, target: node.id, sourceHandle: binding.output === 'time' ? outcomes(source)[0] : `value:${binding.output}`, label: `${binding.output} (${binding.unit})`, type: 'smoothstep', style: { strokeDasharray: '5 4', stroke: '#91bfad' } }]
+    }))
+    return [...executionEdges, ...valueEdges]
+  }, [flow, selected, showValues])
   const node = flow.nodes.find(n => n.id === selected)
   const commit = (next: FlowDefinition) => { try { onChange({ ...program, definitions: program.definitions.map(f => f.id === next.id ? next : f) }); setNotice('Flow saved.'); return true } catch (error) { setNotice((error as Error).message); return false } }
   function connect(connection: Connection) {
     if (!connection.source || !connection.target) return
     const target = flow.nodes.find(n => n.id === connection.target)
+    const source = flow.nodes.find(n => n.id === connection.source)
+    if (!source || !target) { setNotice('This step is no longer available. Select a current step and reconnect.'); return }
     if (connection.sourceHandle?.startsWith('value:')) {
-      const source = flow.nodes.find(n => n.id === connection.source)!, output = connection.sourceHandle.slice(6), unit = outputUnit(source, output, program)!
+      const output = connection.sourceHandle.slice(6), unit = outputUnit(source, output, program)
+      if (!unit) { setNotice('This output is no longer available. Select a current output and reconnect.'); return }
       const value: Binding = { kind: 'result', nodeId: source.id, output, unit }
       const expectedUnit = target?.kind === 'action' ? actionUnit(target.action) : target?.kind === 'condition' ? target.left.unit : target?.kind === 'expect' && target.expectation.kind === 'result' ? target.expectation.value.unit : undefined
       if (expectedUnit !== unit) { setNotice(`${target?.label ?? 'This step'} needs ${expectedUnit ?? 'an execution connection'}; ${source.label} returns ${unit}.`); return }
@@ -100,10 +113,14 @@ export default function FlowEditor({ program, flowId: selectedFlow, document, on
     const next = { ...flow, edges: [...flow.edges.filter(e => target?.kind === 'join' || e.target !== connection.target), { id: flowId('E'), source: connection.source, target: connection.target, outcome: (connection.sourceHandle ?? 'done') as Outcome }] }
     commit(next)
   }
-  function add(source = selected ?? flow.nodes.find(n => n.kind === 'start')!.id, outcome = port) {
+  function add(source?: string, outcome = port) {
+    const predecessor = source ? flow.nodes.find(step => step.id === source) : node ?? flow.nodes.find(step => step.kind === 'start')
+    if (!predecessor) { setNotice('Choose an existing step before adding the next step.'); return }
+    const actual = outcomes(predecessor)
+    if (!actual.length) { setNotice('This step has no execution output. Choose another predecessor.'); return }
+    if (!actual.includes(outcome)) outcome = actual[0]
     const n = newNode(kind, program, Math.max(...flow.nodes.map(n => n.order)) + 1)
-    const actual = outcomes(flow.nodes.find(n => n.id === source)!); if (!actual.includes(outcome)) outcome = actual[0]
-    if (commit(appendStep(flow, source, outcome, n))) { setSelected(n.id); setPort(outcomes(n)[0]) }
+    if (commit(appendStep(flow, predecessor.id, outcome, n))) { setSelected(n.id); setPort(outcomes(n)[0]) }
   }
   function remove() {
     if (!node || node.kind === 'start') return
@@ -136,7 +153,7 @@ export default function FlowEditor({ program, flowId: selectedFlow, document, on
       }} onNodeDragStop={(_, changed) => { const previous = flow.layout[changed.id] ?? fallback[changed.id]; setDrag(null); if (previous.x !== changed.position.x || previous.y !== changed.position.y) commit({ ...flow, layout: { ...flow.layout, [changed.id]: changed.position } }) }} onNodeClick={(_, n) => { setSelected(n.id); setPort(outcomes(n.data.step)[0]) }} onNodeDoubleClick={(_, n) => { if (n.data.step.kind === 'call') onOpen(n.data.step.flowId) }} onConnect={connect} onConnectEnd={(_, state) => { if (!state.isValid && state.fromNode && !state.toNode) add(state.fromNode.id, (state.fromHandle?.id?.startsWith('value:') ? 'done' : state.fromHandle?.id ?? 'done') as Outcome) }} onEdgeClick={(_, edge) => { setSelected(edge.source); setPort(outcomes(flow.nodes.find(n => n.id === edge.source)!)[0]) }} fitView minZoom={.2} maxZoom={1.5} deleteKeyCode={null} colorMode="dark" ariaLabelConfig={{ 'node.a11yDescription.default': 'Press Enter to select a step. Use the ordered step list and inspector to edit settings or dependencies.' }}><Background gap={20} size={1} /><Controls showInteractive={false} />{nodes.length > 12 && <MiniMap />}</ReactFlow></div>
       {node && <Inspector key={`${flow.id}/${node.id}/${JSON.stringify(node)}`} initial={node} flow={flow} program={program} document={document} save={n => commit({ ...flow, ...(n.kind === 'finish' ? { outputs: Object.entries(n.outputs).map(([id, b]) => ({ id, unit: b.unit })) } : {}), nodes: flow.nodes.map(old => old.id === n.id ? n : n.kind === 'finish' && old.kind === 'finish' ? { ...old, outputs: Object.fromEntries(Object.entries(n.outputs).map(([key, b]) => [key, old.outputs[key]?.unit === b.unit ? old.outputs[key] : b])) } : old) })} close={() => { setSelected(null); documentFocus() }} drill={onOpen} />}
     </div>
-    <details className="flow-step-list"><summary>Ordered steps · keyboard editing</summary><ol>{[...flow.nodes].sort((a, b) => a.order - b.order).map(n => <li key={n.id}><button onClick={() => { setSelected(n.id); setPort(outcomes(n)[0]) }}>{n.label} · {NODE_LABELS[n.kind]}</button>{n.kind !== 'start' && <label>Starts after <select aria-label={`${n.label} starts after`} value={flow.edges.find(e => e.target === n.id) ? `${flow.edges.find(e => e.target === n.id)!.source}/${flow.edges.find(e => e.target === n.id)!.outcome}` : ''} onChange={e => { const [source, sourceHandle] = e.target.value.split('/'); connect({ source, sourceHandle, target: n.id, targetHandle: null }) }}>{flow.nodes.filter(s => s.id !== n.id).flatMap(s => outcomes(s).map(o => <option key={`${s.id}/${o}`} value={`${s.id}/${o}`}>{s.label} · {o}</option>))}</select></label>}</li>)}</ol><p>Connections · choose the step type above before inserting.</p><ul>{flow.edges.map(edge => <li key={edge.id}>{flow.nodes.find(n => n.id === edge.source)?.label} → {flow.nodes.find(n => n.id === edge.target)?.label} ({edge.outcome}) <button onClick={() => {
+    <details className="flow-step-list"><summary>Ordered steps · keyboard editing</summary><ol>{[...flow.nodes].sort((a, b) => a.order - b.order).map(n => { const incoming = flow.edges.find(e => e.target === n.id); return <li key={n.id}><button onClick={() => { setSelected(n.id); setPort(outcomes(n)[0]) }}>{n.label} · {NODE_LABELS[n.kind]}</button>{n.kind !== 'start' && <label>Starts after <select aria-label={`${n.label} starts after`} value={incoming ? `${incoming.source}/${incoming.outcome}` : ''} onChange={e => { const [source, sourceHandle] = e.target.value.split('/'); connect({ source, sourceHandle, target: n.id, targetHandle: null }) }}>{flow.nodes.filter(s => s.id !== n.id).flatMap(s => outcomes(s).map(o => <option key={`${s.id}/${o}`} value={`${s.id}/${o}`}>{s.label} · {o}</option>))}</select></label>}</li> })}</ol><p>Connections · choose the step type above before inserting.</p><ul>{flow.edges.map(edge => <li key={edge.id}>{flow.nodes.find(n => n.id === edge.source)?.label} → {flow.nodes.find(n => n.id === edge.target)?.label} ({edge.outcome}) <button onClick={() => {
       const inserted = newNode(kind, program, Math.max(...flow.nodes.map(n => n.order)) + 1)
       const next = appendStep({ ...flow, edges: flow.edges.filter(e => e.id !== edge.id) }, edge.source, edge.outcome, inserted)
       next.edges.push({ id: flowId('E'), source: inserted.id, target: edge.target, outcome: outcomes(inserted)[0] })

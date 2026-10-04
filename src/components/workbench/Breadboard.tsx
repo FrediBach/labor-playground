@@ -1,6 +1,6 @@
 import { parsePlacement, resolvePartModel, nominalValue, partDisplayName, partValueSummary, type PartPlacement } from '@/lib/custom-components'
 import { PICO_PINS } from '@/lib/pico/profile'
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import {
   HOLES, TERMINALS, PARTS, terminalById, compileCircuit, getPlacement, canPlace, formatValue, isValidFootprint,
@@ -145,22 +145,22 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     terminalElements.current.get(leadPart.pins[editingLead.pinIndex])?.focus()
   }, [leadPart, editingLead])
 
-  useEffect(() => {
-    const cancel = (event: globalThis.KeyboardEvent) => {
-      if (event.key !== 'Escape' || (event.target instanceof Element && event.target.closest('.pico-panel'))) return
-      if (leadPart) {
-        event.preventDefault()
-        onFinishLeadEdit?.()
-        onMessage('Lead move cancelled.')
-      }
-      setWireStart(null)
-      setEditingWire(null)
-      setMove(null)
-      moveRef.current = null
+  const cancel = useEffectEvent((event: globalThis.KeyboardEvent) => {
+    if (event.key !== 'Escape' || (event.target instanceof Element && event.target.closest('.pico-panel'))) return
+    if (leadPart) {
+      event.preventDefault()
+      onFinishLeadEdit?.()
+      onMessage('Lead move cancelled.')
     }
+    setWireStart(null)
+    setEditingWire(null)
+    setMove(null)
+    moveRef.current = null
+  })
+  useEffect(() => {
     window.addEventListener('keydown', cancel, true)
     return () => window.removeEventListener('keydown', cancel, true)
-  }, [leadPart, onFinishLeadEdit, onMessage])
+  }, [])
 
   useEffect(() => {
     moveRef.current = null

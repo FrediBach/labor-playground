@@ -1,5 +1,27 @@
 import { expect, test } from '@playwright/test'
 
+test('adding a step after opening a called flow uses its own start node', async ({ page }) => {
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/')
+  await page.getByLabel('Load example').selectOption('automated-pot-sweep')
+  await page.getByRole('tab', { name: 'Automations', exact: true }).click()
+  await page.getByRole('button', { name: 'Flow', exact: true }).click()
+  await page.locator('.react-flow__node[data-id="Call_A1"]').click()
+  await page.getByRole('button', { name: 'Open automation', exact: true }).click()
+  await expect(page.getByRole('combobox', { name: 'Open flow', exact: true })).toHaveValue('Flow_A1')
+  await page.getByRole('button', { name: 'Add next step', exact: true }).click()
+  await expect(page.locator('.flow-notice')).toHaveText('Flow saved.')
+  await expect(page.locator('.flow-canvas .react-flow__node')).toHaveCount(4)
+  await expect.poll(() => page.evaluate(() => {
+    const program = JSON.parse(localStorage.getItem('labor-playground.document.v1')!).automationProgram
+    const flow = program?.definitions.find((item: { id: string }) => item.id === 'Flow_A1')
+    const wait = flow?.nodes.find((item: { kind: string }) => item.kind === 'wait')
+    return wait && flow.edges.some((edge: { source: string; target: string }) => edge.source === 'Start' && edge.target === wait.id)
+  })).toBe(true)
+  expect(errors).toEqual([])
+})
+
 test('Simple dependencies share the Flow model, survive undo and do not solve on layout edits', async ({ page }, testInfo) => {
   const errors: string[] = []; page.on('pageerror', error => errors.push(error.message))
   await page.goto('/')

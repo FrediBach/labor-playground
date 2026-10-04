@@ -30,7 +30,8 @@ export function CustomComponentEditor({ initial, document, editing, onSave, onCa
   const [description, setDescription] = useState(initial.description ?? '')
   const [xFactor, setXFactor] = useState(kind === 'resistor' ? 0.001 : 1)
   const [yFactor, setYFactor] = useState(kind === 'resistor' ? 1000 : 1e-9)
-  const [rows, setRows] = useState(() => initial.characteristic.points.map(p => ({ x: String(p.x / xFactor), y: String(p.y / yFactor) })))
+  const nextPointId = useRef(initial.characteristic.points.length)
+  const [rows, setRows] = useState(() => initial.characteristic.points.map((p, id) => ({ id, x: String(p.x / xFactor), y: String(p.y / yFactor) })))
   const [commitError, setCommitError] = useState('')
   useEffect(() => {
     const previous = window.document.activeElement as HTMLElement | null
@@ -60,18 +61,18 @@ export function CustomComponentEditor({ initial, document, editing, onSave, onCa
       <label>Base component<select aria-label="Base component" value={kind} disabled={editing} onChange={e => {
         const next = e.target.value as typeof kind
         setKind(next); setXFactor(next === 'resistor' ? 0.001 : 1); setYFactor(next === 'resistor' ? 1000 : 1e-9)
-        setRows(next === 'resistor' ? [{ x: '0', y: '10' }, { x: '10', y: '10' }] : [{ x: '-5', y: '100' }, { x: '0', y: '100' }, { x: '5', y: '100' }])
+        setRows((next === 'resistor' ? [{ x: '0', y: '10' }, { x: '10', y: '10' }] : [{ x: '-5', y: '100' }, { x: '0', y: '100' }, { x: '5', y: '100' }]).map(point => ({ ...point, id: nextPointId.current++ })))
       }}><option value="resistor">Resistor</option><option value="capacitor">Capacitor</option></select></label>
       <label>Name<input ref={nameInput} autoFocus aria-label="Model name" maxLength={80} value={name} onChange={e => setName(e.target.value)} /></label>
       <label>Description<textarea aria-label="Model description" maxLength={500} value={description} onChange={e => setDescription(e.target.value)} /></label>
       <p>{resistor ? 'Resistance versus current magnitude: V = I × R(|I|). The same curve applies in both directions.' : 'Differential capacitance versus signed voltage: C = dQ/dV. Voltage is pin 1 minus pin 2; current enters pin 1.'}</p>
       <div className="custom-units"><label>{resistor ? 'Current' : 'Voltage'} unit<select aria-label="Axis unit" value={xFactor} onChange={e => { const next = Number(e.target.value); setRows(rows.map(p => ({ ...p, x: p.x.trim() ? String(Number((Number(p.x) * xFactor / next).toPrecision(12))) : '' }))); setXFactor(next) }}>{xUnits.map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select></label><label>{resistor ? 'Resistance' : 'Capacitance'} unit<select aria-label="Value unit" value={yFactor} onChange={e => { const next = Number(e.target.value); setRows(rows.map(p => ({ ...p, y: p.y.trim() ? String(Number((Number(p.y) * yFactor / next).toPrecision(12))) : '' }))); setYFactor(next) }}>{yUnits.map(([v, label]) => <option key={v} value={v}>{label}</option>)}</select></label></div>
-      <div className="custom-table"><table aria-label="Characteristic points"><thead><tr><th>{resistor ? '|Current|' : 'Voltage'} ({xUnit})</th><th>{resistor ? 'Resistance' : 'Capacitance'} ({yUnit})</th><th>Actions</th></tr></thead><tbody>{rows.map((p, i) => <tr key={i}>
+      <div className="custom-table"><table aria-label="Characteristic points"><thead><tr><th>{resistor ? '|Current|' : 'Voltage'} ({xUnit})</th><th>{resistor ? 'Resistance' : 'Capacitance'} ({yUnit})</th><th>Actions</th></tr></thead><tbody>{rows.map((p, i) => <tr key={p.id}>
         <td><input type="number" step="any" aria-label={`Row ${i + 1} axis`} aria-invalid={rowError === i} aria-describedby={rowError === i ? 'custom-error' : undefined} value={p.x} onChange={e => setRows(rows.map((r, j) => j === i ? { ...r, x: e.target.value } : r))} /></td>
         <td><input type="number" step="any" aria-label={`Row ${i + 1} value`} aria-invalid={rowError === i} aria-describedby={rowError === i ? 'custom-error' : undefined} value={p.y} onChange={e => setRows(rows.map((r, j) => j === i ? { ...r, y: e.target.value } : r))} /></td>
         <td><button type="button" aria-label={`Remove row ${i + 1}`} disabled={rows.length <= 2} onClick={() => setRows(rows.filter((_, j) => j !== i))}>Remove</button></td>
       </tr>)}</tbody></table></div>
-      <div className="custom-actions"><button type="button" disabled={rows.length >= CUSTOM_LIMITS.points} onClick={() => setRows([...rows, { x: '', y: rows.at(-1)!.y }])}>Add point</button><button type="button" onClick={() => setRows([...rows].sort((a, b) => Number(a.x) - Number(b.x)))}>Sort by axis</button></div>
+      <div className="custom-actions"><button type="button" disabled={rows.length >= CUSTOM_LIMITS.points} onClick={() => setRows([...rows, { id: nextPointId.current++, x: '', y: rows.at(-1)!.y }])}>Add point</button><button type="button" onClick={() => setRows([...rows].sort((a, b) => Number(a.x) - Number(b.x)))}>Sort by axis</button></div>
       {(error || commitError) && <p id="custom-error" role="alert">{error || commitError}</p>}
       {!error && <CurvePreview points={rows.map(p => ({ x: Number(p.x), y: Number(p.y) }))} xLabel={`${resistor ? '|Current|' : 'Voltage'} (${xUnit})`} yLabel={`${resistor ? 'Resistance' : 'Capacitance'} (${yUnit})`} />}
       <p className="micro-copy">Linear interpolation; dashed ends extend at constant values. {resistor ? 'Axis: 0–1 A, minimum spacing 1 µA. R: 10 Ω–10 MΩ; maximum slope 10⁹ Ω/A. Positive differential resistance is required.' : 'Axis: −100–100 V, minimum spacing 1 mV. C: 100 pF–10 mF; maximum slope 1 F/V. Include zero and both voltage signs.'}</p>
