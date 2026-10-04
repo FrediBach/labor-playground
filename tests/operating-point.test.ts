@@ -168,3 +168,27 @@ test('an upstream promise left pending after an irreversible abort rejects witho
   await assert.rejects(runCircuitCapture(fake, requestFor(example('voltage-divider'))), /operating point could not/)
   assert.equal(runs, 1)
 })
+
+
+test('real divider spans wider breadboard columns and independent rows', { timeout: 15_000 }, async () => {
+  const document: CircuitDocument = {
+    ...createEmptyDocument(), board: { columns: 60, rows: 3 },
+    parts: [
+      { id: 'R1', kind: 'resistor', value: 10000, pins: ['a57', 'a60'] },
+      { id: 'R2', kind: 'resistor', value: 10000, pins: ['r3:a57', 'r3:a60'] },
+    ],
+    wires: [
+      { id: 'W1', from: 'cv', to: 'b57', color: '#ffffff' },
+      { id: 'W2', from: 'b60', to: 'r3:b57', color: '#ffffff' },
+      { id: 'W3', from: 'r3:b60', to: 'gnd', color: '#ffffff' },
+    ],
+    probes: { CH1: 'c60', CH2: 'r3:c57' },
+  }
+  const capture = await solve(document)
+  const nodes = compileCircuit(document).nodeByTerminal
+  close(capture.operatingPoint!.nodeVoltages[nodes['r3:c57']], 2.5)
+  close(capture.operatingPoint!.parts.R1.currents[0].value, 0.00025)
+  close(capture.operatingPoint!.parts.R2.currents[0].value, 0.00025)
+  close(capture.channels.CH1.at(-1)!, 2.5)
+  close(capture.channels.CH2.at(-1)!, 2.5)
+})

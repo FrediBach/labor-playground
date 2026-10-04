@@ -1,6 +1,8 @@
 .breadboard-viewport.board-viewport {
   position: relative;
-  height: clamp(270px, calc(100svh - 660px), 430px);
+  --board-base-height: clamp(270px, calc(100svh - 660px), 430px);
+  /* Additional rows get more page space at the same single-row scale. */
+  height: calc(var(--board-base-height) * var(--board-height-ratio, 1));
   max-height: none;
   overflow: auto;
   overscroll-behavior: auto;
@@ -21,5 +23,5 @@
 .board-viewport[data-dragging=true], .board-viewport[data-dragging=true] * { cursor: grabbing !important; }
 .board-viewport:focus-visible { outline: 2px solid #babbbb; outline-offset: 3px; }
 @media(max-width:740px) {
-  .breadboard-viewport.board-viewport { height: 300px; }
+  .breadboard-viewport.board-viewport { --board-base-height: 300px; }
 }

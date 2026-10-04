@@ -85,6 +85,8 @@ export interface CircuitDocument {
   customComponents?: CustomComponent[]
   pico?: PicoConfiguration
   boardVersion: 'virtual-1'
+  /** Omitted in older projects: 30 columns and one breadboard row. */
+  board?: BoardConfiguration
   title: string
   /** Omitted in legacy documents: periodic oscillator capture. */
   stimulus?: 'periodic' | 'step'
@@ -368,26 +370,72 @@ const rows = 'abcdefghij'
 const rowY = [170, 194, 218, 242, 266, 326, 350, 374, 398, 422]
 const rails = [{ id: 'tp', y: 100 }, { id: 'tn', y: 124 }, { id: 'bp', y: 468 }, { id: 'bn', y: 492 }]
 
-/** Virtual board geometry, in shared SVG coordinates. All rail halves are isolated. */
-export const HOLES: Terminal[] = [
-  ...Array.from(rows).flatMap((row, rowIndex) => Array.from({ length: 30 }, (_, index) => ({
-    id: `${row}${index + 1}`, x: 100 + index * 24, y: rowY[rowIndex],
-    group: `${rowIndex < 5 ? 'top' : 'bottom'}-${index + 1}`,
-  }))),
-  ...rails.flatMap((rail) => Array.from({ length: 30 }, (_, index) => ({
-    id: `${rail.id}${index + 1}`, x: 100 + index * 24, y: rail.y,
-    group: `${rail.id}-${index < 15 ? 'left' : 'right'}`,
-  }))),
-]
+export interface BoardConfiguration { columns: 30 | 45 | 60; rows: 1 | 2 | 3 }
+export const DEFAULT_BOARD: Readonly<BoardConfiguration> = Object.freeze({ columns: 30, rows: 1 })
+export const BOARD_ROW_PITCH = 480
+export function boardConfiguration(document: Pick<CircuitDocument, 'board'>): Readonly<BoardConfiguration> {
+  return document.board ?? DEFAULT_BOARD
+}
 
-export const TERMINALS: Terminal[] = [
-  ...HOLES,
-  ...PICO_PINS.filter(pin => pin.supported),
-  ...['osc', 'cv', 'gnd', 'vplus', 'vminus'].map((id, index) => ({ id, x: 135 + index * 160, y: 52, group: id })),
-  { id: 'eg', x: 855, y: 52, group: 'eg' },
-]
+function readBoard(value: unknown): BoardConfiguration {
+  const board = object(value, 'Breadboard')
+  if (![30, 45, 60].includes(board.columns as number) || ![1, 2, 3].includes(board.rows as number)) throw new Error('Choose 30, 45, or 60 breadboard columns and 1, 2, or 3 rows.')
+  return { columns: board.columns as BoardConfiguration['columns'], rows: board.rows as BoardConfiguration['rows'] }
+}
 
-export const terminalById: Record<string, Terminal> = Object.fromEntries(TERMINALS.map((terminal) => [terminal.id, terminal]))
+function makeBoardGeometry(board: Readonly<BoardConfiguration>) {
+  const extraWidth = (board.columns - 30) * 24
+  const extraHeight = (board.rows - 1) * BOARD_ROW_PITCH
+  const holes: Terminal[] = Array.from({ length: board.rows }, (_, bank) => {
+    // The first row retains every legacy ID and group. Additional rows are isolated.
+    const prefix = bank === 0 ? '' : `r${bank + 1}:`
+    return [
+      ...Array.from(rows).flatMap((row, rowIndex) => Array.from({ length: board.columns }, (_, index) => ({
+        id: `${prefix}${row}${index + 1}`, x: 100 + index * 24, y: rowY[rowIndex] + bank * BOARD_ROW_PITCH,
+        group: `${prefix}${rowIndex < 5 ? 'top' : 'bottom'}-${index + 1}`,
+      }))),
+      ...rails.flatMap(rail => Array.from({ length: board.columns }, (_, index) => ({
+        id: `${prefix}${rail.id}${index + 1}`, x: 100 + index * 24, y: rail.y + bank * BOARD_ROW_PITCH,
+        group: `${prefix}${rail.id}-${index < 15 ? 'left' : index < 30 ? 'right' : `segment${Math.floor(index / 15) + 1}`}`,
+      }))),
+    ]
+  }).flat()
+  const terminals: Terminal[] = [
+    ...holes,
+    ...PICO_PINS.filter(pin => pin.supported).map(pin => ({ ...pin, x: pin.x + extraWidth })),
+    ...['osc', 'cv', 'gnd', 'vplus', 'vminus'].map((id, index) => ({ id, x: 135 + index * 160, y: 52, group: id })),
+    { id: 'eg', x: 855, y: 52, group: 'eg' },
+  ]
+  return { holes, terminals, terminalById: Object.fromEntries(terminals.map(terminal => [terminal.id, terminal])) as Record<string, Terminal>,
+    extraWidth, extraHeight, width: 920 + extraWidth, height: 550 + extraHeight,
+    breadboardExtent: { x: 46, y: 79, width: 828 + extraWidth, height: 450 + extraHeight } }
+}
+const boardGeometries = new Map<string, ReturnType<typeof makeBoardGeometry>>()
+/** Shared, cached geometry for validation, connectivity, rendering and placement. */
+export function boardGeometry(document: Pick<CircuitDocument, 'board'> = {}) {
+  const board = boardConfiguration(document)
+  const key = `${board.columns}:${board.rows}`
+  let geometry = boardGeometries.get(key)
+  if (!geometry) { geometry = makeBoardGeometry(board); boardGeometries.set(key, geometry) }
+  return geometry
+}
+// Legacy exports keep existing callers and fixtures on the original board.
+export const HOLES = boardGeometry().holes
+export const TERMINALS = boardGeometry().terminals
+export const terminalById = boardGeometry().terminalById
+
+/** Reject shrinking that would discard any physical attachment. */
+export function resizeBoard(document: CircuitDocument, board: BoardConfiguration): CircuitDocument {
+  const next = { ...document, board: readBoard(board) }
+  const terminals = boardGeometry(next).terminalById
+  const attached = [...document.parts.flatMap(part => part.pins), ...document.wires.flatMap(wire => [wire.from, wire.to]), ...Object.values(document.probes).filter((pin): pin is string => pin !== null)]
+  const previousTerminals = boardGeometry(document).terminalById
+  const signalPins = document.automationProgram?.signals.flatMap(signal => signal.kind === 'voltage' ? [signal.positive, ...(signal.negative ? [signal.negative] : [])] : []) ?? []
+  attached.push(...signalPins.filter(pin => Object.hasOwn(previousTerminals, pin)))
+  const missing = attached.find(pin => !Object.hasOwn(terminals, pin))
+  if (missing) throw new Error(`Cannot shrink the breadboard: ${missing.toUpperCase()} is in use. Move its component, wire, probe, or signal first.`)
+  return next
+}
 
 export function createEmptyDocument(): CircuitDocument {
   return {
@@ -398,26 +446,29 @@ export function createEmptyDocument(): CircuitDocument {
 }
 
 /** DIP packages straddle the trench only, with pin 1 at eN or fN. */
-export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0): string[] | null {
-  const match = /^([a-j])(\d{1,2})$/.exec(holeId)
+export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0, document: Pick<CircuitDocument, 'board'> = {}): string[] | null {
+  const { terminalById } = boardGeometry(document)
+  const { columns } = boardConfiguration(document)
+  const match = /^(r[23]:)?([a-j])(\d{1,2})$/.exec(holeId)
   if (!match || !Object.hasOwn(terminalById, holeId) || !Object.hasOwn(PARTS, kind)) return null
-  const column = Number(match[2])
-  const row = rows.indexOf(match[1])
+  const prefix = match[1] ?? ''
+  const column = Number(match[3])
+  const row = rows.indexOf(match[2])
   const direction = ((Math.round(rotation / 90) % 4) + 4) % 4
   if (PARTS[kind].package) {
     const perSide = PARTS[kind].pinNames.length / 2
     const offsets = Array.from({ length: perSide }, (_, index) => index)
-    if (direction === 0 && match[1] === 'e' && column <= 31 - perSide) {
-      return offsets.map(offset => `e${column + offset}`).concat([...offsets].reverse().map(offset => `f${column + offset}`))
+    if (direction === 0 && match[2] === 'e' && column <= columns + 1 - perSide) {
+      return offsets.map(offset => `${prefix}e${column + offset}`).concat([...offsets].reverse().map(offset => `${prefix}f${column + offset}`))
     }
-    if (direction === 2 && match[1] === 'f' && column >= perSide) {
-      return offsets.map(offset => `f${column - offset}`).concat([...offsets].reverse().map(offset => `e${column - offset}`))
+    if (direction === 2 && match[2] === 'f' && column >= perSide) {
+      return offsets.map(offset => `${prefix}f${column - offset}`).concat([...offsets].reverse().map(offset => `${prefix}e${column - offset}`))
     }
     return null
   }
   if (kind === 'ssd1306') {
     if (direction !== 0 && direction !== 2) return null
-    const pins = Array.from({ length: 4 }, (_, index) => `${match[1]}${column + (direction === 0 ? index : -index)}`)
+    const pins = Array.from({ length: 4 }, (_, index) => `${prefix}${match[2]}${column + (direction === 0 ? index : -index)}`)
     return pins.every(pin => Object.hasOwn(terminalById, pin)) ? pins : null
   }
   const threeLead = PARTS[kind].pinNames.length === 3
@@ -426,22 +477,24 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0):
   const pins = Array.from({ length: count }, (_, index) => {
     const nextColumn = column + (direction === 0 ? span : direction === 2 ? -span : 0) * index
     const nextRow = row + (direction === 1 ? span : direction === 3 ? -span : 0) * index
-    return nextColumn < 1 || nextColumn > 30 || nextRow < 0 || nextRow >= rows.length ? null : `${rows[nextRow]}${nextColumn}`
+    return nextColumn < 1 || nextColumn > columns || nextRow < 0 || nextRow >= rows.length ? null : `${prefix}${rows[nextRow]}${nextColumn}`
   })
-  if (threeLead && pins.some((pin) => pin !== null && (rows.indexOf(pin[0]) < 5) !== (row < 5))) return null
+  if (threeLead && pins.some((pin) => pin !== null && (rows.indexOf(pin.slice(prefix.length)[0]) < 5) !== (row < 5))) return null
   return pins.some((pin) => pin === null) ? null : pins as string[]
 }
 
 /** Legacy two-lead parts keep arbitrary lead spacing; rigid new packages do not. */
-export function isValidFootprint(kind: ComponentKind, pins: string[]): boolean {
+export function isValidFootprint(kind: ComponentKind, pins: string[], document: Pick<CircuitDocument, 'board'> = {}): boolean {
+  const { terminalById } = boardGeometry(document)
   if (!Object.hasOwn(PARTS, kind) || pins.length !== PARTS[kind].pinNames.length || new Set(pins).size !== pins.length) return false
-  if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
+  if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:r[23]:)?(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
   if (PARTS[kind].pinNames.length === 2) return true
-  return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation)?.every((pin, index) => pin === pins[index]))
+  return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation, document)?.every((pin, index) => pin === pins[index]))
 }
 
 /** Leads and jumpers occupy holes; probes are measurement attachments and do not. */
 export function canPlace(doc: CircuitDocument, pins: string[], excludeId?: string): boolean {
+  const { terminalById } = boardGeometry(doc)
   if (pins.length < 2 || new Set(pins).size !== pins.length || pins.some((pin) => !Object.hasOwn(terminalById, pin))) return false
   const occupied = new Set([
     ...doc.parts.filter((part) => part.id !== excludeId).flatMap((part) => part.pins),
@@ -478,6 +531,8 @@ export function validateDocument(input: unknown): CircuitDocument {
   if ((raw.schemaVersion !== 3 && raw.schemaVersion !== 4) && (raw.customComponents !== undefined || raw.parts.some(p => p && typeof p === 'object' && 'customModelId' in p))) throw new Error('Custom components require schema version 3.')
   const customComponents = raw.customComponents === undefined ? undefined : validateCustomComponents(raw.customComponents)
   const pico = raw.pico === undefined ? undefined : validatePico(raw.pico)
+  const board = raw.board === undefined ? undefined : readBoard(raw.board)
+  const { terminalById } = boardGeometry({ board })
   const ids = new Set<string>()
   const occupied = new Set<string>()
   const readId = (value: unknown): string => {
@@ -509,7 +564,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     if (kind === 'switch' && value !== 0 && value !== 1) throw new Error(`${id} must be either open (0) or closed (1).`)
     if (!Array.isArray(part.pins) || part.pins.length !== definition.pinNames.length) throw new Error(`${id} requires exactly ${definition.pinNames.length} pins.`)
     const pins = part.pins.map(readTerminal)
-    if (!isValidFootprint(kind, pins)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
+    if (!isValidFootprint(kind, pins, { board })) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
     const schemaGroup = readSchemaGroup(part.schemaGroup)
@@ -544,6 +599,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     schemaVersion: raw.schemaVersion as 1 | 2 | 3 | 4,
     ...(customComponents === undefined ? {} : { customComponents }), boardVersion: 'virtual-1', title: raw.title,
     ...(pico ? { pico } : {}),
+    ...(board ? { board } : {}),
     parts, wires,
     ...(raw.documentation === undefined ? {} : { documentation: validateDocumentation(raw.documentation) }),
     ...(raw.automationProgram === undefined ? {} : { automationProgram: validateAutomationProgram(raw.automationProgram) }),
@@ -580,7 +636,7 @@ export function spiceDeviceId(part: Pick<Part, 'id'>): string {
 
 /** Shared connectivity for wires, Pico grounds, compiler and probing. */
 export function resolveTopology(doc: CircuitDocument) {
-  const terminals = TERMINALS.filter(pin => doc.pico || !pin.id.startsWith('pico:'))
+  const terminals = boardGeometry(doc).terminals.filter(pin => doc.pico || !pin.id.startsWith('pico:'))
   const parent = new Map(terminals.map(({ id }) => [id, id]))
   const find = (id: string): string => {
     const next = parent.get(id)

@@ -1,4 +1,4 @@
-import { PARTS, formatValue, resolveTopology, terminalById, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
+import { PARTS, formatValue, resolveTopology, boardGeometry, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
 import { PICO_PINS } from './pico/profile.ts'
 
 export interface SchematicPoint { x: number; y: number }
@@ -224,6 +224,7 @@ function layoutLabeledCircuit(layout: SchematicLayout) {
 /** The diagram and simulation share this topology, including implicit breadboard strips. */
 export function buildSchematic(document: CircuitDocument): SchematicLayout {
   const warnings: string[] = []
+  const { terminalById } = boardGeometry(document)
   const validTerminal = (terminal: string) => !!terminalById[terminal] && (!!document.pico || !terminal.startsWith('pico:'))
   const validWires = document.wires.filter(wire => {
     const valid = validTerminal(wire.from) && validTerminal(wire.to)

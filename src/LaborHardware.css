@@ -120,7 +120,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
 .supply-indicators .supply-label { margin-left: auto; font-size: 6px; color: #a0ada4; }
 .board-silkscreen { display: flex; justify-content: space-between; gap: 8px; padding: 0 15px 8px; font: 7px monospace; letter-spacing: .8px; color: #a3b1a8; }
 .breadboard-panel { padding: 3px 9px 0; }
-.labor-case .breadboard-viewport.board-viewport { height: clamp(310px, 31vw, 480px); border-radius: 2px; background: #1d2421; scrollbar-color: #636e65 #202623; }
+.labor-case .breadboard-viewport.board-viewport { --board-base-height: clamp(310px, 31vw, 480px); border-radius: 2px; background: #1d2421; scrollbar-color: #636e65 #202623; }
 .control-carrier { margin: 10px 13px 0; border: 1px solid #8b999066; padding: 9px 11px 7px; background: linear-gradient(100deg, #303b321f, transparent); }
 .carrier-heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; font: 7px monospace; letter-spacing: .7px; color: #c3d0c5; margin-bottom: 9px; }
 .carrier-heading > span:last-child { color: #8c9b90; font-size: 6px; }
@@ -186,7 +186,7 @@ button:focus-visible, input:focus-visible, select:focus-visible, a:focus-visible
   .supply-indicators .supply-label { display: none; }
   .breadboard-panel { padding: 0 4px; }
   .board-silkscreen { font-size: 6px; padding: 0 6px 6px; letter-spacing: 0; }
-  .labor-case .breadboard-viewport.board-viewport { height: 275px; }
+  .labor-case .breadboard-viewport.board-viewport { --board-base-height: 275px; }
   .control-carrier { margin: 8px 6px 0; padding: 8px; }
   .carrier-modules { gap: 10px; }
   .carrier-module + .carrier-module { padding-left: 10px; }

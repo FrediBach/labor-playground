@@ -3,17 +3,17 @@ import { PICO_PINS } from '@/lib/pico/profile'
 import { useEffect, useEffectEvent, useMemo, useRef, useState } from 'react'
 import type { KeyboardEvent, PointerEvent as ReactPointerEvent } from 'react'
 import {
-  HOLES, TERMINALS, PARTS, terminalById, compileCircuit, getPlacement, canPlace, formatValue, isValidFootprint,
+  boardGeometry, boardConfiguration, PARTS, compileCircuit, getPlacement, canPlace, formatValue, isValidFootprint,
 } from '@/lib/circuit'
-import type { CircuitDocument, Part, ComponentKind } from '@/lib/circuit'
+import type { CircuitDocument, Part, ComponentKind, Terminal } from '@/lib/circuit'
 import { hasEditableLeads, leadPlacementError, previewLeadPins, type LeadEdit } from '@/lib/part-editing'
 import { PartGlyph } from './PartGlyph'
 import { RecordedOled, RecordedLed, RecordedTerminalVoltage } from './Recording'
 import { PicoBoard } from './PicoBoard'
+import { BreadboardSurface } from './BreadboardSurface'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 type Point = { x: number; y: number }
-type Terminal = (typeof TERMINALS)[number]
 type Move = { part: Part; start: Point; dragging: boolean; pins: string[] | null }
 
 export interface BreadboardProps {
@@ -45,10 +45,10 @@ const PORTS = [
   { id: 'eg', label: 'EG OUT' },
 ]
 
-function nearestTerminal(point: Point, distance = 16): Terminal | null {
+function nearestBoardTerminal(terminals: Terminal[], point: Point, distance = 16): Terminal | null {
   let nearest: Terminal | null = null
   let best = distance * distance
-  for (const terminal of TERMINALS) {
+  for (const terminal of terminals) {
     const delta = (terminal.x - point.x) ** 2 + (terminal.y - point.y) ** 2
     if (delta < best) { nearest = terminal; best = delta }
   }
@@ -66,7 +66,8 @@ function wirePath(a: Point, b: Point, index = 0) {
   return `M${a.x},${a.y} C${a.x + dx * 0.16},${a.y - lift} ${b.x - dx * 0.16},${b.y - lift} ${b.x},${b.y}`
 }
 
-function translatedPins(part: Part, target: Terminal): string[] | null {
+function translatedPins(part: Part, target: Terminal, document: CircuitDocument): string[] | null {
+  const { holes: HOLES, terminalById } = boardGeometry(document)
   const anchor = terminalById[part.pins[0]]
   if (!anchor) return null
   const pins: string[] = []
@@ -77,7 +78,7 @@ function translatedPins(part: Part, target: Terminal): string[] | null {
     if (!destination) return null
     pins.push(destination.id)
   }
-  return isValidFootprint(part.kind, pins) ? pins : null
+  return isValidFootprint(part.kind, pins, document) ? pins : null
 }
 
 function makeId(prefix: string, document: CircuitDocument) {
@@ -90,6 +91,12 @@ function makeId(prefix: string, document: CircuitDocument) {
 const PREFIXES: Record<ComponentKind, string> = { resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', njfet: 'J', nmos: 'M', pmos: 'M', vactrol: 'O', pc817: 'O', cd4024: 'U', cd4093: 'U', cd4001: 'U', lm4040: 'U', cd4013: 'U', cd4070: 'U', cd4081: 'U', cd40106: 'U', cd4053: 'U', lm393: 'U', cd4066: 'U', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, placement, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
+  const geometry = useMemo(() => boardGeometry({ board: document.board }), [document.board])
+  const { holes: HOLES, terminalById } = geometry
+  const TERMINALS = useMemo(() => geometry.terminals.filter(terminal => document.pico || !terminal.id.startsWith('pico:')), [geometry, document.pico])
+  const board = boardConfiguration(document)
+  const workbenchWidth = geometry.width + (document.pico ? 190 : 0)
+  const nearestTerminal = (point: Point, distance = 16) => nearestBoardTerminal(TERMINALS, point, distance)
   const svg = useRef<SVGSVGElement>(null)
   const terminalElements = useRef(new Map<string, SVGCircleElement>())
   const [hoverId, setHoverId] = useState<string | null>(null)
@@ -114,7 +121,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     const groups = new Map<string, Terminal[]>()
     HOLES.forEach(hole => groups.set(hole.group, [...(groups.get(hole.group) ?? []), hole]))
     return [...groups.values()]
-  }, [])
+  }, [HOLES])
   const occupied = useMemo(() => new Set([
     ...document.parts.flatMap(part => part.pins),
     ...document.wires.flatMap(wire => [wire.from, wire.to]),
@@ -126,12 +133,12 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
   const highlightSource = wireStart ?? hoverId ?? highlightTerminal ?? inspectedTerminal
   const highlightedNet = highlightSource ? graph.nodeByTerminal[highlightSource] : undefined
   const highlighted = new Set(highlightedNet ? graph.nets[highlightedNet] ?? [] : [])
-  const previewPins = leadPart && editingLead && hover ? previewLeadPins(leadPart, editingLead.pinIndex, hover.id)
-    : move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation) : null
+  const previewPins = leadPart && editingLead && hover ? previewLeadPins(leadPart, editingLead.pinIndex, hover.id, document)
+    : move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation, document) : null
   const previewKind = leadPart?.kind ?? (move?.dragging ? move.part.kind : isPart(tool) ? tool : null)
   const placementValid = leadPart && editingLead && hover
     ? leadPlacementError(document, leadPart, editingLead.pinIndex, hover.id) === null
-    : !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins) && canPlace(document, previewPins, move?.part.id)
+    : !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins, document) && canPlace(document, previewPins, move?.part.id)
 
   useEffect(() => {
     if (!leadPart || !editingLead) return
@@ -174,7 +181,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
       onMessage('This workbench supports up to 30 components. Remove a component before adding another.')
       return
     }
-    const pins = getPlacement(kind, terminal.id, rotation)
+    const pins = getPlacement(kind, terminal.id, rotation, document)
     if (!pins || !canPlace(document, pins)) {
       onMessage(PARTS[kind].package
         ? `Place all ${PARTS[kind].pinNames.length} IC pins across the center trench. Start on row E, or rotate to start on row F.`
@@ -192,7 +199,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     if (leadPart && editingLead) {
       const error = leadPlacementError(document, leadPart, editingLead.pinIndex, terminal.id)
       if (error) { onMessage(error); return }
-      const pins = previewLeadPins(leadPart, editingLead.pinIndex, terminal.id)!
+      const pins = previewLeadPins(leadPart, editingLead.pinIndex, terminal.id, document)!
       if (pins[editingLead.pinIndex] !== leadPart.pins[editingLead.pinIndex]) {
         onChange({ ...document, parts: document.parts.map(part => part.id === leadPart.id ? { ...part, pins } : part) })
         onMessage(`${leadPart.id} lead moved. Jumper wires and probes stay attached to their holes.`)
@@ -273,7 +280,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     // Preserve where the pointer grabbed the part while snapping its first lead.
     const first = terminalById[current.part.pins[0]]
     const anchor = nearestTerminal({ x: first.x + point.x - current.start.x, y: first.y + point.y - current.start.y }, 20)
-    const next = { ...current, dragging, pins: anchor ? translatedPins(current.part, anchor) : null }
+    const next = { ...current, dragging, pins: anchor ? translatedPins(current.part, anchor, document) : null }
     moveRef.current = next
     setMove(next)
   }
@@ -363,7 +370,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
         event.preventDefault()
         event.stopPropagation()
         const target = nearestTerminal({ x: a.x + direction.x, y: a.y + direction.y }, 8)
-        const pins = target ? translatedPins(part, target) : null
+        const pins = target ? translatedPins(part, target, document) : null
         if (pins && canPlace(document, pins, part.id)) {
           onChange({ ...document, parts: document.parts.map(item => item.id === part.id ? { ...item, pins } : item) })
         } else onMessage('No free placement in that direction.')
@@ -382,7 +389,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
 
   const cursor = tool === 'select' && !wireStart && !leadPart ? 'default' : 'crosshair'
   const wireSource = wireStart ? terminalById[wireStart] : null
-  return <svg ref={svg} className="breadboard-svg" data-fit={zoom === 1} viewBox={`0 0 ${document.pico ? 1110 : 920} 550`} width={(document.pico ? 1110 : 920) * zoom} height={550 * zoom}
+  return <svg ref={svg} className="breadboard-svg" data-fit={zoom === 1} viewBox={`0 0 ${workbenchWidth} ${geometry.height}`} width={workbenchWidth * zoom} height={geometry.height * zoom}
     style={{ display: 'block', width: `${zoom * 100}%`, minWidth: 670 * zoom, height: 'auto', flexShrink: 0, userSelect: 'none', touchAction: 'none', cursor }}
     aria-label="Interactive breadboard. Use arrow keys to move between holes; Enter connects or places the selected tool."
     onPointerMove={pointerMove} onPointerUp={pointerUp}
@@ -415,39 +422,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     </defs>
 
     <g aria-hidden="true" pointerEvents="none">
-      <rect x={3} y={2} width={914} height={548} rx={5} fill="url(#breadboard-pcb)" stroke="#4b504c" />
-      <path d="M10 74H910M10 532H910" stroke="#535b54" strokeOpacity={0.4} />
-      <path d="M34 104V205L15 224V458M886 114V246L906 266V443M37 452V486L15 508M882 315V385L907 410" fill="none" stroke="#626958" strokeWidth={1} opacity={0.18} />
-      <text transform="translate(28 386) rotate(-90)" fill="none" stroke="#c5d0c7" strokeWidth={0.7} fontSize={25} fontWeight={500} letterSpacing={4}>LABOR</text>
-      <text transform="translate(28 227) rotate(-90)" fill="#acb6ad" fontSize={5.5} fontFamily="monospace" letterSpacing={1}>ERICA SYNTHS · EDU</text>
-      {[{ x: 24, y: 33 }, { x: 896, y: 33 }, { x: 23, y: 91 }, { x: 897, y: 91 }, { x: 23, y: 516 }, { x: 897, y: 516 }].map(({ x, y }) => <g key={`${x}-${y}`} transform={`translate(${x} ${y})`}>
-        <circle cy={2} r={11} fill="#090e0d" opacity={0.75} />
-        <path d="M-5-9H5L10 0 5 9H-5L-10 0Z" fill="url(#hardware-steel)" stroke="#7b8781" strokeWidth={0.7} />
-        <circle r={6.3} fill="#aeb9ae" stroke="#dde2d5" strokeWidth={0.9} />
-        <circle r={4.7} fill="#65716a" />
-        <path d="M-3.8 0H3.8M0-3.8V3.8" stroke="#151d19" strokeWidth={2.1} transform="rotate(28)" />
-        <path d="M-6-5A8 8 0 0 1 5-6" fill="none" stroke="#f9f6df" strokeWidth={1.2} opacity={0.75} />
-      </g>)}
-      <rect x={47} y={84} width={828} height={445} rx={5} fill="#080c0a" opacity={0.65} />
-      <rect x={46} y={79} width={828} height={446} rx={5} fill="url(#breadboard-edge)" stroke="#b0b5a6" strokeWidth={1} />
-      <rect x={52} y={83} width={816} height={433} rx={2} fill="url(#breadboard-plastic)" />
-      <rect x={55} y={85} width={810} height={60} rx={1} fill="url(#breadboard-plastic)" stroke="#c7cebf" strokeWidth={0.7} />
-      <rect x={55} y={150} width={810} height={132} rx={1} fill="url(#breadboard-plastic)" />
-      <rect x={55} y={310} width={810} height={140} rx={1} fill="url(#breadboard-plastic)" />
-      <rect x={55} y={454} width={810} height={55} rx={1} fill="url(#breadboard-plastic)" stroke="#c0c8b8" strokeWidth={0.7} />
-      <path d="M55 146H865M55 452H865" stroke="#909c8d" strokeWidth={1} opacity={0.65} />
-      <path d="M55 148H865M55 453H865M56 86H864M53 513H867" stroke="#fffdef" strokeWidth={1.4} opacity={0.8} />
-      <rect x={54} y={283} width={812} height={27} fill="url(#breadboard-trench)" />
-      <path d="M56 283H864" stroke="#8b9487" />
-      <path d="M56 310H864" stroke="#fffdee" strokeWidth={1.5} />
-      <text x={75} y={300} fill="#778475" fontSize={6.8} fontFamily="monospace" letterSpacing={1}>SOLDERLESS BREADBOARD</text>
-      <text x={844} y={300} textAnchor="end" fill="#778475" fontSize={6.8} fontFamily="monospace" letterSpacing={0.6}>30 × 10 · SPLIT RAILS</text>
-      {[0, 1].map(segment => <g key={segment}>
-        {[{ y: 89, color: '#b95548' }, { y: 138, color: '#647e88' }, { y: 457, color: '#b95548' }, { y: 505, color: '#647e88' }].map(line => <path key={line.y} d={`M${90 + segment * 360} ${line.y}H${443 + segment * 360}`} stroke={line.color} strokeWidth={1.6} />)}
-      </g>)}
-      {[{ y: 104, text: '+', color: '#b95548' }, { y: 128, text: '−', color: '#647e88' }, { y: 472, text: '+', color: '#b95548' }, { y: 496, text: '−', color: '#647e88' }].map(label => <g key={label.y} fill={label.color} fontSize={13} fontWeight={500} textAnchor="middle"><text x={71} y={label.y}>{label.text}</text><text x={846} y={label.y}>{label.text}</text></g>)}
-      {Array.from({ length: 30 }, (_, index) => index + 1).map(column => <g key={column} fill="#536258" fontSize={8} textAnchor="middle" fontFamily="monospace"><text x={100 + (column - 1) * 24} y={157}>{column}</text><text x={100 + (column - 1) * 24} y={442}>{column}</text></g>)}
-      {'abcdefghij'.split('').map((row, index) => <g key={row} fill="#536258" fontSize={8.5} fontFamily="monospace" textAnchor="middle"><text x={71} y={173 + index * 24 + (index > 4 ? 36 : 0)}>{row.toUpperCase()}</text><text x={846} y={173 + index * 24 + (index > 4 ? 36 : 0)}>{row.toUpperCase()}</text></g>)}
+      <BreadboardSurface board={board} />
       {strips.map(group => {
         const first = group[0], last = group[group.length - 1]
         const active = group.some(hole => highlighted.has(hole.id))
@@ -477,12 +452,12 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
       })}
     </g>
 
-    {document.pico && <PicoBoard />}
+    {document.pico && <g transform={`translate(${geometry.extraWidth} 0)`}><PicoBoard /></g>}
 
     {TERMINALS.filter(terminal => document.pico || !terminal.id.startsWith('pico:')).map(terminal => <circle key={terminal.id} data-terminal={terminal.id}
       ref={element => { if (element) terminalElements.current.set(terminal.id, element); else terminalElements.current.delete(terminal.id) }}
       cx={terminal.x} cy={terminal.y} r={10} fill="transparent" stroke={hoverId === terminal.id ? '#97b652' : 'transparent'} strokeWidth={1.5}
-      role="button" tabIndex={terminal.id === focusId ? 0 : -1}
+      role="button" tabIndex={terminal.id === (terminalById[focusId] ? focusId : 'a1') ? 0 : -1}
       aria-label={`${terminal.id.startsWith('pico:') ? `Pico pin ${PICO_PINS.find(pin => pin.id === terminal.id)?.number} ${PICO_PINS.find(pin => pin.id === terminal.id)?.label}` : terminal.id.toUpperCase()}${occupied.has(terminal.id) ? ', occupied' : ', available'}`}
       style={{ outline: 'none' }}
       onFocus={() => { setHoverId(terminal.id); setFocusId(terminal.id) }}
@@ -561,12 +536,12 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
       {previewPins.map((id, index) => { const terminal = terminalById[id]; return terminal && <circle key={`${id}-${index}`} cx={terminal.x} cy={terminal.y} r={9} fill={placementValid ? '#bad279' : '#df7662'} fillOpacity={0.3} stroke={placementValid ? '#819e45' : '#c04e3e'} strokeWidth={1.8} /> })}
       {renderPart({ ...(leadPart ?? (move?.dragging ? move.part : { kind: previewKind, ...(placement?.customModelId ? { customModelId: placement.customModelId } : {}), value: placement && resolvePartModel(document, placement) ? nominalValue(resolvePartModel(document, placement)!) : PARTS[previewKind].defaultValue })), id: 'preview', pins: previewPins }, true)}
     </g>}
-    {highlightSource && <RecordedTerminalVoltage node={graph.nodeByTerminal[highlightSource]} x={770} y={546} />}
+    {highlightSource && <RecordedTerminalVoltage node={graph.nodeByTerminal[highlightSource]} x={770 + geometry.extraWidth} y={geometry.height - 4} />}
     {isPart(tool) && hover && !previewPins && <circle cx={hover.x} cy={hover.y} r={10} fill="#df7662" fillOpacity={0.24} stroke="#c04e3e" strokeWidth={1.8} pointerEvents="none" />}
 
     <g pointerEvents="none" aria-hidden="true">
-      <text x={55} y={546} fill="#7b897c" fontSize={8.5} fontFamily="monospace" letterSpacing={0.4}>{hover ? `${hover.id.toUpperCase()}  /  ${highlighted.size} connected terminals` : 'RAILS ARE SPLIT AT 15 / 16 · CONNECT POWER WITH JUMPERS'}</text>
-      <text x={866} y={546} fill="#7b897c" textAnchor="end" fontSize={8.5} fontFamily="monospace">{leadPart ? 'MOVE LEAD · 1–8 HOLE SPACINGS · ESC TO CANCEL' : wireStart ? 'CHOOSE DESTINATION · ESC TO CANCEL' : isPart(tool) ? 'CLICK TO PLACE · R TO ROTATE' : 'CLICK TO INSPECT · DRAG TO MOVE'}</text>
+      <text x={55} y={geometry.height - 4} fill="#7b897c" fontSize={8.5} fontFamily="monospace" letterSpacing={0.4}>{hover ? `${hover.id.toUpperCase()}  /  ${highlighted.size} connected terminals` : 'RAILS SPLIT EVERY 15 COLUMNS · CONNECT POWER WITH JUMPERS'}</text>
+      <text x={866 + geometry.extraWidth} y={geometry.height - 4} fill="#7b897c" textAnchor="end" fontSize={8.5} fontFamily="monospace">{leadPart ? 'MOVE LEAD · 1–8 HOLE SPACINGS · ESC TO CANCEL' : wireStart ? 'CHOOSE DESTINATION · ESC TO CANCEL' : isPart(tool) ? 'CLICK TO PLACE · R TO ROTATE' : 'CLICK TO INSPECT · DRAG TO MOVE'}</text>
     </g>
   </svg>
 }

@@ -1,6 +1,6 @@
 import { forwardRef, useCallback, useEffect, useEffectEvent, useImperativeHandle, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { KeyboardEvent, PointerEvent, ReactNode } from 'react'
-import { boardViewportCenter, boardViewportFit, boardViewportLayout, boardViewportScroll, clampBoardZoom } from '@/lib/board-viewport'
+import type { CSSProperties, KeyboardEvent, PointerEvent, ReactNode } from 'react'
+import { BREADBOARD_EXTENT, WORKBENCH_EXTENT, boardViewportCenter, boardViewportFit, boardViewportLayout, boardViewportScroll, clampBoardZoom } from '@/lib/board-viewport'
 import type { BoardFit, BoardViewportLayout, ViewportPoint, ViewportSize } from '@/lib/board-viewport'
 import './BoardViewport.css'
 
@@ -12,6 +12,8 @@ export interface BoardViewportHandle {
 interface BoardViewportProps {
   zoom: number
   workbenchWidth?: number
+  workbenchHeight?: number
+  breadboardExtent?: { x: number; y: number; width: number; height: number }
   onZoomChange: (zoom: number) => void
   panEnabled: boolean
   onPanEnabledChange?: (enabled: boolean) => void
@@ -30,7 +32,7 @@ function isEditable(target: EventTarget | null): boolean {
 }
 
 /** View changes stay outside the circuit document and its undo history. */
-export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>(function BoardViewport({ workbenchWidth = 920, zoom, onZoomChange, panEnabled, onPanEnabledChange, children }, ref) {
+export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>(function BoardViewport({ workbenchWidth = 920, workbenchHeight = 550, breadboardExtent = BREADBOARD_EXTENT, zoom, onZoomChange, panEnabled, onPanEnabledChange, children }, ref) {
   const viewport = useRef<HTMLDivElement>(null)
   const [size, setSize] = useState<ViewportSize>({ width: 920, height: 550 })
   const [spaceHeld, setSpaceHeld] = useState(false)
@@ -47,7 +49,7 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
   const pendingCenter = useRef<ViewportPoint | null>(null)
   const previousLayout = useRef<BoardViewportLayout | null>(null)
   const scroll = useRef<ViewportPoint>({ x: 0, y: 0 })
-  const layout = useMemo(() => boardViewportLayout(size, zoom, workbenchWidth), [size, zoom, workbenchWidth])
+  const layout = useMemo(() => boardViewportLayout(size, zoom, workbenchWidth, workbenchHeight), [size, zoom, workbenchWidth, workbenchHeight])
 
   const position = useCallback((next: ViewportPoint) => {
     const element = viewport.current
@@ -86,12 +88,12 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
       setPositionVersion(version => version + 1)
     },
     fit(mode) {
-      const fit = boardViewportFit(size, mode, workbenchWidth)
+      const fit = boardViewportFit(size, mode, workbenchWidth, workbenchHeight, breadboardExtent)
       pendingCenter.current = fit.center
       onZoomChange(fit.zoom)
       setPositionVersion(version => version + 1)
     },
-  }), [layout, onZoomChange, size, workbenchWidth])
+  }), [layout, onZoomChange, size, workbenchWidth, workbenchHeight, breadboardExtent])
 
   const finishPan = useCallback((cancelled: boolean) => {
     const active = gesture.current
@@ -198,6 +200,7 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
   }
 
   return <div
+    style={{ '--board-height-ratio': workbenchHeight / WORKBENCH_EXTENT.height } as CSSProperties}
     ref={viewport} className="breadboard-viewport board-viewport" role="region" aria-label="Breadboard view" tabIndex={0}
     aria-description="Scroll to pan a zoomed board. Hold Space and drag, use the middle mouse button, or turn on Pan. In Pan mode, arrow keys move the view. Escape cancels a pan."
     data-testid="board-viewport" data-pan={panEnabled || spaceHeld} data-dragging={dragging} data-zoom={zoom}

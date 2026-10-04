@@ -27,7 +27,9 @@ Numeric oscillator frequency bounds, amplitude, output impedance, rail breaks, p
 
 ## Board coordinates and electrical groups
 
-The SVG scene uses an approximately 920 × 550 coordinate system. Column `c` is positioned at `x = 100 + 24 × (c − 1)` for columns 1 through 30.
+Use the **Columns** and **Rows** selectors above the breadboard to choose 30, 45, or 60 columns and one, two, or three stacked breadboard rows. Each row contains its own A–E and F–J strips, center trench, and four rails. The default remains 30 columns and one row.
+
+The default SVG scene uses a 920 × 550 coordinate system. Column `c` is positioned at `x = 100 + 24 × (c − 1)`. Each additional column adds 24 units of width and each additional breadboard row adds 480 units of height. The following coordinates describe the first row; later rows add 480 or 960 to Y. The Pico dock moves to the right of the selected width, retaining its pin IDs. Adding rows increases the breadboard area’s page height in proportion to the workbench height, preserving the existing hole scale and zoom setting. Scroll the page to reach lower rows. Fit breadboard / Fit all use the complete selected geometry within that expanded area, and zoom supports up to 600% for editing larger layouts.
 
 | Terminals | Y coordinates | Internally connected |
 | --- | --- | --- |
@@ -38,7 +40,9 @@ The SVG scene uses an approximately 920 × 550 coordinate system. Column `c` is 
 | bp1–bp30 | 468 | 1–15 together; 16–30 together |
 | bn1–bn30 | 492 | 1–15 together; 16–30 together |
 
-There are 420 breadboard holes. The trench separates e from f. Every rail is split between columns 15 and 16. Different rails are never internally connected. Printed polarity/color carries no electrical meaning: every rail starts isolated and requires explicit jumpers to power or ground. Wires connect endpoints only; drawn crossings are not junctions. Components connect electrical nodes through their model without merging those nodes. A physical hole accepts one lead or wire endpoint. Probes do not occupy holes.
+The default board has 420 holes; each row has `14 × columns` holes, up to 2,520 holes at 60 columns × 3 rows. The trench separates e from f. Rails are isolated in fixed 15-column segments: 1–15, 16–30, 31–45, and 46–60 where present. Different rails and different breadboard rows are never internally connected. Printed polarity/color carries no electrical meaning: every rail starts isolated and requires explicit jumpers to power or ground. Wires connect endpoints only; drawn crossings are not junctions. Components connect electrical nodes through their model without merging those nodes. A physical hole accepts one lead or wire endpoint. Probes do not occupy holes.
+
+Saved projects optionally include `board: { columns: 60, rows: 3 }` (shown at maximum size). Omission preserves legacy geometry and is not rewritten during validation. The first row keeps IDs such as `a1` and `tp30`; subsequent rows use `r2:a1`, `r2:tp30`, `r3:a1`, etc. Resizing preserves existing attachments and is undoable. Shrinking is rejected if it would remove a component lead, wire endpoint, probe, or physical voltage-signal reference. Clear board removes the circuit while retaining its size. Electrical resource limits remain 30 parts, 120 wires, and 60 active external nodes. Geometry changes invalidate existing captures because generated node names may change. Unit tests cover geometry, isolation, placement and compatibility; a real ngspice divider spanning multiple rows verifies the numerical result.
 
 ## Instrument terminals and virtual source models
 

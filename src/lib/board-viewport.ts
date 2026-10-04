@@ -3,7 +3,7 @@ export interface ViewportPoint { x: number; y: number }
 export type BoardFit = 'breadboard' | 'workbench'
 
 export const BOARD_ZOOM_MIN = 0.6
-export const BOARD_ZOOM_MAX = 2
+export const BOARD_ZOOM_MAX = 6
 export const WORKBENCH_EXTENT = { x: 0, y: 0, width: 920, height: 550 } as const
 export const BREADBOARD_EXTENT = { x: 46, y: 79, width: 828, height: 450 } as const
 
@@ -11,13 +11,13 @@ export function clampBoardZoom(value: number): number {
   return Number.isFinite(value) ? Math.max(BOARD_ZOOM_MIN, Math.min(BOARD_ZOOM_MAX, value)) : 1
 }
 
-export function boardViewportLayout(viewport: ViewportSize, zoom: number, workbenchWidth = WORKBENCH_EXTENT.width as number) {
+export function boardViewportLayout(viewport: ViewportSize, zoom: number, workbenchWidth = WORKBENCH_EXTENT.width as number, workbenchHeight = WORKBENCH_EXTENT.height as number) {
   const width = Math.max(1, viewport.width)
   const height = Math.max(1, viewport.height)
-  const baseScale = Math.min(width / workbenchWidth, height / WORKBENCH_EXTENT.height)
+  const baseScale = Math.min(width / workbenchWidth, height / workbenchHeight)
   const scale = baseScale * clampBoardZoom(zoom)
   const stageWidth = workbenchWidth * scale
-  const stageHeight = WORKBENCH_EXTENT.height * scale
+  const stageHeight = workbenchHeight * scale
   return {
     width, height, baseScale, scale, stageWidth, stageHeight,
     contentWidth: Math.max(width, stageWidth),
@@ -43,9 +43,9 @@ export function boardViewportScroll(layout: BoardViewportLayout, center: Viewpor
   }
 }
 
-export function boardViewportFit(viewport: ViewportSize, mode: BoardFit, workbenchWidth = WORKBENCH_EXTENT.width as number) {
-  const bounds = mode === 'breadboard' ? BREADBOARD_EXTENT : { ...WORKBENCH_EXTENT, width: workbenchWidth }
-  const { baseScale } = boardViewportLayout(viewport, 1, workbenchWidth)
+export function boardViewportFit(viewport: ViewportSize, mode: BoardFit, workbenchWidth = WORKBENCH_EXTENT.width as number, workbenchHeight = WORKBENCH_EXTENT.height as number, breadboardExtent: { x: number; y: number; width: number; height: number } = BREADBOARD_EXTENT) {
+  const bounds = mode === 'breadboard' ? breadboardExtent : { ...WORKBENCH_EXTENT, width: workbenchWidth, height: workbenchHeight }
+  const { baseScale } = boardViewportLayout(viewport, 1, workbenchWidth, workbenchHeight)
   return {
     zoom: clampBoardZoom(Math.min(viewport.width / bounds.width, viewport.height / bounds.height) / baseScale),
     center: { x: bounds.x + bounds.width / 2, y: bounds.y + bounds.height / 2 },

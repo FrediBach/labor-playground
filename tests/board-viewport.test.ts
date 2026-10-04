@@ -43,6 +43,23 @@ test('zoom preserves the visible center away from boundaries and clamps edge scr
   assert.deepEqual(boardViewportScroll(after, { x: -1000, y: -1000 }), { x: 0, y: 0 })
   assert.deepEqual(boardViewportScroll(after, { x: 10000, y: 10000 }), { x: after.contentWidth - after.width, y: after.contentHeight - after.height })
   assert.equal(clampBoardZoom(0), 0.6)
-  assert.equal(clampBoardZoom(10), 2)
+  assert.equal(clampBoardZoom(10), 6)
   assert.equal(clampBoardZoom(NaN), 1)
+})
+
+
+test('fit frames a wide, three-row board and its Pico dock', () => {
+  const size = { width: 760, height: 300 }
+  const board = { x: 46, y: 79, width: 1548, height: 1410 }
+  for (const mode of ['breadboard', 'workbench'] as const) {
+    const fit = boardViewportFit(size, mode, 1830, 1510, board)
+    const layout = boardViewportLayout(size, fit.zoom, 1830, 1510)
+    const scroll = boardViewportScroll(layout, fit.center)
+    const bounds = mode === 'breadboard' ? board : { x: 0, y: 0, width: 1830, height: 1510 }
+    const left = bounds.x * layout.scale + layout.left - scroll.x
+    const top = bounds.y * layout.scale + layout.top - scroll.y
+    assert.ok(left >= -1e-8 && top >= -1e-8)
+    assert.ok(left + bounds.width * layout.scale <= size.width + 1e-8)
+    assert.ok(top + bounds.height * layout.scale <= size.height + 1e-8)
+  }
 })
