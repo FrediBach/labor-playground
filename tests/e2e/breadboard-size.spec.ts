@@ -135,6 +135,36 @@ test('dragging between added rows and moving a lead each make one undoable edit'
 
 
 for (const screen of [{ width: 1440, height: 1120 }, { width: 700, height: 900 }]) {
+  test(`board area fits the scene height at ${screen.width}px`, async ({ page }) => {
+    await page.setViewportSize(screen)
+    await page.goto('/')
+    const viewport = page.getByTestId('board-viewport')
+    const unusedHeight = () => viewport.evaluate(element => {
+      const bounds = element.getBoundingClientRect()
+      const scene = element.querySelector('svg')!.getBoundingClientRect()
+      return Math.max(Math.abs(scene.top - bounds.top), Math.abs(scene.bottom - bounds.bottom))
+    })
+    for (const example of ['rc-filter', 'pico-led']) {
+      await page.getByRole('combobox', { name: 'Load example' }).selectOption(example)
+      await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
+      for (const width of ['30', '45', '60']) {
+        await columns(page).selectOption(width)
+        for (const count of ['1', '2', '3']) {
+          await rows(page).selectOption(count)
+          await page.getByRole('button', { name: 'Fit workbench', exact: true }).click()
+          await expect.poll(unusedHeight).toBeLessThanOrEqual(1)
+          // Zoom changes the scrollable scene, not the space reserved on the page.
+          const height = await viewport.evaluate(element => element.clientHeight)
+          await page.getByRole('button', { name: 'Zoom in', exact: true }).click()
+          expect(await viewport.evaluate(element => element.clientHeight)).toBe(height)
+        }
+      }
+    }
+    await page.setViewportSize({ width: screen.width + 200, height: screen.height })
+    await page.getByRole('button', { name: 'Fit workbench', exact: true }).click()
+    await expect.poll(unusedHeight).toBeLessThanOrEqual(1)
+  })
+
   test(`adding rows grows the board area without shrinking holes at ${screen.width}px`, async ({ page }) => {
     await page.setViewportSize(screen)
     await page.goto('/')

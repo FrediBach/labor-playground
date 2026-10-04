@@ -1,9 +1,9 @@
 .breadboard-viewport.board-viewport {
   position: relative;
   --board-base-height: clamp(270px, calc(100svh - 660px), 430px);
-  /* Additional rows get more page space at the same single-row scale. */
-  height: calc(var(--board-base-height) * var(--board-height-ratio, 1));
-  max-height: none;
+  /* Fit the scene's aspect ratio, capped at the existing single-row scale. */
+  height: auto;
+  max-height: calc(var(--board-base-height) * var(--board-height-ratio, 1));
   overflow: auto;
   overscroll-behavior: auto;
   scroll-behavior: auto;

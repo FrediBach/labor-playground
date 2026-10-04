@@ -200,7 +200,7 @@ export const BoardViewport = forwardRef<BoardViewportHandle, BoardViewportProps>
   }
 
   return <div
-    style={{ '--board-height-ratio': workbenchHeight / WORKBENCH_EXTENT.height } as CSSProperties}
+    style={{ aspectRatio: `${workbenchWidth} / ${workbenchHeight}`, '--board-height-ratio': workbenchHeight / WORKBENCH_EXTENT.height } as CSSProperties}
     ref={viewport} className="breadboard-viewport board-viewport" role="region" aria-label="Breadboard view" tabIndex={0}
     aria-description="Scroll to pan a zoomed board. Hold Space and drag, use the middle mouse button, or turn on Pan. In Pan mode, arrow keys move the view. Escape cancels a pan."
     data-testid="board-viewport" data-pan={panEnabled || spaceHeld} data-dragging={dragging} data-zoom={zoom}
