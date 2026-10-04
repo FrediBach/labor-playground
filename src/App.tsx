@@ -9,6 +9,7 @@ import { ArrowDownToLine, ArrowUpFromLine, Cable, ChevronDown, CircleHelp, Circu
 import { Button } from '@/components/ui/button'
 import { Breadboard } from '@/components/workbench/Breadboard'
 import { RecordingProvider, RecordingScope, RecordingTransport } from '@/components/workbench/Recording'
+import { PicoStateInspector } from '@/components/workbench/PicoStateInspector'
 import { PARTS, createEmptyDocument, examples, validateDocument, envelopeSettings, type CircuitDocument, type ComponentKind } from '@/lib/circuit'
 import { useDocument } from '@/lib/use-document'
 import { useSimulation } from '@/lib/simulation'
@@ -304,6 +305,7 @@ export default function App() {
         <div id="simulation-results"><SeekTestEvidence report={inspectedTest} /><RecordingExpectationButton onAdd={seed => { setRecordingSeed(seed); openTab('automations') }} />{inspectedTest && <div className="test-recording-banner"><strong>Test: {inspectedTest.name} · {inspectedTest.verdict}</strong><span>{inspectedTest.message}</span><button className="subtle-button" onClick={() => { setInspectedTest(null); openTab('automations') }}>Return to tests</button><button className="subtle-button" onClick={() => setInspectedTest(null)}>Ordinary recording</button></div>}
         <RecordingScope automations={resultCapture?.automationRun?.actions ?? captureAutomations} pico={!!document.pico} key={`${exampleId || document.title}:${!!captureAutomations?.length}`} defaultTimeScale={captureAutomations?.length ? durationSeconds * 100 : document.pico || ['envelope-shaping', '555-monostable', 'ripple-divider', 'nand-oscillator'].includes(exampleId) ? 10 : undefined} onHighlight={highlightChannel} stimulus={document.stimulus ?? 'periodic'} defaultScale={exampleId === '555-astable' ? 5 : captureAutomations?.length ? 2 : document.stimulus === 'step' || ['opamp-amplifier', 'voltage-divider', 'envelope-shaping', '555-astable', '555-monostable', 'quad-buffer', 'lm13700-vca'].includes(exampleId) ? 2 : 1} capture={resultCapture} status={resultStatus} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
         <RecordingTransport document={document} probes={{ CH1: document.probes.CH1 ? simulation.nodeByTerminal[document.probes.CH1] ?? null : null, CH2: document.probes.CH2 ? simulation.nodeByTerminal[document.probes.CH2] ?? null : null }} />
+        {(document.pico || resultCapture?.picoTrace) && <PicoStateInspector enabled={!!document.pico} />}
         <OperatingPointPanel operatingPoint={operatingPoint} probes={document.probes} nodeByTerminal={simulation.nodeByTerminal} onHighlight={highlightChannel} />
         </div>
         </div>

@@ -45,16 +45,22 @@ export async function runCircuitTest(document: CircuitDocument, test: CircuitTes
   return report
 }
 export interface SuiteReport { reports: TestReport[]; verdict: 'no-tests' | 'passed' | 'failed'; counts: Record<TestVerdict, number> }
+function recordingSize(capture: Capture | undefined): number {
+  if (!capture) return 0
+  const samples = capture.time.length + Object.values(capture.channels).reduce((sum, values) => sum + values.length, 0) + Object.values(capture.recording?.nodeVoltages ?? {}).reduce((sum, values) => sum + values.length, 0) + Object.values(capture.recording?.currents ?? {}).reduce((sum, values) => sum + values.length, 0)
+  return samples * 8 + (capture.picoTrace ? new TextEncoder().encode(JSON.stringify(capture.picoTrace)).length : 0)
+}
 /** One immutable snapshot and one awaited request at a time: no replaceable queue. */
 export async function runCircuitTestSuite(document: CircuitDocument, execute: TestExecutor, options: { signal?: AbortSignal; testIds?: string[]; onCase?: (report: TestReport, index: number, total: number) => void; onStart?: (test: CircuitTest, index: number, total: number) => void; recordingBudgetBytes?: number } = {}): Promise<SuiteReport> {
   const snapshot = structuredClone(document), tests = snapshot.automationProgram?.tests.filter(t => !options.testIds || options.testIds.includes(t.id)) ?? [], reports: TestReport[] = []
+  const recordingSizes = new Map<TestReport, number>()
   let bytes = 0
   for (const [index, test] of tests.entries()) {
     options.onStart?.(test, index, tests.length)
     const report = await runCircuitTest(snapshot, test, execute, options.signal); reports.push(report)
-    const size = (r: TestReport) => r.capture ? (r.capture.time.length + Object.values(r.capture.channels).reduce((s, v) => s + v.length, 0) + Object.values(r.capture.recording?.nodeVoltages ?? {}).reduce((s, v) => s + v.length, 0) + Object.values(r.capture.recording?.currents ?? {}).reduce((s, v) => s + v.length, 0)) * 8 : 0
-    bytes += size(report)
-    for (const old of reports) { if (bytes <= (options.recordingBudgetBytes ?? 64 * 1024 * 1024)) break; bytes -= size(old); delete old.capture; old.recordingEvicted = true }
+    const size = recordingSize(report.capture)
+    recordingSizes.set(report, size); bytes += size
+    for (const old of reports) { if (bytes <= (options.recordingBudgetBytes ?? 64 * 1024 * 1024)) break; bytes -= recordingSizes.get(old) ?? 0; recordingSizes.delete(old); delete old.capture; old.recordingEvicted = true }
     options.onCase?.(report, index, tests.length)
   }
   const counts: SuiteReport['counts'] = { passed: 0, failed: 0, error: 0, inconclusive: 0, canceled: 0, disabled: 0 }

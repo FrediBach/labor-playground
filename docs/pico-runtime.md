@@ -32,6 +32,22 @@ The bridge is one way. Actual CPU bus reads of SIO GPIO input, GPIO status, and 
 
 Stop terminates the active worker phase, discards partial results and stops audio. Reset also clears the console. Neither clears source or wiring. Source/wiring edits immediately make a capture stale and cancel the Pico pipeline. All Pico messages and the analog result carry a run identity.
 
+## Inspect recorded application state
+
+Run or Simulate your Pico code, open **Results**, and use the **Simulation recording** timeline. **Pico variables**, directly below the playback controls, follows the same cursor as the scope, GPIO states, and OLED. No changes to `main.py` are needed.
+
+The inspector shows global variable names, types, and captured values, including numbers, booleans, strings, bytes, and `None`. Expand lists, tuples, sets, and dictionaries to inspect their contents, filter by variable name, or use **Previous** / **Next change** to seek recorded changes. New, changed, and removed variables are marked relative to the preceding snapshot. Scrubbing backward restores earlier values, including earlier contents of mutable containers. Source or wiring edits invalidate these readings until the next successful run.
+
+State is sampled every **1 ms of simulated time**, at an ARM instruction boundary, and at the recording end. Only changed snapshots are retained. The inspector shows the latest snapshot at or before the cursor, together with its time; it never interpolates values or displays a future snapshot. Changes between samples can be missed. A sample during an incomplete dictionary resize is skipped. This is sampled application state, not a line-by-line debugger. Use `scope.log()` for an explicit numeric observation at a particular point in your code.
+
+The reader observes the emulator's RAM and flash directly. It never calls user `repr()`, properties, or other Python code during capture. Setup registers the global namespace before capture zero. The decoder is specific to the checksummed MicroPython 1.20 firmware profile; unsupported layouts produce an unavailable-state message while the electrical simulation continues.
+
+Function-local variables are not captured automatically. Keep state you want to inspect in module-level variables or containers, or log a local numeric value explicitly with `scope.log()`. Hardware objects, functions, and other unsupported object types show a type summary. Large or deeply nested values have visibly limited previews; circular references are marked.
+
+State recording has its own 1 MB budget, with up to 128 globals, 32 children per container, four container levels, 256 bytes per string preview, and 512 decoded values per snapshot. If the history budget is reached, the inspector labels the recording incomplete and shows the last captured values with their time. A shorter capture or smaller state permits more history. These snapshots are session-only and are not included in circuit JSON, recovery, or folder sync.
+
+The standard firmware does not expose `sys.settrace()`; [MicroPython documents it as requiring a custom build](https://docs.micropython.org/en/v1.20.0/library/sys.html#sys.settrace). Passive sampling lets the existing firmware and original source line numbers remain in use.
+
 ## Log code values to the oscilloscope
 
 The simulator provides a `scope` helper in MicroPython. Import it and call `scope.log(name, value, unit="")` wherever a numeric value changes:

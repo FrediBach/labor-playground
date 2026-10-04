@@ -62,6 +62,21 @@ test('empty suites, zero checks, missing fixture parts and insufficient observat
 test('recordings are evicted by budget, independently of structured evidence', async () => {
   const result = await runCircuitTestSuite(fixture(), execute, { recordingBudgetBytes: 0 })
   assert.equal(result.reports[0].capture, undefined); assert.equal(result.reports[0].recordingEvicted, true); assert.ok(result.reports[0].run?.nodes.some(n => n.evidence))
+  const picoTrace: NonNullable<Capture['picoTrace']> = {
+    initial: [], events: [], durationNs: 100_000_000, console: '', instructions: 0, elapsedMs: 0,
+    state: { intervalNs: 1_000_000, sampledThroughNs: 100_000_000, snapshots: [{ ns: 0, variables: [{ name: 'message', value: { type: 'str', value: 'é'.repeat(256) } }] }] },
+  }
+  const capture = { ...fake, automationRun: result.reports[0].run, picoTrace }
+  const recordingBytes = 6 * 8 + new TextEncoder().encode(JSON.stringify(picoTrace)).length
+  const document = fixture(), first = document.automationProgram!.tests[0]
+  document.automationProgram!.tests.push({ ...structuredClone(first), id: 'Second', name: 'Second' })
+  const retained = await runCircuitTestSuite(document, async () => structuredClone(capture), { recordingBudgetBytes: recordingBytes })
+  assert.equal(retained.reports[0].capture, undefined, 'Pico state counts toward the combined recording budget')
+  assert.equal(retained.reports[0].recordingEvicted, true)
+  assert.deepEqual(retained.reports[1].capture?.picoTrace, picoTrace, 'the newest recording fits the exact byte budget')
+  assert.ok(retained.reports.every(report => report.verdict === 'passed' && report.run?.nodes.some(node => node.evidence)))
+  const oversized = await runCircuitTestSuite(fixture(), async () => structuredClone(capture), { recordingBudgetBytes: recordingBytes - 1 })
+  assert.equal(oversized.reports[0].capture, undefined, 'UTF-8 Pico payload bytes count even when waveform arrays fit')
 })
 const fake: Capture = { revision: 1, duration: .1, elapsedMs: 0, time: [0, .1], channels: { CH1: [0, 0], CH2: [0, 0] } }
 function graph(nodes: FlowNode[], connections: [string, string, string][]) {

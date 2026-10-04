@@ -3,11 +3,13 @@ import { Simulator, USBCDC, ConsoleLogger, LogLevel } from 'rp2040js'
 import { PICO_CAPTURE_DURATIONS_MS } from './profile.ts'
 import { PicoScopeRecorder, PICO_SCOPE_PRELUDE } from './scope-log.ts'
 import type { PicoScopeChannel } from './scope-log.ts'
+import { PicoStateRecorder, PICO_STATE_PRELUDE, PICO_STATE_INTERVAL_NS } from './state.ts'
+import type { PicoStateTrace } from './state.ts'
 
 export const PICO_LIMITS = { captureNs: 100_000_000, maxCaptureNs: 10_000_000_000, bootNs: 10_000_000_000, instructions: 1_500_000_000, wallMs: 60_000, events: 25_000, consoleBytes: 16_384, traceBytes: 4_000_000, sourceBytes: 32_768 } as const
 export interface PinState { gpio: number; state: number; function: number; enabled: boolean; pullUp: boolean; pullDown: boolean }
 export interface PinEvent extends PinState { ns: number }
-export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number; scopeLogs?: PicoScopeChannel[]; displays?: OledTrace[] }
+export interface PicoTrace { initial: PinState[]; events: PinEvent[]; durationNs: number; console: string; instructions: number; elapsedMs: number; scopeLogs?: PicoScopeChannel[]; displays?: OledTrace[]; state?: PicoStateTrace }
 export interface RuntimeOptions { displays?: OledConnection[]; source: string; bootrom: ArrayBuffer; firmware: ArrayBuffer; durationSeconds?: number; signal?: AbortSignal; batchSize?: number; onConsole?: (text: string) => void; onPhase?: (phase: 'preparing' | 'running') => void }
 const MARKER = 0x20041ffc
 
@@ -39,6 +41,8 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   let initial: PinState[] = []
   const events: PinEvent[] = []
   const scope = new PicoScopeRecorder(captureNs)
+  const state = new PicoStateRecorder({ sram: mcu.sram, flash: mcu.flash })
+  let nextStateNs = PICO_STATE_INTERVAL_NS
   const displays = (options.displays ?? []).map(connection => ({ connection, controller: new SSD1306() }))
   for (const [index, bus] of mcu.i2c.entries()) {
     let attached: typeof displays[number] | undefined
@@ -92,7 +96,7 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
     else if (phase === 'raw' && handshake.includes('raw REPL; CTRL-B to exit\r\n>')) {
       phase = 'submitted'; handshake = ''
       // Compilation is excluded; capture starts at the marker write immediately before exec.
-      queue(`import machine\nexec(compile(${JSON.stringify(PICO_SCOPE_PRELUDE)}, 'scope.py', 'exec'), {})\n_labor_code = compile(${JSON.stringify(options.source)}, 'main.py', 'exec')\nmachine.mem32[${MARKER}] = 0x4c41424f\nexec(_labor_code)\n\x04`)
+      queue(`import machine\nexec(compile(${JSON.stringify(PICO_SCOPE_PRELUDE)}, 'scope.py', 'exec'), {})\n_labor_code = compile(${JSON.stringify(options.source)}, 'main.py', 'exec')\nexec(compile(${JSON.stringify(PICO_STATE_PRELUDE)}, 'state.py', 'exec'), {})\nmachine.mem32[${MARKER}] = 0x4c41424f\nexec(_labor_code)\n\x04`)
     }
     else if (phase === 'submitted' && handshake.endsWith(String.fromCharCode(4) + '>')) throw new Error(handshake.split(String.fromCharCode(4)).join(''))
   }
@@ -108,15 +112,18 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   for (const width of ['writeUint8', 'writeUint16'] as const) {
     const original = mcu[width].bind(mcu)
     mcu[width] = (address, value) => {
+      if (state.write(address, value, width === 'writeUint8' ? 8 : 16)) return
       if (zero !== undefined && scope.write(address, value, width === 'writeUint8' ? 8 : 16, sim.clock.nanos - zero)) return
       guardWrite(address, value); original(address, value)
     }
   }
   const write = mcu.writeUint32.bind(mcu)
   mcu.writeUint32 = (address, value) => {
+    if (state.write(address, value, 32)) return
     if (address === MARKER && value === 0x4c41424f && zero === undefined) {
       zero = sim.clock.nanos
       initial = mcu.gpio.map((_, index) => snapshot(index))
+      state.sample(0)
       options.onPhase?.('running')
       return
     }
@@ -163,8 +170,12 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
       while (sent < pending.length && !cdc.txFIFO.full) cdc.sendSerialByte(pending[sent++])
       const remaining = zero === undefined ? Infinity : captureNs - (sim.clock.nanos - zero)
       if (remaining <= 0) break
-      if (mcu.core.waiting) sim.clock.tick(Math.min(sim.clock.nanosToNextAlarm, remaining))
+      if (mcu.core.waiting) sim.clock.tick(Math.min(sim.clock.nanosToNextAlarm, remaining, zero === undefined ? Infinity : nextStateNs - (sim.clock.nanos - zero)))
       else { const cycles = mcu.core.executeInstruction(); sim.clock.tick(Math.min(cycles * 8, remaining)); instructions++ }
+      if (zero !== undefined && sim.clock.nanos - zero >= nextStateNs) {
+        state.sample(sim.clock.nanos - zero)
+        nextStateNs = (Math.floor((sim.clock.nanos - zero) / PICO_STATE_INTERVAL_NS) + 1) * PICO_STATE_INTERVAL_NS
+      }
     }
     if (performance.now() - lastYield >= 16) {
       flushConsole()
@@ -174,8 +185,9 @@ export async function runPico(options: RuntimeOptions): Promise<PicoTrace> {
   }
   flushConsole(true)
   if (stderr.trim()) throw new Error(stderr.replace(/  File "<stdin>", line \d+, in <module>\r?\n/g, ''))
+  state.sample(captureNs)
   const scopeLogs = scope.channels
   const displayTraces = displays.map(({ connection, controller }) => ({ partId: connection.partId, frames: controller.frames }))
   if (encoder.encode(JSON.stringify({ initial, events, scopeLogs, displays: displayTraces })).length > PICO_LIMITS.traceBytes) throw new Error('Pico trace byte limit exceeded. Reduce output event or logging density.')
-  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started, scopeLogs, displays: displayTraces }
+  return { initial, events, durationNs: captureNs, console: displayConsole(), instructions, elapsedMs: performance.now() - started, scopeLogs, displays: displayTraces, state: state.trace }
 }

@@ -1,0 +1,58 @@
+.pico-state-inspector { min-width: 0; margin-bottom: 14px; border: 1px solid #494b54; border-radius: 9px; background: #24272d; overflow: hidden; color: #dfe2e9; }
+.pico-state-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 13px 15px; }
+.pico-state-title { display: flex; align-items: center; gap: 11px; }
+.pico-state-title > svg { color: #bca7ec; flex-shrink: 0; }
+.pico-state-title h2 { margin: 0; font-size: 12px; font-weight: 600; }
+.pico-state-title p { margin: 3px 0 0; color: #aeb5c1; font-size: 11px; }
+.pico-state-inspector button { border: 1px solid #50535e; border-radius: 4px; background: #30333c; color: #d8dce6; }
+.pico-state-inspector button:hover:not(:disabled) { background: #3d414d; border-color: #8e87a6; }
+.pico-state-inspector button:focus-visible, .pico-state-inspector input:focus-visible, .pico-state-inspector summary:focus-visible, .pico-state-table-scroll:focus-visible { outline: 2px solid #c6b1ef; outline-offset: -2px; }
+.pico-state-collapse { display: grid; place-items: center; width: 30px; height: 30px; flex-shrink: 0; }
+.pico-state-collapse[aria-expanded=false] svg { transform: rotate(-90deg); }
+.pico-state-timing { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 18px; padding: 11px 15px; border-block: 1px solid #3d424d; background: #20232a; }
+.pico-state-cursor { display: flex; flex-direction: column; gap: 4px; }
+.pico-state-cursor > span { font-size: 10px; color: #aeb5c1; }
+.pico-state-cursor output { color: #e6d9ff; font: 15px monospace; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pico-state-timing > p { flex: 1 1 220px; margin: 0; color: #bac0cc; font-size: 10px; line-height: 1.7; }
+.pico-state-timing > p strong { font-weight: 500; color: #d5d9e2; white-space: nowrap; }
+.pico-state-timing > p > span { display: block; color: #a7afbd; }
+.pico-state-navigation { display: flex; gap: 5px; }
+.pico-state-navigation button { display: inline-flex; align-items: center; justify-content: center; gap: 3px; min-height: 29px; padding: 5px 7px; font-size: 10px; }
+.pico-state-tools { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px 12px; padding: 10px 15px; }
+.pico-state-search { display: flex; align-items: center; gap: 6px; flex: 1 1 210px; max-width: 330px; min-height: 31px; padding-inline: 8px; border: 1px solid #4c505d; border-radius: 4px; background: #1c2027; color: #a9b2c2; }
+.pico-state-search input { width: 100%; min-width: 0; align-self: stretch; border: 0; background: transparent; color: #e0e4ee; font-size: 11px; }
+.pico-state-search input::placeholder { color: #a2aaba; }
+.pico-state-search input::-webkit-search-cancel-button { display: none; }
+.pico-state-search button { display: grid; place-items: center; flex-shrink: 0; width: 23px; height: 23px; padding: 0; border: 0; background: transparent; }
+.pico-state-tools > span { display: flex; align-items: center; gap: 5px; color: #aeb7c5; font-size: 10px; }
+.pico-state-tools > span i { width: 5px; height: 5px; border-radius: 50%; background: #c8b0f0; }
+.pico-state-table-scroll { max-height: 288px; overflow: auto; scrollbar-width: thin; scrollbar-color: #777484 #20232a; }
+.pico-state-table { border-collapse: separate; border-spacing: 0; table-layout: fixed; width: 100%; font-size: 11px; }
+.pico-state-name-column { width: 38%; }
+.pico-state-type-column { width: 16%; }
+.pico-state-table thead { position: sticky; top: 0; z-index: 1; background: #2c3038; }
+.pico-state-table thead th { padding: 7px 12px; border-block: 1px solid #414650; color: #bdc5d1; text-align: left; font-size: 10px; font-weight: 500; }
+.pico-state-table tbody th, .pico-state-table tbody td { padding: 8px 12px; border-bottom: 1px solid #363b44; text-align: left; vertical-align: top; line-height: 1.6; overflow-wrap: anywhere; }
+.pico-state-table tbody th { font-weight: 400; }
+.pico-state-table tbody tr:last-child > * { border-bottom: 0; }
+.pico-state-name { display: flex; align-items: flex-start; flex-wrap: wrap; gap: 4px; }
+.pico-state-name > button { display: grid; place-items: center; flex-shrink: 0; padding: 0; width: 18px; height: 20px; border: 0; background: transparent; }
+.pico-state-name > button[aria-expanded=true] svg { transform: rotate(90deg); }
+.pico-state-leaf { width: 18px; flex-shrink: 0; }
+.pico-state-name > code { min-width: 0; flex: 1; color: #e2d7f6; }
+.pico-state-table code { font-size: 11px; white-space: pre-wrap; }
+.pico-state-type { color: #a4b8c5; font-family: monospace; font-size: 10px; }
+.pico-state-value { color: #e4e8df; }
+.pico-state-row-changed { background: #b59ae708; }
+.pico-state-row-changed > th { box-shadow: inset 2px 0 #bca7ec; }
+.pico-state-change { align-self: center; color: #d0b9f3; border: 1px solid #665579; border-radius: 3px; padding: 0 4px; font-size: 8px; line-height: 1.8; }
+.pico-state-limited { display: block; margin-top: 3px; color: #c7b58e; font: 9px sans-serif; }
+.pico-state-empty { margin: 0; padding: 2px 15px 13px; color: #b5becc; font-size: 11px; line-height: 1.8; }
+.pico-state-tools + .pico-state-empty, .pico-state-timing + .pico-state-empty { padding-top: 12px; }
+.pico-state-change-note { margin: 0; padding: 8px 15px 0; color: #b8a7ce; font-size: 10px; }
+.pico-state-warning { margin: 10px 15px; padding: 8px 10px; border-left: 2px solid #c9ae7c; background: #c9ae7c0c; color: #d7c8a8; font-size: 11px; line-height: 1.7; }
+.pico-state-help { margin: 0; padding: 9px 15px 11px; color: #aab4c4; font-size: 10px; }
+.pico-state-help summary { width: fit-content; cursor: pointer; padding-block: 2px; }
+.pico-state-help p { margin: 8px 0 0; line-height: 1.8; }
+.pico-state-help code { color: #d2c5e5; font-size: 10px; }
+@media (max-width: 600px) { .pico-state-heading, .pico-state-timing, .pico-state-tools { padding-inline: 12px; } .pico-state-navigation { flex-basis: 100%; } .pico-state-navigation button { min-height: 34px; flex: 1; } .pico-state-name-column { width: 41%; } .pico-state-type-column { width: 18%; } .pico-state-table thead th, .pico-state-table tbody th, .pico-state-table tbody td { padding-inline: 7px; } .pico-state-name { gap: 2px; } .pico-state-name > code { flex-basis: calc(100% - 22px); } .pico-state-change { margin-left: 20px; } .pico-state-title p { font-size: 10px; } }
