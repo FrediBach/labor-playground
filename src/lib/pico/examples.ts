@@ -1,4 +1,5 @@
 import { picoOledExample } from './oled-example.ts'
+import { picoStateExample } from './state-example.ts'
 import type { CircuitExample, CircuitDocument } from '../circuit.ts'
 import { createPico } from './profile.ts'
 function circuit(title: string, source: string, kind: 'console' | 'led' | 'pulse' | 'filter'): CircuitDocument {
@@ -18,4 +19,5 @@ export const picoExamples: CircuitExample[] = [
   { ...lesson, id: 'pico-pulse', name: 'Pico · pulse train', level: 'Intermediate', description: 'A 100 Hz pulse train from MicroPython appears on CH1; the divider appears on CH2.', document: circuit('Pico pulse train', 'from machine import Pin\nimport time\npin = Pin(0, Pin.OUT)\nwhile True:\n    pin.on()\n    time.sleep_ms(5)\n    pin.off()\n    time.sleep_ms(5)\n', 'pulse') },
   { ...lesson, id: 'pico-pwm', name: 'Pico · PWM low-pass filter', level: 'Intermediate', description: 'Edit duty_u16 from 32768 to 16384, then Run. CH2 settles near half its previous voltage.', document: circuit('Pico PWM low-pass filter', pwm, 'filter') },
   picoOledExample,
+  picoStateExample,
 ]

@@ -48,6 +48,18 @@ State recording has its own 1 MB budget, with up to 128 globals, 32 children per
 
 The standard firmware does not expose `sys.settrace()`; [MicroPython documents it as requiring a custom build](https://docs.micropython.org/en/v1.20.0/library/sys.html#sys.settrace). Passive sampling lets the existing firmware and original source line numbers remain in use.
 
+### Try variables and logs together
+
+Load **Pico · variables & scope logs** from the Intermediate examples and press **Run · 500 ms**. In **Results**, the scope initially frames the whole recording. GP0 steps through 25%, 75%, 50%, and 0% duty; CH2 shows the response of a 1 kΩ / 10 µF filter. The editable **Overview** and **Documentation** guides explain the experiment.
+
+1. Seek to **50 ms**. The `duty` log reads 25% and `target` reads 0.825 V. In **Pico variables**, filter by `state`, expand it, and expand its `history` list: it contains `[25]`.
+2. Seek to **90 ms**. `state["ticks"]` has advanced even though no new log was written. The two scope log values hold. These intermediate changes are captured automatically.
+3. Seek to **150 ms**. Duty is now 75%, target is 2.475 V, and history contains `[25, 75]`. CH2 approaches the target gradually; the log is a calculated target, not a measurement of the circuit.
+4. Go to **Recording end**. The phase is `"complete"` and history retains all four duty levels. Scrub backward to restore earlier state.
+5. Filter variables by `target_voltage`. It does not appear because it is local to `apply_duty()`, but `scope.log("target", target_voltage, unit="V")` explicitly recorded its numeric values.
+
+As an experiment, add `scope.log("ticks", state["ticks"])` after the tick assignment and run again. A third plotted trace now makes the automatically inspected counter visible as a numeric history. Logging takes simulated execution time; the 1 ms automatic sampler can miss brief changes, so neither view promises a snapshot at every Python statement.
+
 ## Log code values to the oscilloscope
 
 The simulator provides a `scope` helper in MicroPython. Import it and call `scope.log(name, value, unit="")` wherever a numeric value changes:
