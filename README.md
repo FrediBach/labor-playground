@@ -2,6 +2,8 @@
 
 A local circuit workbench built with React, TypeScript, Vite, SVG, and shadcn/ui. Start with an editable RC filter, change the capacitor, and see the result from a real ngspice simulation running in a browser worker.
 
+For development, start with [AGENTS.md](./AGENTS.md) and the [architecture guide](./docs/architecture.md) for code navigation, quality checks, and the decisions behind the current design.
+
 This build implements the editable workbench, thirty-three-part component library, Pico programming, automations, and forty-two examples expanding on [plan.md](./plan.md). The workbench uses a documented virtual board inspired by LABOR; it is not a calibrated reproduction of the physical hardware.
 
 The [Pico runtime](./docs/pico-runtime.md) adds local MicroPython execution, Monaco semantic IntelliSense, and GPIO/PWM-to-ngspice captures. Select a Pico example, edit `main.py`, and press **Simulate** in the top bar (or **Run** in the editor). Circuit-fed inputs, ADC feedback, PIO and multicore are unsupported. The [implementation plan](./docs/pico-implementation-plan.md) records the release scope and later feedback milestone.
