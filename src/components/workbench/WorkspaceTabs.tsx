@@ -1,7 +1,7 @@
-import { Activity, CircuitBoard, ClipboardList, Code2, ListStart, Workflow } from 'lucide-react'
+import { Activity, BookOpen, CircuitBoard, ClipboardList, Code2, ListStart, Workflow } from 'lucide-react'
 import type { KeyboardEvent } from 'react'
 
-export type WorkspaceTab = 'circuit' | 'schema' | 'results' | 'automations' | 'code' | 'overview'
+export type WorkspaceTab = 'circuit' | 'schema' | 'results' | 'automations' | 'code' | 'overview' | 'documentation'
 
 export function WorkspaceTabs({ active, onChange, hasPico, automationCount, issueCount }: {
   active: WorkspaceTab
@@ -17,6 +17,7 @@ export function WorkspaceTabs({ active, onChange, hasPico, automationCount, issu
     { id: 'automations' as const, label: 'Automations', icon: ListStart },
     ...(hasPico ? [{ id: 'code' as const, label: 'Pico Code', icon: Code2 }] : []),
     { id: 'overview' as const, label: 'Overview', icon: ClipboardList },
+    { id: 'documentation' as const, label: 'Documentation', icon: BookOpen },
   ]
 
   function navigate(event: KeyboardEvent<HTMLButtonElement>, index: number) {

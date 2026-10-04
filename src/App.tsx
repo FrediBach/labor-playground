@@ -32,6 +32,7 @@ import { programFor } from '@/lib/automation-migration'
 import { simpleRows } from '@/lib/automation-editing'
 import { RecordedAutomationValue } from '@/components/workbench/AutomationPlayback'
 import { WorkspaceTabs, type WorkspaceTab } from '@/components/workbench/WorkspaceTabs'
+import { DocumentationPanel } from '@/components/workbench/DocumentationPanel'
 import { HelpDialog } from '@/components/workbench/HelpDialog'
 import { useDirectorySync } from '@/lib/use-directory-sync'
 import './LaborHardware.css'
@@ -164,8 +165,8 @@ export default function App() {
       }
       if (editable) return
       if (e.key === '?' && !e.metaKey && !e.ctrlKey) { e.preventDefault(); setHelpOpen(true); return }
-      if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-6]$/.test(e.code)) {
-        const tab = (['circuit', 'code', 'automations', 'results', 'overview', 'schema'] as const)[Number(e.code.slice(-1)) - 1]
+      if (e.altKey && !e.ctrlKey && !e.metaKey && /^Digit[1-7]$/.test(e.code)) {
+        const tab = (['circuit', 'code', 'automations', 'results', 'overview', 'schema', 'documentation'] as const)[Number(e.code.slice(-1)) - 1]
         if (tab !== 'code' || document.pico) { e.preventDefault(); openTab(tab) }
         return
       }
@@ -311,6 +312,9 @@ export default function App() {
         </div>
         <div className="workspace-panel" id="workspace-panel-overview" role="tabpanel" aria-labelledby="workspace-tab-overview" hidden={workspaceTab !== 'overview'}>
           <OverviewPanel document={document} example={currentExample} onRestore={loadExample} status={simulation.status} diagnostics={circuitIssues} netlist={simulation.netlist} onInspect={inspectComponent} onOpenCircuit={() => openTab('circuit')} onViewResults={() => openTab('results')} />
+        </div>
+        <div className="workspace-panel" id="workspace-panel-documentation" role="tabpanel" aria-labelledby="workspace-tab-documentation" hidden={workspaceTab !== 'documentation'}>
+          <DocumentationPanel document={document} onChange={change} onMessage={message} />
         </div>
       </div>
       {inspectorOpen && (

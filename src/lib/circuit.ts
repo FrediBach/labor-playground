@@ -1,4 +1,5 @@
 import { validateAutomationProgram, type AutomationProgram } from './automation-graph.ts'
+import { exampleDocumentation, validateDocumentation, type CircuitDocumentation } from './documentation.ts'
 import { customExamples } from './custom-examples.ts'
 import { PROJECT_LIMITS } from './project-limits.ts'
 import { CUSTOM_LIMITS, validateCustomComponents, resolvePartModel, nominalValue, minimumModelValue, type CustomComponent } from './custom-components.ts'
@@ -79,6 +80,7 @@ export interface EnvelopeSettings {
 export const DEFAULT_ENVELOPE: Readonly<EnvelopeSettings> = Object.freeze({ mode: 'envelope', gateHigh: false, decayMs: 20 })
 
 export interface CircuitDocument {
+  documentation?: CircuitDocumentation
   schemaVersion: 1 | 2 | 3 | 4
   customComponents?: CustomComponent[]
   pico?: PicoConfiguration
@@ -543,6 +545,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     ...(customComponents === undefined ? {} : { customComponents }), boardVersion: 'virtual-1', title: raw.title,
     ...(pico ? { pico } : {}),
     parts, wires,
+    ...(raw.documentation === undefined ? {} : { documentation: validateDocumentation(raw.documentation) }),
     ...(raw.automationProgram === undefined ? {} : { automationProgram: validateAutomationProgram(raw.automationProgram) }),
     ...(raw.automations === undefined ? {} : { automations: validateAutomations(raw.automations, parts) }),
     ...(raw.stimulus === undefined ? {} : { stimulus: raw.stimulus as CircuitDocument['stimulus'] }),
@@ -1236,6 +1239,8 @@ export const examples: CircuitExample[] = [
   ...synthTimingExamples,
   ...picoExamples,
 ]
+
+for (const example of examples) example.document.documentation = exampleDocumentation(example)
 
 /** Resolve only directly wired, powered peripherals; never invent a device on a bus. */
 export function oledConnections(doc: CircuitDocument, nodes = resolveTopology(doc).nodeByTerminal): OledConnection[] {
