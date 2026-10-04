@@ -1,17 +1,24 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Crosshair, Maximize2, Waves } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Crosshair, Maximize2, Scan, Waves, ZoomIn, ZoomOut } from 'lucide-react'
 import type { Capture } from '@/lib/simulation'
 import type { Automation } from '@/lib/automations'
 import { measureTrace } from '@/lib/measurements'
-import { createScopeTrace, followCaptureFrame } from '@/lib/scopeTrace'
-import { findTriggerCrossing, frameCapture, type TriggerEdge } from '@/lib/trigger'
+import { createScopeTrace } from '@/lib/scopeTrace'
+import { findTriggerCrossing, type TriggerEdge } from '@/lib/trigger'
 import { ScopeResizer } from './ScopeResizer'
 import { PicoScopeLogs } from './PicoScopeLogs'
+import { ScopeAnnotations } from './ScopeAnnotations'
+import { useScopeNavigation } from './useScopeNavigation'
 import './Scope.css'
 
 type Channel = 'CH1' | 'CH2'
 const COLORS = { CH1: '#aee3d5', CH2: '#f2c46d' }
+const TIME_SCALES = [0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000]
+
+function timeLabel(seconds: number) {
+  return `${Number((seconds * 1000).toFixed(3))} ms`
+}
 
 function automationActionLabel(action: Automation['action']) {
   const target = action.partId ?? ({ cv: 'CV', amplitude: 'Amplitude', frequency: 'Frequency', gate: 'Gate', potentiometer: 'Potentiometer', switch: 'Switch' }[action.target])
@@ -23,7 +30,7 @@ function automationActionLabel(action: Automation['action']) {
   return `${target} → ${value}${duration}`
 }
 
-export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale, audioControls, playbackTime, onSeek, automations, pico }: {
+export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHighlight, stimulus = 'periodic', defaultScale = 1, defaultTimeScale, audioControls, transportControls, playbackTime, onSeek, automations, pico }: {
   capture: Capture | null
   status: string
   probes: Record<Channel, string | null>
@@ -33,6 +40,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   defaultScale?: number
   defaultTimeScale?: number
   audioControls?: ReactNode
+  transportControls?: ReactNode
   playbackTime?: number
   onSeek?: (seconds: number) => void
   automations?: Automation[]
@@ -52,9 +60,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       : !hasProbe ? 'Choose Attach for CH1 or CH2 below, select a terminal, then Simulate.'
         : 'Select Simulate in the top bar to capture a waveform.'
   const canvas = useRef<HTMLCanvasElement>(null)
-  const [timeScale, setTimeScale] = useState(defaultTimeScale ?? (stimulus === 'step' ? 10 : 2))
   const [scales, setScales] = useState({ CH1: defaultScale, CH2: defaultScale })
-  const [cursor, setCursor] = useState<number | null>(null)
   const [measurementsOpen, setMeasurementsOpen] = useState(false)
   const [cursorSeconds, setCursorSeconds] = useState({ A: 0.002, B: 0.007 })
   const [activeCursor, setActiveCursor] = useState<'A' | 'B'>('A')
@@ -67,29 +73,22 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
   const [triggerLevelDraft, setTriggerLevelDraft] = useState('0')
   const [size, setSize] = useState({ width: 600, height: 170 })
   const [scopeHeight, setScopeHeight] = useState<number | undefined>()
-  const requestedWindow = timeScale * 10 / 1000
   const captureStart = capture?.time[0] ?? 0
   const captureEnd = capture?.time.at(-1) ?? 0.1
+  const captureDuration = captureEnd - captureStart
+  const minimumWindow = Math.min(captureDuration, 0.00001)
   const triggerProbe = triggerSource !== 'off' ? probes[triggerSource] : null
   const triggerTime = useMemo(() => capture && triggerSource !== 'off' && triggerProbe
     ? findTriggerCrossing(capture.time, capture.channels[triggerSource], { edge: triggerEdge, level: triggerLevel }) : null,
   [capture, triggerSource, triggerEdge, triggerLevel, triggerProbe])
-  const initialFrame = useMemo(() => capture ? frameCapture(capture.time, requestedWindow, triggerTime) : null, [capture, requestedWindow, triggerTime])
-  const [view, setView] = useState({ initialFrame, playbackTime, triggerTime, frame: initialFrame })
-  // A trigger/timebase change deliberately reframes the trace. Subsequent
-  // transport movement follows it only when the playhead leaves the view.
-  let frame = view.frame
-  if (view.initialFrame !== initialFrame) {
-    frame = initialFrame && playbackTime !== undefined && view.triggerTime === triggerTime
-      ? followCaptureFrame(initialFrame, captureStart, captureEnd, playbackTime) : initialFrame
-    setView({ initialFrame, playbackTime, triggerTime, frame })
-  } else if (view.playbackTime !== playbackTime) {
-    frame = frame && playbackTime !== undefined ? followCaptureFrame(frame, captureStart, captureEnd, playbackTime) : frame
-    setView({ initialFrame, playbackTime, triggerTime, frame })
-  }
-  const windowStart = frame?.start ?? 0
-  const windowSeconds = frame?.duration ?? requestedWindow
-  const windowEnd = frame?.end ?? windowStart + windowSeconds
+  const {
+    timeScale, selectTimeScale, resetWindow, windowStart, windowEnd, windowSeconds,
+    hoverTime, setHoverTime, cursor, zoomSelection, zoom, showWindow,
+    startPointer, movePointer, finishPointer, leavePointer, navigateKey,
+  } = useScopeNavigation({
+    capture, initialTimeScale: defaultTimeScale ?? (stimulus === 'step' ? 10 : 2), playbackTime, triggerTime, width: size.width, onSeek,
+    onInspect: measurementsOpen ? seconds => moveCursor(activeCursor, seconds) : undefined,
+  })
   const automationEvents = useMemo(() => (capture?.automationEvents ?? [])
     .filter(event => Number.isFinite(event.time) && event.time >= 0 && event.time <= captureEnd)
     .toSorted((a, b) => a.time - b.time)
@@ -99,6 +98,7 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
       return { ...event, number: index + 1, name: automation?.name ?? event.automationId, action: automation ? automationActionLabel(automation.action) : null }
     }), [capture, captureEnd, automations])
   const eventsInView = automationEvents.filter(event => event.time >= windowStart && event.time <= windowEnd)
+  const hasAutomations = Boolean(automations?.length || automationEvents.length)
   const cursorA = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.A))
   const cursorB = Math.max(captureStart, Math.min(captureEnd, cursorSeconds.B))
   const traces = useMemo(() => ({
@@ -243,46 +243,56 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
     <div className="scope-heading">
       <div className="section-label"><Waves size={15} /><h2>OSCILLOSCOPE</h2><span className="tiny-tag">2 CHANNEL</span></div>
       <div className="scope-controls">
-        <label>TIME <select aria-label="Time per division" value={timeScale} onChange={e => setTimeScale(Number(e.target.value))}>{[0.5, 1, 2, 5, 10, 20, 50, 100, 200, 500, 1000].map(v => <option key={v} value={v}>{v >= 1000 ? `${v / 1000} s` : `${v} ms`}/div</option>)}</select></label>
-        <button className="subtle-button" onClick={autoscale} title="Autoscale channels" disabled={!capture || !hasProbe}><Maximize2 size={14} />Auto</button>
+        <label>TIME <select aria-label="Time per division" title="Adjust the time shown across ten horizontal divisions" value={timeScale} onChange={e => selectTimeScale(Number(e.target.value))}>{!TIME_SCALES.includes(timeScale) && <option value={timeScale}>{Number(timeScale.toPrecision(4))} ms/div</option>}{TIME_SCALES.map(v => <option key={v} value={v}>{v >= 1000 ? `${v / 1000} s` : `${v} ms`}/div</option>)}</select></label>
+        <div className="scope-zoom-controls" role="group" aria-label="Time zoom">
+          <button className="subtle-button" onClick={() => zoom(2)} aria-label="Zoom out time" title="Show twice as much time (−)" disabled={!capture || windowSeconds >= captureDuration}><ZoomOut size={15} /></button>
+          <button className="subtle-button" onClick={() => zoom(0.5)} aria-label="Zoom in time" title="Show half as much time (+)" disabled={!capture || windowSeconds <= minimumWindow}><ZoomIn size={15} /></button>
+          <button className="subtle-button" onClick={() => showWindow(captureStart, captureDuration)} aria-label="Fit entire capture" title="Show the complete recording" disabled={!capture}><Scan size={15} />Fit</button>
+        </div>
+        <button className="subtle-button" onClick={autoscale} title="Autoscale channel voltages to fit the graph" disabled={!capture || !hasProbe}><Maximize2 size={14} />Auto volts</button>
         <span className={`capture-state ${status}`}>{status === 'ready' ? 'CAPTURED' : status === 'stale' ? 'NEEDS SIMULATION' : status.toUpperCase()}</span>
       </div>
     </div>
-    <details className="scope-trigger">
-      <summary>Trigger <span>{triggerSource === 'off' ? 'Off' : `${triggerSource} · ${triggerEdge} · ${triggerLevel} V`}</span></summary>
-      <div className="scope-trigger-content">
-        <div className="scope-trigger-controls">
-          <label>Source <select aria-label="Trigger source" value={triggerSource} onChange={event => setTriggerSource(event.target.value as 'off' | Channel)}><option value="off">Off</option><option value="CH1">CH1</option><option value="CH2">CH2</option></select></label>
-          <label>Edge <select aria-label="Trigger edge" value={triggerEdge} disabled={triggerSource === 'off'} onChange={event => setTriggerEdge(event.target.value as TriggerEdge)}><option value="rising">Rising</option><option value="falling">Falling</option></select></label>
-          <label>Level <input type="number" aria-label="Trigger level" step="0.1" value={triggerLevelDraft} disabled={triggerSource === 'off'} onChange={event => { setTriggerLevelDraft(event.target.value); if (Number.isFinite(event.target.valueAsNumber)) setTriggerLevel(event.target.valueAsNumber) }} onBlur={() => setTriggerLevelDraft(String(triggerLevel))} /><span>V</span></label>
-        </div>
-        <p className="scope-trigger-status" data-testid="trigger-status" aria-live="polite">{triggerStatus}</p>
-        <p className="scope-measurement-note">Frames this capture without rerunning it. Time labels and cursors stay in absolute milliseconds. Crossings use 1% signal-span hysteresis, with a 1 mV minimum.</p>
-      </div>
-    </details>
-    <div className="scope-event-controls">
-      <label><input type="checkbox" checked={showAutomationEvents} onChange={event => setShowAutomationEvents(event.target.checked)} />Show automation events</label>
-      <span>{capture ? `${automationEvents.length} fired${showAutomationEvents && automationEvents.length ? ` · ${eventsInView.length} in view` : ''}` : 'Awaiting capture'}</span>
-    </div>
+    {transportControls}
     <div className="scope-screen">
-      <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds.${onSeek ? ' Click to inspect the recording at that time.' : ''}`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={e => { const rect = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46)))) }} onPointerLeave={() => setCursor(null)} onPointerDown={e => {
-        if (!capture) return
-        const rect = e.currentTarget.getBoundingClientRect()
-        const seconds = windowStart + Math.max(0, Math.min(1, (e.clientX - rect.left - 34) / (rect.width - 46))) * windowSeconds
-        if (measurementsOpen) moveCursor(activeCursor, seconds)
-        onSeek?.(seconds)
-      }} />
+      <canvas ref={canvas} style={scopeHeight === undefined ? undefined : { height: scopeHeight }} tabIndex={capture ? 0 : undefined} aria-label="Voltage versus time for scope channels 1 and 2" aria-description={`View from ${(windowStart * 1000).toFixed(3)} to ${(windowEnd * 1000).toFixed(3)} absolute milliseconds. Drag to inspect. Shift-drag to zoom into a range. Arrow keys seek; Shift moves faster. Home and End go to capture endpoints. Plus and minus zoom.`} data-window-start={windowStart} data-window-end={windowEnd} data-trigger-time={triggerTime ?? undefined} onPointerMove={movePointer} onPointerLeave={leavePointer} onPointerDown={startPointer} onPointerUp={finishPointer} onPointerCancel={finishPointer} onLostPointerCapture={finishPointer} onKeyDown={navigateKey} />
       <div className="scope-trace-overlay" aria-hidden="true">
         {showAutomationEvents && eventsInView.map(event => <span key={`${event.automationId}-${event.time}`} className="scope-automation-marker" data-testid="scope-automation-marker" data-time={event.time} style={{ left: `${(event.time - windowStart) / windowSeconds * 100}%` }}><b>{event.number}</b></span>)}
         {cursor !== null && <span className="scope-trace-cursor hover" style={{ left: `${cursor * 100}%` }} />}
+        {zoomSelection && capture && <span className="scope-zoom-selection" style={{ left: `${(Math.min(zoomSelection.start, zoomSelection.end) - windowStart) / windowSeconds * 100}%`, width: `${Math.abs(zoomSelection.end - zoomSelection.start) / windowSeconds * 100}%` }}><b>{timeLabel(Math.abs(zoomSelection.end - zoomSelection.start))}</b></span>}
         {measurementsOpen && capture && ([['A', cursorA], ['B', cursorB]] as const).map(([label, seconds]) => seconds >= windowStart && seconds <= windowEnd && <span key={label} className={`scope-trace-cursor measurement-cursor ${label === activeCursor ? 'active' : ''} cursor-${label.toLowerCase()}`} style={{ left: `${(seconds - windowStart) / windowSeconds * 100}%` }}><b>{label}</b></span>)}
         {capture && playbackTime !== undefined && playbackTime >= windowStart && playbackTime <= windowEnd && <span className="scope-trace-cursor playhead" data-testid="scope-playhead" data-time={playbackTime} style={{ left: `${(playbackTime - windowStart) / windowSeconds * 100}%` }} />}
       </div>
+      {cursor !== null && capture && <div className={`scope-hover-tooltip${cursor > 0.6 ? ' align-left' : ''}`} role="tooltip" data-testid="scope-hover-tooltip" data-time={hoverTime} style={{ left: 34 + cursor * Math.max(1, size.width - 46) }}>
+        <strong>{timeLabel(hoverTime!)}</strong>
+        {(['CH1', 'CH2'] as const).map(channel => visible[channel] && probes[channel] && <span key={channel} style={{ color: COLORS[channel] }}><span>{channel}</span><b>{voltageText(traces[channel]?.sampleAt(hoverTime!))}</b></span>)}
+        {zoomSelection && <small>Release to zoom · Esc to cancel</small>}
+      </div>}
       {capture && playbackTime !== undefined && <output className="scope-playhead-time" aria-label="Scope playback time">{(playbackTime * 1000).toFixed(2)} ms</output>}
       {(!capture || !hasProbe && !capture.picoTrace?.scopeLogs?.length && !automationEvents.length) && <div className="scope-empty" role="status"><Waves size={26} /><div><strong>{emptyTitle}</strong><span>{emptyHint}</span></div></div>}
     </div>
     <ScopeResizer height={size.height} value={scopeHeight} onChange={setScopeHeight} />
-    {showAutomationEvents && <div className="scope-automation-events" aria-label="Oscilloscope automation events">
+    <div className="scope-navigation">
+      <button className="subtle-button" aria-label="Pan scope earlier" title="Move half a window earlier" disabled={!capture || windowStart <= captureStart} onClick={() => showWindow(windowStart - windowSeconds / 2)}><ChevronLeft size={16} /></button>
+      <input className="scope-window-range" type="range" aria-label="Scope time window" aria-valuetext={`${timeLabel(windowStart)} to ${timeLabel(windowEnd)}`} min={captureStart} max={Math.max(captureStart, captureEnd - windowSeconds)} step={Math.max(0.0000001, windowSeconds / 100)} value={windowStart} disabled={!capture || windowSeconds >= captureDuration} onChange={event => showWindow(Number(event.target.value))} />
+      <button className="subtle-button" aria-label="Pan scope later" title="Move half a window later" disabled={!capture || windowEnd >= captureEnd} onClick={() => showWindow(windowStart + windowSeconds / 2)}><ChevronRight size={16} /></button>
+      <output aria-label="Visible scope interval">{capture ? `${timeLabel(windowStart)} – ${timeLabel(windowEnd)}` : 'Awaiting capture'}</output>
+    </div>
+    <p className="scope-interaction-hint">Drag to inspect · Shift-drag to zoom · + / − zoom · Arrow keys seek<span>All traces share the same time window</span></p>
+    <div className="scope-channels">{(['CH1', 'CH2'] as const).map(channel => <div className="scope-channel" key={channel} style={{ '--channel-color': COLORS[channel] } as React.CSSProperties}>
+      <button className="channel-toggle" aria-pressed={visible[channel]} onClick={() => setVisible({ ...visible, [channel]: !visible[channel] })}>{channel}</button>
+      <button className="probe-location" onClick={() => probes[channel] && onHighlight ? onHighlight(channel) : onProbe(channel)} title={probes[channel] ? `Highlight ${channel} connection` : `Attach ${channel} probe`}>{probes[channel]?.toUpperCase() ?? 'Attach'}</button>
+      <button className="scope-probe-move" onClick={() => onProbe(channel)} aria-label={`Move ${channel} probe`} title={`Move ${channel} probe`}><Crosshair size={15} /></button>
+      <select aria-label={`${channel} volts per division`} value={scales[channel]} onChange={e => setScales({ ...scales, [channel]: Number(e.target.value) })}>{[0.1, 0.2, 0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} V/div</option>)}</select>
+      <span className="measurement">{measurement(channel)}</span>
+    </div>)}</div>
+    <ScopeAnnotations capture={capture} windowStart={windowStart} windowEnd={windowEnd} seconds={playbackTime ?? windowStart} onSeek={onSeek} hoverTime={hoverTime} onHoverTime={setHoverTime} />
+    <PicoScopeLogs capture={capture} enabled={pico} windowStart={windowStart} windowEnd={windowEnd} seconds={playbackTime ?? windowStart} onSeek={onSeek} hoverTime={hoverTime} onHoverTime={setHoverTime} events={showAutomationEvents ? eventsInView : []} />
+    {hasAutomations && <div className="scope-event-controls">
+      <label><input type="checkbox" checked={showAutomationEvents} onChange={event => setShowAutomationEvents(event.target.checked)} />Show automation events</label>
+      <span>{capture ? `${automationEvents.length} fired${showAutomationEvents && automationEvents.length ? ` · ${eventsInView.length} in view` : ''}` : 'Awaiting capture'}</span>
+    </div>}
+    {hasAutomations && showAutomationEvents && <div className="scope-automation-events" aria-label="Oscilloscope automation events">
       {automationEvents.length ? <>
         <p>Recorded automation events <span>{onSeek ? 'Select an event to inspect its time.' : 'Times use the recording clock.'}</span></p>
         <ol>{automationEvents.map(event => {
@@ -294,14 +304,18 @@ export function Scope({ capture: suppliedCapture, status, probes, onProbe, onHig
         })}</ol>
       </> : <p className="scope-events-empty">{capture ? 'No automation events fired in this capture.' : 'Simulate to display recorded automation events.'}</p>}
     </div>}
-    <div className="scope-channels">{(['CH1', 'CH2'] as const).map(channel => <div className="scope-channel" key={channel} style={{ '--channel-color': COLORS[channel] } as React.CSSProperties}>
-      <button className="channel-toggle" aria-pressed={visible[channel]} onClick={() => setVisible({ ...visible, [channel]: !visible[channel] })}>{channel}</button>
-      <button className="probe-location" onClick={() => probes[channel] && onHighlight ? onHighlight(channel) : onProbe(channel)} title={probes[channel] ? `Highlight ${channel} connection` : `Attach ${channel} probe`}>{probes[channel]?.toUpperCase() ?? 'Attach'}</button>
-      <button className="scope-probe-move" onClick={() => onProbe(channel)} aria-label={`Move ${channel} probe`} title={`Move ${channel} probe`}><Crosshair size={15} /></button>
-      <select aria-label={`${channel} volts per division`} value={scales[channel]} onChange={e => setScales({ ...scales, [channel]: Number(e.target.value) })}>{[0.1, 0.2, 0.5, 1, 2, 5, 10].map(v => <option key={v} value={v}>{v} V/div</option>)}</select>
-      <span className="measurement">{measurement(channel)}</span>
-    </div>)}</div>
-    <PicoScopeLogs capture={capture} enabled={pico} windowStart={windowStart} windowEnd={windowEnd} seconds={playbackTime ?? (cursor !== null ? windowStart + cursor * windowSeconds : windowStart)} onSeek={onSeek} events={showAutomationEvents ? eventsInView : []} />
+    <details className="scope-trigger">
+      <summary>Trigger <span>{triggerSource === 'off' ? 'Off' : `${triggerSource} · ${triggerEdge} · ${triggerLevel} V`}</span></summary>
+      <div className="scope-trigger-content">
+        <div className="scope-trigger-controls">
+          <label>Source <select aria-label="Trigger source" value={triggerSource} onChange={event => { resetWindow(); setTriggerSource(event.target.value as 'off' | Channel) }}><option value="off">Off</option><option value="CH1">CH1</option><option value="CH2">CH2</option></select></label>
+          <label>Edge <select aria-label="Trigger edge" value={triggerEdge} disabled={triggerSource === 'off'} onChange={event => { resetWindow(); setTriggerEdge(event.target.value as TriggerEdge) }}><option value="rising">Rising</option><option value="falling">Falling</option></select></label>
+          <label>Level <input type="number" aria-label="Trigger level" step="0.1" value={triggerLevelDraft} disabled={triggerSource === 'off'} onChange={event => { setTriggerLevelDraft(event.target.value); if (Number.isFinite(event.target.valueAsNumber)) { resetWindow(); setTriggerLevel(event.target.valueAsNumber) } }} onBlur={() => setTriggerLevelDraft(String(triggerLevel))} /><span>V</span></label>
+        </div>
+        <p className="scope-trigger-status" data-testid="trigger-status" aria-live="polite">{triggerStatus}</p>
+        <p className="scope-measurement-note">Frames this capture without rerunning it. Time labels and cursors stay in absolute milliseconds. Crossings use 1% signal-span hysteresis, with a 1 mV minimum.</p>
+      </div>
+    </details>
     {audioControls}
     <details className="scope-measurements" open={measurementsOpen} onToggle={event => setMeasurementsOpen(event.currentTarget.open)}>
       <summary>Measurements <span>Voltages, frequency & cursors</span></summary>

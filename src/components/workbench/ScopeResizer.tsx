@@ -1,7 +1,7 @@
 import { useRef } from 'react'
 
 const MIN_HEIGHT = 100
-const MAX_HEIGHT = 400
+const MAX_HEIGHT = 640
 const bounded = (height: number) => Math.round(Math.max(MIN_HEIGHT, Math.min(MAX_HEIGHT, height)))
 
 export function ScopeResizer({ height, value, onChange }: {

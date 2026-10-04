@@ -7,7 +7,8 @@
 .scope .scope-controls .subtle-button { min-height: 32px; padding: 5px 8px; font-size: 12px; }
 .scope .capture-state { font-size: 10px; letter-spacing: .4px; color: #bbc4bd; }
 .scope .capture-state.error, .scope .capture-state.invalid { color: #f1b497; }
-.scope .scope-screen canvas { height: 180px; }
+.scope .scope-screen canvas { height: 320px; touch-action: none; }
+.scope .scope-screen canvas:focus-visible { outline: 2px solid #b9d8cb; outline-offset: -3px; }
 .scope-trace-overlay { position: absolute; inset: 12px 12px 20px 34px; pointer-events: none; overflow: hidden; }
 .scope-trace-cursor { position: absolute; top: 0; bottom: 0; border-left: 1px dashed #e8e8dc; transform: translateX(-1px); }
 .scope-trace-cursor b { position: absolute; top: 0; left: 4px; font: 11px monospace; }
@@ -121,4 +122,39 @@
   .scope .measurement { flex-basis: 100%; margin-left: 0; padding-top: 2px; }
   .operating-point-panel > summary > span { float: none; display: block; margin-left: 15px; }
   .operating-point-panel .dc-meter-readings { grid-template-columns: 1fr; gap: 14px; }
+}
+
+/* The plot, firmware lanes and transport form one time-aligned instrument. */
+.scope { box-shadow: 0 4px 18px #0002; }
+.scope .scope-heading { gap: 10px 18px; border-bottom: 1px solid #49554c; }
+.scope .scope-heading .section-label { flex-shrink: 0; }
+.scope .capture-state.ready { color: #aee3d5; }
+.scope-zoom-controls { display: inline-flex; align-items: center; gap: 3px; padding-left: 8px; border-left: 1px solid #536057; }
+.scope-zoom-controls button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 32px; min-height: 32px; border: 1px solid #515e55; border-radius: 4px; background: #26312b; color: #dce6dc; padding: 5px 8px; font-size: 12px; }
+.scope-zoom-controls button:hover:not(:disabled) { background: #3b4b40; border-color: #9fb7a7; }
+.scope-navigation { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 10px; padding: 8px 14px; background: #202b25; border-bottom: 1px solid #435048; }
+.scope-navigation button { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 30px; padding: 4px 6px; color: #c2d3c8; border: 1px solid #4b5b50; border-radius: 4px; }
+.scope-navigation button:hover:not(:disabled) { background: #35483b; }
+.scope-window-range { min-width: 90px; flex: 1; accent-color: #b3d1c0; cursor: ew-resize; }
+.scope-navigation output { margin-left: auto; font: 11px/1.6 monospace; color: #c4d7cd; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.scope-interaction-hint { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 3px 12px; margin: 0; padding: 7px 14px; color: #a7b9ae; font: 11px/1.6 sans-serif; }
+.scope-interaction-hint > span { color: #b7cabb; }
+.scope-hover-tooltip { position: absolute; top: 32px; z-index: 2; display: grid; gap: 7px; min-width: 145px; max-width: calc(100% - 55px); padding: 10px 12px; border: 1px solid #6e887b; border-radius: 6px; background: #17231ef5; box-shadow: 0 4px 16px #0005; color: #e2eae2; font: 11px/1.4 monospace; pointer-events: none; font-variant-numeric: tabular-nums; transform: translateX(12px); }
+.scope-hover-tooltip.align-left { transform: translateX(calc(-100% - 12px)); }
+.scope-hover-tooltip strong { font-size: 12px; font-weight: 500; }
+.scope-hover-tooltip > span { display: flex; justify-content: space-between; gap: 16px; }
+.scope-zoom-selection { position: absolute; inset-block: 0; background: #b6dbc522; border-inline: 1px solid #c4e7d2; }
+.scope-zoom-selection b { position: absolute; bottom: 10px; left: 6px; padding: 3px 5px; background: #1b2c24e8; color: #d6e9db; font: 11px monospace; white-space: nowrap; }
+.scope .scope-channels { border-bottom: 1px solid #435048; background: #28362e; }
+.scope .scope-channel { min-width: 0; }
+.scope .scope-trigger { border-block: 1px solid #414c44; }
+@media (max-width: 740px) {
+  .scope .scope-screen canvas { height: 260px; }
+  .scope .scope-heading { padding: 12px; }
+  .scope .scope-controls { width: 100%; gap: 8px; }
+  .scope .scope-controls .capture-state { margin-left: auto; }
+  .scope .scope-channel .measurement { margin-left: auto; }
+  .scope-navigation { padding-inline: 10px; gap: 6px; }
+  .scope-navigation output { font-size: 10px; }
+  .scope-hover-tooltip { min-width: 120px; padding: 8px; font-size: 10px; }
 }

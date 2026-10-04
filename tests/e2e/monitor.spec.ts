@@ -93,7 +93,7 @@ test('the scope resizes by keyboard and drag without changing cursors, capture, 
   await page.locator('.scope-measurements > summary').click()
   await page.getByRole('spinbutton', { name: 'Cursor A milliseconds' }).fill('3')
   await separator.press('End')
-  await expect(separator).toHaveAttribute('aria-valuenow', '400')
+  await expect(separator).toHaveAttribute('aria-valuenow', '640')
   await expect(page.getByRole('spinbutton', { name: 'Cursor A milliseconds' })).toHaveValue('3')
   await expect(page.getByRole('button', { name: 'Undo', exact: true })).toBeDisabled()
   expect(await page.evaluate(() => localStorage.getItem('labor-playground.document.v1'))).toBe(original)

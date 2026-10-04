@@ -17,12 +17,23 @@
 .pico-log-lane-heading strong { min-width: 0; color: var(--log-color); font-size: 12px; font-weight: 500; overflow-wrap: anywhere; }
 .pico-log-lane-heading small { color: #adbbb2; font: 10px monospace; margin-left: 8px; }
 .pico-log-lane-heading output { flex-shrink: 0; color: #e2e8de; font: 12px monospace; font-variant-numeric: tabular-nums; }
-.pico-log-plot { width: 100%; min-width: 0; cursor: crosshair; user-select: none; }
+.pico-log-lane-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 6px 14px; }
+.pico-log-hover-value { color: #a9b8b1; font-size: 10px; }
+.pico-log-hover-value b { color: var(--log-color); font: 11px monospace; }
+.pico-log-plot { position: relative; width: 100%; min-width: 0; cursor: crosshair; user-select: none; touch-action: pan-y; }
+.pico-log-plot:active { cursor: grabbing; }
 .pico-log-plot svg { display: block; width: 100%; height: auto; }
 .pico-log-grid { stroke: #3a493f; stroke-width: .7; }
 .pico-log-axis { fill: #a8bbb0; font: 10px monospace; }
 .pico-log-path { fill: none; stroke: var(--log-color); stroke-width: 1.5; stroke-linejoin: round; stroke-linecap: round; }
 .pico-log-playhead { stroke: #ecebdc; stroke-width: 1; stroke-dasharray: 3 3; }
+.pico-log-hover-line { stroke: var(--log-color); stroke-width: 1; stroke-dasharray: 2 4; opacity: .8; }
+.pico-log-hover-point { fill: #202927; stroke: var(--log-color); stroke-width: 1.5; }
+.pico-log-tooltip { position: absolute; z-index: 3; top: 2px; display: none; gap: 4px; width: 200px; max-width: calc(100% - 12px); padding: 7px 9px; border: 1px solid #647269; border-radius: 5px; background: #1a2325f5; box-shadow: 0 3px 12px #0005; pointer-events: none; color: #e2e8de; font-size: 10px; overflow-wrap: anywhere; }
+.pico-log-plot:hover .pico-log-tooltip { display: grid; }
+.pico-log-tooltip time { color: #b7c4be; font-family: monospace; }
+.pico-log-tooltip strong { color: var(--log-color); font: 11px monospace; }
+.pico-log-tooltip small { color: #a9b8b0; font-size: 9px; }
 .pico-log-event { stroke: #c4b8e7; stroke-width: 1; stroke-dasharray: 1 3; }
 .pico-log-hint { fill: #b3c1b7; font-size: 11px; }
 .pico-log-plot:focus-visible, .pico-log-legend button:focus-visible, .pico-log-controls input:focus-visible { outline: 2px solid #ccb9eb; outline-offset: -2px; }

@@ -34,3 +34,23 @@
 .automation-event-track button::after { content: ''; display: block; width: 10px; height: 14px; margin: auto; border: 1px solid #9daf84; border-radius: 3px; background: #3a4630; }
 .automation-event-track button.occurred::after { background: #c6db94; }
 .automation-event-track button:focus-visible { outline: 2px solid #e5f0d2; outline-offset: 2px; }
+
+.scope .recording-panel.recording-compact { margin: 0; border: 0; border-radius: 0; padding: 10px 14px; background: #26332b; }
+.recording-compact .recording-heading { margin-bottom: 8px; gap: 8px; }
+.recording-compact .recording-heading > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 5px 12px; }
+.recording-compact .recording-heading strong { color: #b8cbbd; font-size: 10px; }
+.recording-compact .recording-heading span { color: #b4c4b7; }
+.recording-compact .recording-controls { gap: 6px; }
+.recording-compact .recording-controls .icon-button { width: 32px; height: 32px; }
+.recording-compact .recording-speed { margin-left: 6px; }
+.recording-compact .recording-timeline { margin: 4px 0 2px; }
+.recording-compact .recording-readings { gap: 5px 20px; }
+.recording-compact .recording-readings p { text-align: right; flex-basis: auto; }
+.recording-compact .recording-gpio { margin-top: 8px; }
+.recording-compact :is(button, input, select, summary):focus-visible { outline: 2px solid #c7dfb3; outline-offset: 2px; }
+@media (max-width: 520px) {
+  .scope .recording-panel.recording-compact { padding: 10px 12px; }
+  .recording-compact .recording-position { width: auto; margin-left: auto; }
+  .recording-compact .recording-readings p { display: none; }
+  .recording-compact .recording-mode { font-size: 8px; }
+}

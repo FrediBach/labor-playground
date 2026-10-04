@@ -23,13 +23,13 @@ export function RecordingProvider({ capture, children }: { capture: Capture | nu
   return <RecordingContext.Provider value={playback}>{children}</RecordingContext.Provider>
 }
 
-export function RecordingTransport({ probes, document }: { probes: ProbeNodes; document?: CircuitDocument }) {
+export function RecordingTransport({ probes, document, compact = false }: { probes: ProbeNodes; document?: CircuitDocument; compact?: boolean }) {
   const { playback, seconds, playing, speed, loop, point } = useRecording()
   const available = !!playback.capture?.recording
   const picoTrace = playback.capture?.picoTrace
   const activePins = useMemo(() => picoTrace ? [...new Set([...picoTrace.initial.filter(pin => pin.enabled).map(pin => pin.gpio), ...picoTrace.events.map(pin => pin.gpio)])].sort((a, b) => a - b) : [], [picoTrace])
-  return <section className="recording-panel" aria-label="Simulation recording">
-    <div className="recording-heading"><div><strong>SIMULATION RECORDING</strong><span>{available ? 'Scrub to inspect · play to watch your circuit' : 'Simulate to record voltages, currents and component states'}</span></div><span className="recording-mode">{playing ? 'PLAYING' : available ? 'PAUSED' : 'AWAITING CAPTURE'}</span></div>
+  return <section className={`recording-panel${compact ? ' recording-compact' : ''}`} aria-label="Simulation recording">
+    <div className="recording-heading"><div><strong>{compact ? 'PLAYBACK' : 'SIMULATION RECORDING'}</strong><span>{available ? compact ? 'Full capture · drag the timeline to seek' : 'Scrub to inspect · play to watch your circuit' : 'Simulate to record voltages, currents and component states'}</span></div><span className="recording-mode">{playing ? 'PLAYING' : available ? 'PAUSED' : 'AWAITING CAPTURE'}</span></div>
     <fieldset disabled={!available} className="recording-controls">
       <button className="icon-button" aria-label="Recording start" title="Go to start" onClick={() => playback.seek(playback.start)}><SkipBack size={16} /></button>
       <button className="recording-play" aria-label={playing ? 'Pause recording' : 'Play recording'} onClick={playing ? playback.pause : playback.play}>{playing ? <Pause size={16} /> : <Play size={16} />}<span>{playing ? 'Pause' : 'Play'}</span></button>
@@ -40,7 +40,7 @@ export function RecordingTransport({ probes, document }: { probes: ProbeNodes; d
       <input className="recording-timeline" type="range" aria-label="Recording timeline" aria-valuetext={`${(seconds * 1000).toFixed(3)} milliseconds`} min={playback.start} max={playback.end || 0.1} step="any" value={seconds} onChange={event => playback.seek(Number(event.target.value))} />
     </fieldset>
     {document && <AutomationTimeline document={document} />}
-    <div className="recording-readings">{(['CH1', 'CH2'] as const).map(channel => <div key={channel}><span className={channel === 'CH1' ? 'ch1-text' : 'ch2-text'}>{channel}</span><output aria-label={`${channel} recorded voltage`}>{formatElectrical(probes[channel] ? point?.nodeVoltages[probes[channel]] : undefined, 'V')}</output></div>)}<p>Select a component for pin voltages, current and power at this time. LED brightness follows forward current.</p></div>
+    <div className="recording-readings">{(['CH1', 'CH2'] as const).map(channel => <div key={channel}><span className={channel === 'CH1' ? 'ch1-text' : 'ch2-text'}>{channel}</span><output aria-label={`${channel} recorded voltage`}>{formatElectrical(probes[channel] ? point?.nodeVoltages[probes[channel]] : undefined, 'V')}</output></div>)}<p>{compact ? 'At the playhead · relative to GND' : 'Select a component for pin voltages, current and power at this time. LED brightness follows forward current.'}</p></div>
     {picoTrace && <details className="recording-gpio"><summary>Pico GPIO states</summary><div>{activePins.map(gpio => {
       const pin = samplePicoPin(picoTrace, gpio, seconds)
       const state = pin?.function === 3 ? 'I²C · transaction model' : pin?.enabled ? pin.state === 1 ? 'High' : pin.state === 0 ? 'Low' : 'High impedance' : pin?.pullUp ? 'Input · pull up' : pin?.pullDown ? 'Input · pull down' : 'High impedance'

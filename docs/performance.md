@@ -7,8 +7,10 @@ The original scope validated every sample before each interpolated voltage looku
 - Validate immutable capture arrays once and use binary searches for subsequent voltage lookups. Invalid series and duplicate-time discontinuities retain their existing behavior.
 - Render hover cursors, A/B cursors and the recording playhead as a separate overlay. Playback inside the displayed interval does not repaint the waveform.
 - Page the view when playback or seeking leaves it. Trigger changes deliberately reframe the capture; timebase changes keep the selected recording moment visible. Available timebases extend to 1 second per division.
+- Time zoom, Shift-drag range selection, and explicit panning change only the displayed interval. The transport timeline continues to span the full capture, while voltage traces, Pico log lanes, variable markers, and hover readouts share the displayed window. A manual pan does not seek the recording; subsequent playback or seeking pages the view when needed.
 - Cache minimum/maximum values in a tree of 64-sample blocks. Dense views query these extrema instead of scanning the whole recording, preserving single-sample pulses. Short visible windows use a direct scan to avoid tree overhead. Boundary lookup uses binary search.
 - Reuse measured channel means for the differential meter and reuse the integrated scope's endpoint reading rather than validating it twice.
+- Build Pico variable-change annotations once per immutable state trace. Cursor and neighboring-change lookups use binary search; dense windows show at most 48 marker groups with snapshot counts. Grouping affects presentation only: zooming and previous/next navigation still access the original retained snapshots. Pico log paths are memoized by trace, width, and time window; shared hover and playback update their overlays and readouts without rebuilding paths.
 
 ## Measurements
 
@@ -21,7 +23,7 @@ Measured locally on 2026-10-01 with Node's `performance.now()`, normal JavaScrip
 
 At one million samples, computing a 600-column dense waveform envelope took approximately 0.78 ms with the previous sequential scan and 0.76 ms with the index. The main benefit is eliminating repeated validation and redraws during interaction, rather than claiming a large speedup in the already efficient drawing loop. The index adds approximately 0.5 MiB per million-sample channel; captures retain their original samples for inspection.
 
-Unit tests compare indexed envelopes with direct scans, cover isolated spikes and adaptive/duplicate timestamps, and assert bounded sample access on million-sample captures. Browser coverage instruments the scope canvas's `clearRect`: hovering, moving A/B cursors and playing inside a fixed interval must cause zero waveform redraws. Changing the visible interval must redraw and retain the selected playhead in view.
+Unit tests compare indexed envelopes with direct scans, cover isolated spikes and adaptive/duplicate timestamps, and assert bounded sample access on million-sample captures. State-timeline tests cover nested changes, removals, sampled-time lookup, and bounded grouping without losing snapshot counts. Browser coverage instruments the scope canvas's `clearRect`: hovering, moving A/B cursors and playing inside a fixed interval must cause zero waveform redraws. Changing the visible interval must redraw; playback navigation keeps the selected playhead in view. Results interaction checks cover zoom, pan, range selection, keyboard navigation, shared Pico hover, and layout expansion.
 
 ## Engine and recording
 
@@ -53,7 +55,9 @@ Playback shares one external store at up to 30 visual updates per second. Only t
 
 ```sh
 node --experimental-strip-types --test tests/measurements.test.ts tests/scopeTrace.test.ts
+node --experimental-strip-types --test tests/pico-state-timeline.test.ts
 node --experimental-strip-types --test tests/recording.test.ts tests/simulation.test.ts tests/components.test.ts tests/ic-components.test.ts
 node --experimental-strip-types scripts/benchmark-simulation.ts 10
 npm run test:e2e -- tests/e2e/scope-performance.spec.ts tests/e2e/measurements.spec.ts tests/e2e/trigger.spec.ts
+npm run test:e2e -- tests/e2e/results-navigation.spec.ts tests/e2e/results-layout.spec.ts tests/e2e/scope-extras.spec.ts
 ```

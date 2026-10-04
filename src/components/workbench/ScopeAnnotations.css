@@ -1,0 +1,26 @@
+.scope-annotations { min-width: 0; border-top: 1px solid #424b4a; background: #20272a; padding: 9px 0 11px; }
+.scope-annotations-heading { display: flex; align-items: center; flex-wrap: wrap; gap: 7px 14px; padding: 0 14px; color: #acb6bd; font-size: 10px; }
+.scope-annotations-heading > strong { display: inline-flex; align-items: center; gap: 7px; color: #d1c4eb; font-size: 11px; font-weight: 500; }
+.scope-annotations-heading > strong i { width: 6px; height: 6px; background: #bca7ec; transform: rotate(45deg); }
+.scope-annotations-navigation { display: flex; gap: 4px; margin-left: auto; }
+.scope-annotations-navigation button { display: grid; place-items: center; width: 28px; height: 26px; border: 1px solid #515a63; border-radius: 4px; background: #2d353b; color: #d1c4eb; cursor: pointer; }
+.scope-annotations-navigation button:disabled { opacity: .4; cursor: default; }
+.scope-annotations-track { position: relative; height: 33px; margin: 5px 12px 7px 34px; }
+.scope-annotations-track::before { content: ''; position: absolute; inset: 13px 0 auto; height: 1px; background: #56616b; }
+.scope-variable-marker { position: absolute; z-index: 1; top: 0; display: grid; place-content: start center; gap: 1px; width: 20px; height: 33px; padding: 9px 0 0; transform: translateX(-50%); border: 0; background: transparent; color: #bca7ec; cursor: pointer; }
+.scope-variable-marker > i { display: block; width: 8px; height: 8px; margin: 0 auto; border: 1px solid #d1c1f3; border-radius: 1px; background: #8771b0; transform: rotate(45deg); }
+.scope-variable-marker small { color: #bcb1d0; font: 8px monospace; }
+.scope-variable-marker:hover > i, .scope-variable-marker:focus-visible > i { background: #ede0ff; }
+.scope-variable-marker:focus-visible, .scope-annotations-navigation button:focus-visible { outline: 2px solid #cfb8f5; outline-offset: 1px; border-radius: 3px; }
+.scope-annotation-playhead, .scope-annotation-hover { position: absolute; z-index: 2; inset-block: 0; width: 1px; background: #edeee3; pointer-events: none; }
+.scope-annotation-hover { border-left: 1px dashed #cbbfe8; background: transparent; }
+.scope-annotations-track-empty { position: absolute; inset: 16px 0 auto; color: #929fa9; font-size: 10px; }
+.scope-annotation-readout { display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; padding: 0 14px; font-size: 10px; color: #aeb9c4; }
+.scope-annotation-readout > span { white-space: nowrap; }
+.scope-annotation-readout time { margin-left: 4px; color: #d1c4eb; font-family: monospace; }
+.scope-annotation-readout output { display: flex; flex: 1 1 180px; flex-wrap: wrap; gap: 5px 12px; min-width: 0; color: #c7d0d6; }
+.scope-annotation-readout output > span { display: inline-block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.scope-annotation-readout code { color: #cbb6eb; font-size: 10px; }
+.scope-annotation-readout small { align-self: center; color: #aeb7c0; font-size: 10px; }
+.scope-annotation-warning { margin: 8px 14px 0; color: #d7c8a8; font-size: 10px; }
+@media (max-width: 600px) { .scope-annotations-heading > span { flex: 1 1 130px; } .scope-annotation-readout output { flex-basis: 100%; } .scope-annotations-navigation button { width: 32px; height: 30px; } }

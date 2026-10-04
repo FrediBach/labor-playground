@@ -49,7 +49,9 @@ Stop terminates the active worker phase, discards partial results and stops audi
 
 ## Inspect recorded application state
 
-Run or Simulate your Pico code, open **Results**, and use the **Simulation recording** timeline. **Pico variables**, directly below the playback controls, follows the same cursor as the scope, GPIO states, and OLED. No changes to `main.py` are needed.
+Run or Simulate your Pico code, open **Results**, and use the **Playback** timeline inside the oscilloscope. The scope's **Variable changes** strip marks recorded state snapshots on the same time axis as CH1/CH2 and Pico logs. Hover or focus a marker to read its changes, click to seek, or use its previous/next buttons to visit adjacent snapshots. Dense windows group nearby snapshots and show their count; zoom in to separate them. Hovering a waveform or log also updates the annotation summary at that time without seeking. No changes to `main.py` are needed.
+
+The detailed **Pico variables** inspector below the scope follows the recording cursor, together with GPIO states and the OLED. Hover previews leave this cursor unchanged. The annotation strip describes the most recent recorded change at or before the inspected time; the inspector shows the complete retained state at the playback time. Both expose incomplete or unavailable state rather than presenting it as a current value.
 
 The inspector shows global variable names, types, and captured values, including numbers, booleans, strings, bytes, and `None`. Expand lists, tuples, sets, and dictionaries to inspect their contents, filter by variable name, or use **Previous** / **Next change** to seek recorded changes. New, changed, and removed variables are marked relative to the preceding snapshot. Scrubbing backward restores earlier values, including earlier contents of mutable containers. Source or wiring edits invalidate these readings until the next successful run.
 
@@ -89,7 +91,9 @@ for duty in (20, 40, 60, 80):
     time.sleep_ms(20)
 ```
 
-Run the code, then open **Results**. Named log traces appear below CH1/CH2, sharing the scope's time window and recording cursor. Each trace has its own automatic numeric scale and optional unit. Click a trace to seek, or focus it and use arrow keys and Home/End. A value holds until that name is logged again; the interval before its first sample stays blank. Logging works without analog probes, and `print()` continues to write only to the serial console.
+Run the code, then open **Results**. Named log traces appear below CH1/CH2, sharing the scope's time window, hover time, and recording cursor. Each trace has its own automatic numeric scale and optional unit. Hover a trace for its time/value tooltip and synchronized readings in the other lanes. Click or drag a trace to seek, or focus it and use arrow keys and Home/End; Shift increases the arrow-key step. A value holds until that name is logged again; the interval before its first sample stays blank. Logging works without analog probes, and `print()` continues to write only to the serial console.
+
+The scope's zoom buttons and **Fit** control update all lanes together. Shift-drag the voltage graph to select a shorter interval, then use the window slider or pan arrows to move through the capture. The Playback timeline always covers the full capture, and exact time entry provides another way to inspect a particular moment. These view changes preserve the original log samples and electrical measurements.
 
 **Show Pico logs** hides all code traces; each named trace button hides or restores one series. **Show automation events** independently hides or shows fired automation markers across the circuit waveforms and code traces. Select a named event to inspect its exact firing time. These display controls do not change the circuit, rerun code, or discard recorded samples. Editing source or wiring removes stale traces until the next successful simulation.
 

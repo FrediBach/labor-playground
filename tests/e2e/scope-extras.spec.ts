@@ -10,11 +10,13 @@ async function capturedLogs(page: Page) {
   circuit.pico!.source = `import time
 import scope
 print("ordinary console output")
+level = 1.5
 time.sleep_ms(10)
-scope.log("target", 1.5, "V")
+scope.log("target", level, "V")
 scope.log("counter", 1)
 time.sleep_ms(20)
-scope.log("target", 3, "V")
+level = 3
+scope.log("target", level, "V")
 scope.log("counter", 2)
 time.sleep_ms(60)
 `
@@ -120,4 +122,46 @@ test('scope extras fit a phone and discard stale data after source changes', asy
   await expect(scope.getByRole('button', { name: 'Seek Raise CV at 40 ms', exact: true })).toHaveCount(0)
   await expect(scope.getByRole('checkbox', { name: 'Show Pico logs', exact: true })).toBeChecked()
   await expect(scope.getByRole('checkbox', { name: 'Show automation events', exact: true })).toBeChecked()
+})
+
+test('Pico logs and variable annotations share hover, zoom and drag seeking', async ({ page }) => {
+  const scope = await capturedLogs(page)
+  await scope.getByRole('button', { name: 'Fit entire capture', exact: true }).click()
+  const annotations = scope.getByRole('region', { name: 'Pico variable annotations', exact: true })
+  const physicalWaveform = scope.getByLabel('Voltage versus time for scope channels 1 and 2', { exact: true })
+  const loggedWaveform = scope.getByLabel('Pico log target waveform', { exact: true })
+  const cursor = scope.getByRole('slider', { name: 'Pico log target recording cursor', exact: true })
+  const time = page.getByLabel('Recording time milliseconds')
+  await time.fill('0')
+  await expect(annotations.getByLabel('Pico variable change summary')).toHaveText('No global variables defined')
+  await annotations.getByRole('button', { name: 'Next annotated variable change', exact: true }).click()
+  await expect(annotations.getByLabel('Pico variable change summary')).toContainText('level')
+  expect(await annotations.getByTestId('scope-variable-marker').count()).toBeLessThanOrEqual(48)
+  const lastMarker = annotations.getByTestId('scope-variable-marker').last()
+  const markerSeconds = Number(await lastMarker.getAttribute('data-time'))
+  await lastMarker.click()
+  expect(Number(await time.inputValue())).toBeCloseTo(markerSeconds * 1000, 3)
+  await expect(annotations.getByLabel('Pico variable change summary')).toContainText('level = 3')
+
+  await time.fill('50')
+  await cursor.scrollIntoViewIfNeeded()
+  const bounds = (await cursor.boundingBox())!
+  const xAt = (fraction: number) => bounds.x + 34 + fraction * (bounds.width - 46)
+  await page.mouse.move(xAt(.2), bounds.y + bounds.height / 2)
+  await expect(cursor.getByTestId('pico-log-tooltip')).toContainText('target: 1.500 V')
+  await expect(scope.getByLabel('Pico log target value', { exact: true })).toHaveText('3.000 V')
+  await expect(time).toHaveValue('50')
+  expect(Number(await scope.getByTestId('scope-hover-tooltip').getAttribute('data-time'))).toBeCloseTo(.02, 3)
+  await page.mouse.down()
+  await page.mouse.move(xAt(.8), bounds.y + bounds.height / 2, { steps: 4 })
+  await page.mouse.up()
+  expect(Number(await time.inputValue())).toBeCloseTo(80, 0)
+
+  await scope.getByRole('button', { name: 'Zoom in time', exact: true }).click()
+  const start = (await physicalWaveform.getAttribute('data-window-start'))!
+  const end = (await physicalWaveform.getAttribute('data-window-end'))!
+  await expect(loggedWaveform).toHaveAttribute('data-window-start', start)
+  await expect(loggedWaveform).toHaveAttribute('data-window-end', end)
+  await expect(annotations.locator('.scope-annotations-track')).toHaveAttribute('data-window-start', start)
+  await expect(annotations.locator('.scope-annotations-track')).toHaveAttribute('data-window-end', end)
 })

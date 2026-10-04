@@ -376,3 +376,26 @@
   .help-content { padding: 0 18px 18px; }
   .help-footer { padding: 12px 18px; }
 }
+
+/* Results can use the entire workspace without changing sidebar preferences. */
+.workbench-layout.results-expanded { grid-template-columns: minmax(0, 1fr); }
+.results-expanded > .parts-tray, .results-expanded > .inspector, .results-expanded .workspace-actions { display: none; }
+.results-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+.results-heading h2 { margin: 0; color: #e2e9df; font-size: 18px; font-weight: 550; letter-spacing: -.3px; }
+.results-heading p { margin: 4px 0 0; color: #b6c5bb; font-size: 12px; }
+.results-expand { flex-shrink: 0; gap: 7px; padding: 6px 10px; border: 1px solid #505c53; border-radius: 5px; color: #cddacf; font-size: 12px; }
+.results-expand[aria-pressed=true] { border-color: #a6c6b0; background: #35483b; color: #e0eedf; }
+.results-expand:focus-visible { outline: 2px solid #d2e7cb; outline-offset: 3px; }
+#simulation-results > .pico-state-inspector { margin-top: 14px; }
+@media (max-width: 740px) {
+  .workbench-layout[data-workspace=results] > .parts-tray { display: none; }
+}
+.results-test-action { display: flex; align-items: center; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 7px 0; }
+.results-test-action .subtle-button { font-size: 12px; text-decoration: underline; text-underline-offset: 3px; color: #c7d6cb; }
+.results-test-action > span { font-size: 11px; color: #aebcb2; }
+@media (max-width: 520px) {
+  .results-heading { align-items: flex-start; margin-bottom: 12px; }
+  .results-heading h2 { font-size: 17px; }
+  .results-heading p { max-width: 200px; line-height: 1.5; }
+  .results-expand { padding-inline: 7px; font-size: 11px; }
+}
