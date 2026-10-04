@@ -40,6 +40,8 @@ The center workspace has **Circuit**, **Schema**, **Results**, **Automations**, 
 
 Drag any instrument knob up or right to increase its value; hold Shift for fine adjustment. Numeric inputs and arrow keys edit the same parameter. **Manual Gate** fires the envelope/trigger or latches the held gate, depending on **Type**.
 
+Use **Compact** beside the PICO LABOR wordmark to switch the instrument panel to a slim scope preview and numeric source controls, leaving more room for the breadboard. Switch it off to restore the knobs. This browser preference survives reloads without changing the circuit, undo history, or audio playback.
+
 Use **Place** on the lower **Multipurpose Control Board** to add a potentiometer or switch to the breadboard. Wire its pins on the board, then operate its matching front-panel control. The inspector and control board share the same values, and a knob drag commits as one undoable action.
 
 Use **Pan**, Space-drag, or the middle mouse button to move a zoomed board. **Fit breadboard** frames the holes; **Fit all / Fit workbench** includes the source terminals. Ordinary trackpad scrolling works inside the zoomed view. Drag the grip below the scope trace to resize it, or focus the grip and use Up/Down; Enter restores its default height. These view changes do not alter the circuit or undo history.

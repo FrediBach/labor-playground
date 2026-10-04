@@ -25,6 +25,7 @@ import { EnvelopeControls } from '@/components/workbench/EnvelopeControls'
 import { OperatingPointPanel } from '@/components/workbench/OperatingPointPanel'
 import type { Channel } from '@/lib/simulation-types'
 import { ScopeModule } from '@/components/workbench/ScopeModule'
+import { InstrumentRack } from '@/components/workbench/InstrumentRack'
 import { ControlCarrier } from '@/components/workbench/ControlCarrier'
 import { AutomationWorkspace } from '@/components/workbench/automations/AutomationWorkspace'
 import { useCircuitTests } from '@/lib/use-circuit-tests'
@@ -38,6 +39,7 @@ import { HelpDialog } from '@/components/workbench/HelpDialog'
 import { useDirectorySync } from '@/lib/use-directory-sync'
 import './LaborHardware.css'
 import './WorkbenchUX.css'
+import './components/workbench/InstrumentRack.css'
 
 type Tool = 'select' | 'wire' | 'probe1' | 'probe2' | ComponentKind
 const isDipTool = (tool: Tool) => tool in PARTS && !!PARTS[tool as ComponentKind].package
@@ -276,8 +278,7 @@ export default function App() {
         <div className="workspace-panel" id="workspace-panel-circuit" role="tabpanel" aria-labelledby="workspace-tab-circuit" hidden={workspaceTab !== 'circuit'}>
         <section className="bench-section" aria-label="Circuit workbench"><div className="board-toolbar"><div className="tool-group"><button className={`icon-button ${tool === 'select' && !panEnabled ? 'active' : ''}`} title="Select · V" aria-label="Select tool" aria-pressed={tool === 'select' && !panEnabled} onClick={() => setTool('select')}><MousePointer2 size={16} /></button><button className={`icon-button ${tool === 'wire' ? 'active' : ''}`} title="Wire · W" aria-label="Wire tool" aria-pressed={tool === 'wire'} onClick={() => setTool('wire')}><Cable size={16} /></button><button className="icon-button" title="Rotate placement · R" aria-label="Rotate placement" onClick={() => setRotation((rotation + (isDipTool(tool) || tool === 'ssd1306' ? 180 : 90)) % 360)}><RotateCw size={15} /></button><button className={`icon-button ${panEnabled ? 'active' : ''}`} title="Pan board · H / Space-drag" aria-label="Pan tool" aria-pressed={panEnabled} onClick={() => { if (panEnabled) setPanEnabled(false); else { setTool('select'); setPanEnabled(true) } }}><Hand size={15} /></button><span className="toolbar-divider" /><label className="connections-toggle"><input type="checkbox" aria-label="Show connections" checked={showConnections} onChange={e => setShowConnections(e.target.checked)} /><span>Connections</span></label></div><div className="zoom-controls"><button className="icon-button" aria-label="Zoom out" onClick={() => viewport.current?.zoomTo(zoom - 0.15)}><Minus size={14} /></button><span>{Math.round(zoom * 100)}%</span><button className="icon-button" aria-label="Zoom in" onClick={() => viewport.current?.zoomTo(zoom + 0.15)}><Plus size={14} /></button><button className="icon-button" aria-label="Fit breadboard" title="Fit breadboard · 0" onClick={() => viewport.current?.fit('breadboard')}><Maximize2 size={14} /></button><button className="fit-workbench" aria-label="Fit workbench" title="Fit the breadboard and source terminals · F" onClick={() => viewport.current?.fit('workbench')}>Fit all</button></div></div>
           <div className="labor-case">
-            <div className="chassis-brand"><div className="labor-wordmark"><strong>PICO LABOR</strong><span>EDU / VIRTUAL WORKBENCH</span></div><span className="chassis-revision">WORKBENCH / 01</span></div>
-            <div className="instrument-panel">
+            <InstrumentRack>
               <ScopeModule windowSeconds={captureAutomations?.some(item => item.enabled) ? durationSeconds : document.pico ? 0.1 : document.stimulus === 'step' || ['envelope-shaping', '555-monostable', 'ripple-divider', 'nand-oscillator'].includes(exampleId) ? 0.1 : Math.min(0.1, 3 / document.instruments.frequency)} capture={simulation.status === 'ready' ? simulation.capture : null} status={simulation.status} probes={document.probes} onProbe={channel => { setTool(channel === 'CH1' ? 'probe1' : 'probe2'); message(`Select a terminal for ${channel}.`) }} />
               <div className="source-module hardware-panel">
                 <div className="module-heading"><span>SIGNAL GENERATOR</span><span>01</span></div>
@@ -290,7 +291,7 @@ export default function App() {
                 <EnvelopeControls settings={envelopeSettings(document)} busy={simulation.status === 'loading' || simulation.status === 'calculating'} onChange={envelope => change({ ...document, instruments: { ...document.instruments, envelope } })} onFire={simulation.captureNow} /><RecordedAutomationValue document={document} target="gate" />
               </div>
               <div className="output-module hardware-panel"><div className="module-heading"><span>AUDIO / POWER</span><span>02</span></div><AudioMonitor capture={simulation.status === 'ready' ? simulation.capture : null} onMessage={message} /><div className="supply-indicators" aria-label="Power supplies: plus 12 volts and minus 12 volts available"><span><i />+12 V</span><span><i />−12 V</span><span className="supply-label">DC SUPPLY</span></div></div>
-            </div>
+            </InstrumentRack>
             <div className="breadboard-panel"><div className="board-silkscreen"><span>BREADBOARD / PATCH FIELD</span><span>30 COLUMNS · SPLIT RAILS</span></div><BoardViewport workbenchWidth={document.pico ? 1110 : 920} ref={viewport} zoom={zoom} onZoomChange={setZoom} panEnabled={panEnabled} onPanEnabledChange={setPanEnabled}><Breadboard placement={placement} document={document} selectedId={selectedId} onSelect={setSelectedId} onChange={change} tool={tool} rotation={rotation} wireColor={wireColor} showConnections={showConnections} highlightTerminal={highlightedChannel ? document.probes[highlightedChannel] : null} zoom={1} onMessage={message} editingLead={editingLead} onStartLeadEdit={startLeadEdit} onFinishLeadEdit={finishLeadEdit} /></BoardViewport></div>
             <ControlCarrier document={document} onChange={change} onSelect={id => { setSelectedId(id); setTool('select'); setInspectorOpen(true) }} onPlace={kind => { setTool(kind); setRotation(0); message(`Choose free breadboard holes for your ${kind}.`) }} />
             <div className="device-footer"><span>PICO LABOR / VIRTUAL-1</span><span>PATCH SUPPLIES TO RAILS WITH JUMPERS</span><span>EDU</span></div></div><div className="board-hint"><MousePointer2 size={12} /><span>{toolHint}</span><span className="board-count">{document.wires.length} wires</span></div>

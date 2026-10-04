@@ -1,0 +1,159 @@
+.instrument-rack { container-type: inline-size; }
+.instrument-rack .chassis-brand { padding-block: 10px 12px; }
+.instrument-density-toggle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: auto;
+  min-height: 30px;
+  padding: 4px 9px;
+  border: 1px solid #58645d;
+  border-radius: 4px;
+  background: #252e29;
+  color: #c3cec5;
+  font: 11px monospace;
+  cursor: pointer;
+}
+.instrument-density-toggle:hover { background: #354039; color: #eef3e9; }
+.instrument-density-toggle[aria-pressed=true] { border-color: #a9b8a2; background: #d2dbc9; color: #26372c; }
+.instrument-density-toggle:focus-visible { outline: 2px solid #b9dce3; outline-offset: 3px; }
+
+/* Tighten the full panel without shrinking its input targets or lettering. */
+.instrument-rack .hardware-panel { padding-block: 9px; }
+.instrument-rack .module-heading { padding-bottom: 6px; margin-bottom: 7px; }
+.instrument-rack .instrument-label { margin-bottom: 5px; }
+.instrument-rack .source-caption { margin-top: 4px; }
+.instrument-rack .source-module .hardware-envelope { margin-top: 9px; padding-top: 8px; gap: 5px 12px; }
+.instrument-rack .hardware-envelope .fire-button,
+.instrument-rack .hardware-envelope .gate-button { height: 51px; }
+.instrument-rack .hardware-envelope .envelope-type-control select { margin-top: 7px; }
+.instrument-rack .scope-module { padding-block: 10px; }
+.instrument-rack .scope-module-inputs { padding-top: 5px; }
+.instrument-rack .monitor-note { line-height: 1.4; }
+.instrument-rack .supply-indicators { margin-top: 7px; padding: 7px 8px 2px; }
+
+/* The same mounted controls become a slim strip, preserving edits and audio. */
+.instrument-rack.is-compact .instrument-panel {
+  grid-template-columns: minmax(140px, .7fr) minmax(340px, 1.8fr) minmax(240px, 1.2fr);
+  gap: 7px;
+}
+.instrument-rack.is-compact .hardware-panel { padding: 6px 8px; }
+.instrument-rack.is-compact .source-module,
+.instrument-rack.is-compact .output-module { grid-column: auto; grid-row: auto; }
+.instrument-rack.is-compact .module-heading { font-size: 9px; line-height: 12px; padding: 0; margin-bottom: 4px; border: 0; }
+.instrument-rack.is-compact .instrument-label { font-size: 9px; line-height: 10px; margin-bottom: 2px; }
+.instrument-rack.is-compact .rotary-control { width: 100%; }
+.instrument-rack.is-compact .knob-ring,
+.instrument-rack.is-compact .source-caption,
+.instrument-rack.is-compact .envelope-wave { display: none; }
+.instrument-rack.is-compact .knob-number { height: 26px; margin: 0; gap: 3px; }
+.instrument-rack.is-compact .knob-number input { width: 48px; height: 26px; }
+.instrument-rack.is-compact .generator-controls { grid-template-columns: 1fr 86px 1fr 1fr; gap: 6px; }
+.instrument-rack.is-compact .waveform-buttons { flex-direction: row; gap: 2px; }
+.instrument-rack.is-compact .waveform-buttons button { width: 28px; height: 26px; }
+.instrument-rack.is-compact .waveform-buttons svg { width: 22px; }
+.instrument-rack.is-compact .source-module .hardware-envelope {
+  grid-template-columns: 1fr 1fr minmax(90px, 1fr);
+  align-items: center;
+  gap: 6px;
+  margin-top: 5px;
+  padding-top: 5px;
+}
+.instrument-rack.is-compact .manual-gate-control,
+.instrument-rack.is-compact .envelope-decay-control,
+.instrument-rack.is-compact .envelope-type-control { display: flex; flex-direction: row; align-items: center; gap: 5px; min-width: 0; }
+.instrument-rack.is-compact .hardware-envelope .instrument-label { margin: 0; white-space: normal; text-align: left; }
+.instrument-rack.is-compact .hardware-envelope .fire-button,
+.instrument-rack.is-compact .hardware-envelope .gate-button {
+  flex-shrink: 0;
+  width: 52px;
+  height: 26px;
+  border-width: 2px;
+  border-radius: 3px;
+  align-items: center;
+  padding: 0 3px;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+.instrument-rack.is-compact .hardware-envelope .fire-button i,
+.instrument-rack.is-compact .hardware-envelope .gate-button i { display: none; }
+.instrument-rack.is-compact .hardware-envelope .gate-button[aria-pressed=true] { background: #f1b58c; }
+.instrument-rack.is-compact .hardware-envelope .gate-button { width: 62px; padding-inline: 2px; }
+.instrument-rack.is-compact .hardware-envelope .envelope-type-control select { height: 26px; min-height: 26px; margin: 0; padding: 3px; font-size: 10px; }
+.instrument-rack.is-compact .envelope-decay-control .knob-number input { width: 34px; }
+
+.instrument-rack.is-compact .scope-module { min-height: 0; padding: 6px 10px; }
+.instrument-rack.is-compact .scope-module-heading { margin: 0 7px 3px; font-size: 9px; line-height: 12px; }
+.instrument-rack.is-compact .scope-module-pcb { min-height: 0; padding: 3px; }
+.instrument-rack.is-compact .scope-module-pcb::before { display: none; }
+.instrument-rack.is-compact .scope-module-screen svg { height: 24px; min-height: 24px; max-height: 24px; }
+.instrument-rack.is-compact .scope-module-readout { font-size: 7px; line-height: 9px; padding-block: 0; }
+.instrument-rack.is-compact .scope-module-status { font-size: 7px; line-height: 9px; min-height: 0; padding-block: 0; }
+.instrument-rack.is-compact .scope-module-empty { display: none; }
+.instrument-rack.is-compact .scope-module-inputs { padding: 2px 0 0; gap: 10px; }
+.instrument-rack.is-compact .scope-module-input { min-height: 26px; font-size: 9px; }
+.instrument-rack.is-compact .scope-module-jack { width: 14px; height: 14px; border-width: 2px; }
+.instrument-rack.is-compact .scope-module-input-label { display: none; }
+.instrument-rack.is-compact .scope-module-screw { width: 7px; height: 7px; }
+.instrument-rack.is-compact .scope-module-screw::after { inset: 1px 2px; }
+
+.instrument-rack.is-compact .audio-monitor { display: grid; grid-template-columns: 38px minmax(0, 1fr) 56px; gap: 3px 7px; }
+.instrument-rack.is-compact .audio-monitor-controls { display: contents; }
+.instrument-rack.is-compact .monitor-phones { grid-column: 1; grid-row: 1; }
+.instrument-rack.is-compact .monitor-volume { grid-column: 3; grid-row: 1; }
+.instrument-rack.is-compact .monitor-routing { grid-column: 2; grid-row: 1; grid-template-columns: 45px minmax(0, 1fr); align-self: start; gap: 4px; }
+.instrument-rack.is-compact .monitor-routing > div { gap: 2px; }
+.instrument-rack.is-compact .monitor-routing label { font-size: 8px; line-height: 10px; }
+.instrument-rack.is-compact .monitor-routing select { height: 26px; min-height: 26px; font-size: 9px; padding: 2px; }
+.instrument-rack.is-compact .monitor-listen { width: 36px; height: 26px; padding: 0; justify-content: center; font-size: 8px; }
+.instrument-rack.is-compact .monitor-jack { width: 24px; height: 24px; border-width: 2px; box-shadow: 0 0 0 1px #808d80, inset 0 0 0 2px #33423b; }
+.instrument-rack.is-compact .monitor-listen > span:last-child { display: none; }
+.instrument-rack.is-compact .monitor-listen.listening .monitor-jack { color: #ff9b70; box-shadow: 0 0 0 1px #d99d7f, inset 0 0 10px #ff4f1c44; }
+.instrument-rack.is-compact .monitor-volume .knob-number { font-size: 10px; }
+.instrument-rack.is-compact .monitor-volume .knob-number input { width: 36px; }
+.instrument-rack.is-compact .audio-monitor .monitor-mute { grid-column: 1; grid-row: 2; align-self: start; justify-content: center; width: 28px; min-height: 28px; margin: 0; padding: 2px 0; font-size: 9px; }
+.instrument-rack.is-compact .monitor-mute span { display: none; }
+.instrument-rack.is-compact .monitor-note { grid-column: 2 / -1; grid-row: 2; margin: 0; font-size: 9px; line-height: 12px; }
+.instrument-rack.is-compact .supply-indicators { position: absolute; top: 7px; right: 8px; gap: 7px; padding: 0; margin: 0; border: 0; font-size: 7px; }
+.instrument-rack.is-compact .supply-indicators > span { gap: 3px; }
+.instrument-rack.is-compact .supply-label,
+.instrument-rack.is-compact .output-module .module-heading > span:last-child { display: none; }
+.instrument-rack.is-compact .supply-indicators i { width: 4px; height: 4px; }
+
+/* Respond to available workbench space, including collapsed sidebars. */
+@container (max-width: 780px) {
+  .instrument-rack.is-compact .instrument-panel { grid-template-columns: minmax(140px, .7fr) minmax(320px, 1.8fr); }
+  .instrument-rack.is-compact .output-module { grid-column: 1 / -1; }
+  .instrument-rack.is-compact .audio-monitor { display: flex; align-items: center; gap: 12px; }
+  .instrument-rack.is-compact .audio-monitor-controls { display: grid; flex: 1 0 290px; grid-template-columns: 38px minmax(0, 1fr) 56px 48px; gap: 3px 7px; }
+  .instrument-rack.is-compact .audio-monitor .monitor-mute { grid-column: 4; grid-row: 1; align-self: end; }
+  .instrument-rack.is-compact .monitor-note { flex: 1; }
+}
+@container (max-width: 510px) {
+  .instrument-rack.is-compact .instrument-panel { grid-template-columns: minmax(0, 1fr); }
+  .instrument-rack.is-compact .scope-module { display: grid; grid-template-columns: 1fr 110px; gap: 4px 10px; }
+  .instrument-rack.is-compact .scope-module-heading { align-self: end; margin: 0 0 0 6px; }
+  .instrument-rack.is-compact .scope-module-pcb { grid-column: 2; grid-row: 1 / 3; }
+  .instrument-rack.is-compact .scope-module-screen svg { min-height: 20px; height: 20px; }
+  .instrument-rack.is-compact .scope-module-readout { display: none; }
+  .instrument-rack.is-compact .scope-module-inputs { align-self: start; }
+  .instrument-rack.is-compact .generator-controls { grid-template-columns: 1fr 86px 1fr 1fr; gap: 3px; }
+  .instrument-rack.is-compact .instrument-label { font-size: 8px; }
+  .instrument-rack.is-compact .knob-number { font-size: 10px; }
+  .instrument-rack.is-compact .knob-number input { width: 40px; }
+  .instrument-rack.is-compact .source-module .hardware-envelope { grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+  .instrument-rack.is-compact .manual-gate-control,
+  .instrument-rack.is-compact .envelope-decay-control,
+  .instrument-rack.is-compact .envelope-type-control { flex-direction: column; gap: 3px; }
+  .instrument-rack.is-compact .hardware-envelope .instrument-label { text-align: center; }
+  .instrument-rack.is-compact .audio-monitor { display: grid; }
+  .instrument-rack.is-compact .audio-monitor-controls { display: contents; }
+  .instrument-rack.is-compact .audio-monitor .monitor-mute { grid-column: 1; grid-row: 2; align-self: start; }
+}
+@container (max-width: 390px) {
+  .instrument-rack .chassis-brand .labor-wordmark > span { display: none; }
+  .instrument-rack .chassis-brand .labor-wordmark strong { font-size: 24px; }
+  .instrument-rack .chassis-brand { flex-wrap: nowrap; }
+}
