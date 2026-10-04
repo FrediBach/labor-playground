@@ -5,6 +5,8 @@ import { assignSchemaGroup, formatValue, SCHEMA_GROUP_NAME_LIMIT, type CircuitDo
 import { buildSchematic } from '@/lib/schematic'
 import { RecordingContext } from '@/lib/recording-context'
 import { SchematicDrawing } from './SchematicDrawing'
+import { buildKicadExport } from '@/lib/kicad-export'
+import { createZip } from '@/lib/zip-export'
 import './SchemaPanel.css'
 
 const MIN_ZOOM = 0.01
@@ -143,13 +145,19 @@ export function SchemaPanel({ document, onChange, selectedId, onSelect, visible,
     if (event.key === 'Escape') finishPan()
   }
 
-  async function exportSchema(format: 'svg' | 'png') {
+  async function exportSchema(format: 'svg' | 'png' | 'sch') {
     const drawing = stage.current?.querySelector('svg')
     if (!drawing || exporting) return
     setExporting(true)
     setExportMessage('')
     let imageUrl: string | undefined
     try {
+      if (format === 'sch') {
+        const bundle = buildKicadExport(document, showVoltages && available ? { nodeVoltages: point?.nodeVoltages, voltageTime: seconds } : {})
+        download(new Blob([createZip(bundle.files)], { type: 'application/zip' }), `${bundle.basename}.zip`)
+        setExportMessage('KiCad SCH exported with its symbol library. Extract the ZIP, then open the .sch file.')
+        return
+      }
       const clone = drawing.cloneNode(true) as SVGSVGElement
       clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg')
       clone.setAttribute('width', String(layout.width))
@@ -187,6 +195,7 @@ export function SchemaPanel({ document, onChange, selectedId, onSelect, visible,
     <header className="schema-heading"><div><h2>Circuit schema</h2><p>Electrical connections · {document.parts.length} components{groupNames.length ? ` · ${groupNames.length} groups` : ''}</p></div><div className="schema-exports">
       <button className="schema-button" aria-label="Export schema SVG" disabled={exporting} onClick={() => void exportSchema('svg')}><Download size={14} />SVG</button>
       <button className="schema-button" aria-label="Export schema PNG" disabled={exporting} onClick={() => void exportSchema('png')}><Download size={14} />PNG</button>
+      <button className="schema-button" aria-label="Export schema SCH" title="KiCad .sch + symbol library (ZIP). Extract together, then open the .sch file." disabled={exporting} onClick={() => void exportSchema('sch')}><Download size={14} />SCH</button>
     </div></header>
     <div className="schema-toolbar"><label className="schema-voltage-toggle"><input type="checkbox" checked={showVoltages} onChange={event => setShowVoltages(event.target.checked)} aria-label="Show voltages" /><Zap size={14} /><span>Voltages</span></label><div className="schema-zoom">
       <button className="icon-button" aria-label="Zoom out schema" disabled={zoom <= MIN_ZOOM} onClick={() => zoomTo(zoom / 1.25)}><Minus size={15} /></button><output aria-label="Schema zoom">{Math.round(zoom * 100)}%</output><button className="icon-button" aria-label="Zoom in schema" disabled={zoom >= 4} onClick={() => zoomTo(zoom * 1.25)}><Plus size={15} /></button><button className="schema-button" aria-label="Fit schema" onClick={fit}><Maximize2 size={14} />Fit</button>

@@ -16,6 +16,53 @@ async function downloadBytes(download: Download) {
   return Buffer.concat(chunks)
 }
 
+function storedZipFiles(zip: Buffer): Map<string, string> {
+  const files = new Map<string, string>()
+  let offset = 0
+  while (zip.readUInt32LE(offset) === 0x04034b50) {
+    expect(zip.readUInt16LE(offset + 8)).toBe(0)
+    const size = zip.readUInt32LE(offset + 18), nameLength = zip.readUInt16LE(offset + 26), extraLength = zip.readUInt16LE(offset + 28)
+    const name = zip.subarray(offset + 30, offset + 30 + nameLength).toString('utf8')
+    const dataStart = offset + 30 + nameLength + extraLength
+    files.set(name, zip.subarray(dataStart, dataStart + size).toString('utf8'))
+    offset = dataStart + size
+  }
+  expect(zip.readUInt32LE(offset)).toBe(0x02014b50)
+  return files
+}
+
+test('SCH downloads an editable KiCad schematic with its symbols, groups and voltage snapshot', async ({ page }) => {
+  await page.goto('/')
+  await ready(page)
+  await openTab(page, 'Schema')
+  await page.getByLabel('Schema group', { exact: true }).fill('Output stage')
+  await page.getByLabel('Schema group', { exact: true }).press('Enter')
+  await page.getByRole('checkbox', { name: 'Show voltages', exact: true }).check()
+  await page.getByLabel('Schema time milliseconds', { exact: true }).fill('37.5')
+  const downloadEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export schema SCH', exact: true }).click()
+  const exported = await downloadEvent
+  expect(exported.suggestedFilename()).toMatch(/-schema\.zip$/)
+  const files = storedZipFiles(await downloadBytes(exported))
+  const basename = exported.suggestedFilename().slice(0, -4)
+  const schematic = files.get(`${basename}.sch`)!
+  expect(schematic).toMatch(/^EESchema Schematic File Version 4\n/)
+  expect(schematic).toContain('RC low-pass filter')
+  expect(schematic).toContain('"Output stage"')
+  expect(schematic).toContain('Wire Notes Line')
+  expect(schematic).toContain('37.500 ms')
+  expect(schematic).toContain('V @ 37.500 ms')
+  expect(schematic).toContain('"10 kΩ"')
+  expect(schematic).toContain('"100 nF"')
+  expect(schematic).toMatch(/L PicoLabor:PL_\d+ R1/)
+  expect(schematic).toMatch(/L PicoLabor:PL_\d+ C1/)
+  expect(files.get(`${basename}-cache.lib`)).toMatch(/^EESchema-LIBRARY Version 2\.4\n/)
+  expect(files.get(`${basename}-cache.lib`)).toContain('ALIAS PL_1')
+  expect(files.get('sym-lib-table')).toContain(`\${KIPRJMOD}/${basename}-cache.lib`)
+  expect(files.get('README.txt')).toContain('Extract every file into the same folder')
+  await expect(page.getByRole('region', { name: 'Schema', exact: true })).toContainText('Extract the ZIP')
+})
+
 test('Schema annotates the current circuit, selects components, and retains its zoom between tabs', async ({ page }, testInfo) => {
   await page.goto('/')
   await ready(page)
