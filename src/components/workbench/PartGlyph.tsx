@@ -49,7 +49,7 @@ export function PartGlyph({ kind, span = 72, selected = false, value = 0, positi
       y: index < rowPins ? -30 : 30,
     }))
     const bodyHalf = Math.max(...leads.map(pin => Math.abs(pin.x))) + 11
-    const inscription = kind === 'cd4024' ? 'CD4024 STYLE' : kind === 'cd4093' ? 'CD4093 STYLE' : kind === 'cd4001' ? 'CD4001 STYLE' : kind === 'pc817' ? '817' : kind === 'cd4013' ? 'CD4013 STYLE' : kind === 'cd4070' ? 'CD4070 STYLE' : kind === 'cd4081' ? 'CD4081 STYLE' : kind === 'cd40106' ? 'CD40106 STYLE' : kind === 'cd4053' ? 'CD4053 STYLE' : kind === 'vactrol' ? 'LED / LDR' : kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
+    const inscription = kind === 'cd4024' ? 'CD4024 STYLE' : kind === 'cd4093' ? 'CD4093 STYLE' : kind === 'cd4001' ? 'CD4001 STYLE' : kind === 'pc817' ? '817' : kind === 'cd4013' ? 'CD4013 STYLE' : kind === 'cd4070' ? 'CD4070 STYLE' : kind === 'cd4081' ? 'CD4081 STYLE' : kind === 'cd4069' ? 'CD4069UB STYLE' : kind === 'cd40106' ? 'CD40106 STYLE' : kind === 'cd4053' ? 'CD4053 STYLE' : kind === 'vactrol' ? 'LED / LDR' : kind === 'lm393' ? 'LM393 STYLE' : kind === 'cd4066' ? 'CD4066 STYLE' : kind === 'timer555' ? '555 TIMER' : kind === 'quadopamp' ? 'TL074 STYLE' : kind === 'lm13700' ? 'LM13700 STYLE' : 'TL072 STYLE'
     return <g>
       {selected && <rect x={-bodyHalf - 7} y={-38} width={bodyHalf * 2 + 14} height={76} rx={10} fill="#d5f278" fillOpacity={0.13} stroke="#a8c55e" strokeWidth={1.5} strokeDasharray="4 3" />}
       {leads.map((pin, index) => <g key={index} data-pin={index + 1}>

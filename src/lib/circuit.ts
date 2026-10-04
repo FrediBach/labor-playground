@@ -21,12 +21,14 @@ import { synthLogicLines, LOGIC_PINOUTS } from './synth-logic.ts'
 import { synthLogicExamples } from './synth-logic-examples.ts'
 import { synthUtilityExamples } from './synth-utility-examples.ts'
 import { synthExamples } from './synth-examples.ts'
+import { cd4069Lines, INVERTER_SECTIONS } from './cd4069.ts'
+import { synthDesignExamples } from './synth-design-examples.ts'
 import { timer555Lines } from './timer555.ts'
 import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040'
+export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4069' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040'
 
 export interface Part {
   id: string
@@ -200,6 +202,13 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
     description: 'An LED illuminates an electrically isolated photoresistor for optical gain control and low-pass gates.',
     supplyHint: 'Virtual four-pin carrier: 1 LED anode, 2 cathode, 3/4 photoresistor. Add an LED current-limiting resistor. Either LDR direction works. Each side needs its own DC return.',
     model: 'Generic optical resistor, not a calibrated VTL5C device. LED Is=1e−18 A, N=2, Rs=10 Ω. Optical state follows LED current with 2 ms attack and 20 ms release time constants. R=500+9999500/(1+light_mA/0.05)² Ω: 10 MΩ dark, about 1.48 kΩ at 5 mA. The LDR is bilateral and electrically isolated. DC starts at equilibrium light; no temperature, light-history aging, voltage dependence, noise, or damage model. DIP-4 is a virtual adapter, not a manufacturer footprint.',
+  },
+  cd4069: {
+    package: 'DIP-14', pinNames: ['IN A', 'OUT A', 'IN B', 'OUT B', 'IN C', 'OUT C', 'VSS', 'OUT D', 'IN D', 'OUT E', 'IN E', 'OUT F', 'IN F', 'VDD'],
+    label: 'CD4069UB-style unbuffered inverter', unit: '', defaultValue: 1, min: 1, max: 1,
+    description: 'Six continuous CMOS inverters for analog feedback, WASP-style filters, and distortion.',
+    supplyHint: 'Pin 14 VDD, pin 7 VSS, 3–18 V total. Tie unused inputs to VSS; outputs may remain open. Use the unbuffered UB device for analog feedback, not a Schmitt inverter.',
+    model: 'Educational continuous transfer centered at half supply: Vout = VSS + span/2 × (1 − tanh(40 × ((Vin − VSS)/span − 0.5))), with midpoint gain −20, 500 Ω output resistance, 20 pF output and 5 pF input capacitance, and 1 TΩ input leakage. No hysteresis or forced startup. Output drive collapses outside 3–18 V. No calibrated distortion spectrum, protection diodes, supply current, noise, process spread, or thermal model. Current/power unavailable.',
   },
   cd40106: {
     package: 'DIP-14', pinNames: ['IN A', 'OUT A', 'IN B', 'OUT B', 'IN C', 'OUT C', 'VSS', 'OUT D', 'IN D', 'OUT E', 'IN E', 'OUT F', 'IN F', 'VDD'],
@@ -773,6 +782,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
       }
     }
     if (LOGIC_PINOUTS[part.kind] && powered) for (const output of LOGIC_PINOUTS[part.kind]!.outputs) addEdge(nodes[output], low)
+    if (part.kind === 'cd4069' && powered) for (const [, output] of INVERTER_SECTIONS) addEdge(nodes[output], low)
     if (part.kind === 'cd40106' && powered) for (const [, output] of SCHMITT_SECTIONS) addEdge(nodes[output], low)
     if (part.kind === 'cd4053') {
       const vee = nodes[6], negativeVoltage = fixedVoltages.get(vee), logicLow = fixedVoltages.get(low), logicHigh = fixedVoltages.get(high)
@@ -781,7 +791,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
     if (part.kind === 'cd4066') for (const [a, b] of [[0, 1], [2, 3], [7, 8], [9, 10]]) addEdge(nodes[a], nodes[b])
     if (span !== undefined) {
-      const indices = LOGIC_PINOUTS[part.kind]?.inputs ?? (part.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : part.kind === 'cd4053' ? [5, 8, 9, 10] : part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12])
+      const indices = LOGIC_PINOUTS[part.kind]?.inputs ?? (part.kind === 'cd4069' ? INVERTER_SECTIONS.map(([input]) => input) : part.kind === 'cd40106' ? SCHMITT_SECTIONS.map(([input]) => input) : part.kind === 'cd4053' ? [5, 8, 9, 10] : part.kind === 'lm393' ? [1, 2, 4, 5] : [0, 1, 2, 3, 4, 5, 7, 8, 9, 10, 11, 12])
       for (const index of indices) {
         const voltage = fixedVoltages.get(nodes[index])
         if (voltage !== undefined && (voltage < fixedVoltages.get(low)! || voltage > fixedVoltages.get(high)! - (part.kind === 'lm393' ? 1.5 : 0))) diagnostics.push({ severity: 'warning', message: `${part.id} ${PARTS[part.kind].pinNames[index]} is outside the modeled operating input range.`, partId: part.id })
@@ -1008,8 +1018,8 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
     lines.push(`REG eg_internal ${nodeByTerminal.eg} 100`)
   }
-  // Fixed templates emit at most 23 devices / 4 internal nodes per part
-  // (LM13700); the 30-part limit bounds expansion to 690 devices / 120 nodes.
+  // Fixed templates expand to bounded device networks. The compiler checks
+  // actual device/node/byte totals below, including the larger CMOS packages.
   for (const part of [...doc.parts].sort((a, b) => a.id.localeCompare(b.id))) {
     const [a, b] = part.pins.map((pin) => nodeByTerminal[pin])
     const safeId = spiceDeviceId(part)
@@ -1054,6 +1064,7 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
         lines.push(`RP_${safeId}_cw ${b} ${c} ${spiceNumber(Math.max(1, (1 - position) * part.value))}`)
       }
     }
+    if (part.kind === 'cd4069') lines.push(...cd4069Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'timer555') lines.push(...timer555Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
     if (part.kind === 'lm13700') lines.push(...lm13700Lines(safeId, part.pins.map(pin => nodeByTerminal[pin])))
     const layout = amplifierPinouts[part.kind]
@@ -1160,6 +1171,7 @@ export function formatValue(value: number, kind: ComponentKind): string {
   if (kind === 'pc817') return `CTR ${value}% · DIP-4`
   if (kind === 'pmos') return 'PMOS · D–G–S'
   if (kind === 'vactrol') return 'Optical · 4-pin'
+  if (kind === 'cd4069') return 'Hex unbuffered inverter · DIP-14'
   if (kind === 'cd40106') return 'Hex Schmitt · DIP-14'
   if (kind === 'cd4053') return 'Triple SPDT · DIP-16'
   if (kind === 'njfet') return 'JFET · D–G–S'
@@ -1293,6 +1305,7 @@ export const examples: CircuitExample[] = [
   ...synthUtilityExamples,
   ...synthLogicExamples,
   ...synthTimingExamples,
+  ...synthDesignExamples,
   ...picoExamples,
 ]
 

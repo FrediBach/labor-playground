@@ -6,7 +6,7 @@ test('synth examples load by difficulty, capture, and expose hardware build note
   await page.goto('/')
   const select = page.getByRole('combobox', { name: 'Load example' })
   await expect(select.locator('optgroup')).toHaveCount(3)
-  await expect(select.locator('option')).toHaveCount(43)
+  await expect(select.locator('option')).toHaveCount(50)
   for (const id of ['cv-attenuator', 'ac-coupling', 'gate-to-trigger', 'envelope-follower', 'cv-mixer', 'attenuverter', 'sallen-key-filter']) {
     await select.selectOption(id)
     await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
@@ -55,4 +55,31 @@ test('a synth example remains editable, restorable, and recoverable', async ({ p
   await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready')
   await page.locator('[data-part="P1"]').focus()
   await expect(wiper).toHaveValue('25')
+})
+
+test('classic synth cores load, capture and retain their lessons and expanded boards', async ({ page }, testInfo) => {
+  test.setTimeout(150_000)
+  const errors: string[] = []
+  page.on('pageerror', error => errors.push(error.message))
+  await page.goto('/')
+  for (const id of ['sem-filter', 'ms20-filter', 'wasp-filter', 'triangle-core', 'current-saw-core', 'vactrol-lpg', 'asymmetric-slew']) {
+    await page.getByLabel('Load example').selectOption(id)
+    await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
+    await expect(page.locator('.diagnostic, .error-copy')).toHaveCount(0)
+    await page.getByRole('tab', { name: 'Overview', exact: true }).click()
+    await expect(page.getByRole('region', { name: 'Example guide', exact: true })).toContainText('What to try')
+    await page.getByRole('tab', { name: 'Circuit', exact: true }).click()
+    await page.getByRole('region', { name: 'Breadboard view', exact: true }).screenshot({ path: testInfo.outputPath(`${id}-board.png`) })
+  }
+  await page.getByLabel('Load example').selectOption('wasp-filter')
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
+  await page.locator('[data-part="U1"]').focus()
+  await expect(page.getByRole('heading', { name: 'CD4069UB-style unbuffered inverter', exact: true })).toBeVisible()
+  await page.getByRole('tab', { name: 'Schema', exact: true }).click()
+  await expect(page.getByText('CMOS amplifiers', { exact: true }).first()).toBeVisible()
+  await page.screenshot({ path: testInfo.outputPath('wasp-schema.png'), fullPage: true })
+  await page.reload()
+  await expect(page.getByLabel('Load example')).toHaveValue('wasp-filter')
+  await expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
+  expect(errors).toEqual([])
 })

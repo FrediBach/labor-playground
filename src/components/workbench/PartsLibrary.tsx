@@ -12,7 +12,7 @@ const categories: { id: string; label: string; kinds: ComponentKind[] }[] = [
   { id: 'diodes', label: 'Diodes & LEDs', kinds: ['diode', 'schottky', 'zener', 'led'] },
   { id: 'displays', label: 'Displays', kinds: ['ssd1306'] },
   { id: 'transistors', label: 'Transistors', kinds: ['npn', 'pnp', 'njfet', 'nmos', 'pmos'] },
-  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4053', 'vactrol', 'cd4013', 'cd4070', 'cd4081', 'pc817', 'cd4024', 'cd4093', 'cd4001', 'lm4040'] },
+  { id: 'controls', label: 'Controls & ICs', kinds: ['potentiometer', 'switch', 'opamp', 'quadopamp', 'timer555', 'lm13700', 'lm393', 'cd4066', 'cd40106', 'cd4069', 'cd4053', 'vactrol', 'cd4013', 'cd4070', 'cd4081', 'pc817', 'cd4024', 'cd4093', 'cd4001', 'lm4040'] },
 ]
 const keywords: Partial<Record<ComponentKind, string>> = {
   cd4024: 'binary ripple counter clock divider sub octave seven stage reset dip14',
@@ -25,6 +25,7 @@ const keywords: Partial<Record<ComponentKind, string>> = {
   pc817: 'optocoupler optoisolator phototransistor isolated gate input ctr infrared dip4',
   pmos: 'fet mosfet enhancement p channel transistor high side switch source gate drain',
   vactrol: 'optical led ldr photoresistor optocoupler vactrol low pass gate lpg vca',
+  cd4069: 'cmos hex unbuffered inverter analog wasp filter distortion dip14',
   cd40106: 'cmos hex schmitt inverter hysteresis oscillator clock pulse lfo dip14',
   cd4053: 'analog multiplexer demultiplexer mux selector triple spdt routing switch dip16',
   njfet: 'fet jfet depletion transistor drain gate source buffer voltage controlled resistor',
