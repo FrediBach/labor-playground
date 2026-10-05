@@ -1,5 +1,5 @@
 import { envelopeSettings, type CircuitDocument } from './circuit.ts'
-import { buildSchematic, type SchematicPoint } from './schematic.ts'
+import { buildSchematic, type SchematicPoint, type SchematicSymbol } from './schematic.ts'
 import { formatElectrical } from './format-electrical.ts'
 import { KICAD_SCALE, legacySymbolDefinition } from './kicad-legacy-symbols.ts'
 import type { ExportFile } from './zip-export.ts'
@@ -11,6 +11,24 @@ const point = (position: SchematicPoint) => `${coordinate(position.x)} ${coordin
 const singleLine = (value: string) => value.replace(/[\p{Cc}\p{Zl}\p{Zp}]/gu, ' ')
 const quoted = (value: string) => `"${singleLine(value).replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"`
 const noteText = (value: string) => singleLine(value).replace(/\\n/g, ' / ')
+
+function billOfMaterials(symbols: readonly SchematicSymbol[]): string {
+  const groups = new Map<string, { references: string[]; label: string; value: string; model: string }>()
+  for (const symbol of symbols) {
+    const part = symbol.part
+    // Switch position is an operating state, not a purchasing distinction.
+    const isSwitch = ['switch', 'spdt', 'dpdt'].includes(symbol.kind)
+    const value = isSwitch ? '' : symbol.value
+    const model = part?.customModelId ?? ''
+    const key = JSON.stringify([symbol.kind, isSwitch ? null : part?.value, model])
+    const group = groups.get(key)
+    if (group) group.references.push(symbol.id)
+    else groups.set(key, { references: [symbol.id], label: symbol.label, value, model })
+  }
+  const rows: (string | number)[][] = [['Quantity', 'References', 'Component', 'Value', 'Custom model']]
+  for (const group of groups.values()) rows.push([group.references.length, group.references.join(', '), group.label, group.value, group.model])
+  return rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\r\n') + '\r\n'
+}
 
 /** Editable legacy KiCad schematic plus local symbols; no installed library dependency. */
 export function buildKicadExport(document: CircuitDocument, options: KicadExportOptions = {}): { basename: string; files: ExportFile[] } {
@@ -90,8 +108,9 @@ export function buildKicadExport(document: CircuitDocument, options: KicadExport
   library.push('#End Library', '')
   return { basename, files: [
     { name: `${basename}.sch`, content: lines.join('\n') },
+    { name: `${basename}.bom`, content: billOfMaterials(layout.symbols) },
     { name: `${basename}-cache.lib`, content: library.join('\n') },
     { name: 'sym-lib-table', content: `(sym_lib_table\n  (lib (name "PicoLabor")(type "Legacy")(uri "\${KIPRJMOD}/${basename}-cache.lib")(options "")(descr "Pico Labor exported symbols"))\n)\n` },
-    { name: 'README.txt', content: `Pico Labor - editable KiCad schematic\n\nExtract every file into the same folder, then open ${basename}.sch in KiCad.\nKeep ${basename}-cache.lib beside the schematic: legacy .sch files do not embed symbols.\nThe local sym-lib-table resolves the included PicoLabor library without installing symbols.\nModern KiCad may offer to convert this legacy schematic to .kicad_sch when saving.\n\nComponents, physical pin numbers, wires and named nets preserve the circuit topology.\nGroup boxes and any enabled voltage readings are editable graphical annotations.\nVoltage notes are snapshots of the selected simulation time, not live measurements.\nVirtual instruments are represented by named nets and source-setting notes.\nPico firmware, behavioral simulation models, footprints, and PCB layout are not included.\n` },
+    { name: 'README.txt', content: `Pico Labor - editable KiCad schematic\n\nExtract every file into the same folder, then open ${basename}.sch in KiCad.\nKeep ${basename}-cache.lib beside the schematic: legacy .sch files do not embed symbols.\nThe local sym-lib-table resolves the included PicoLabor library without installing symbols.\nModern KiCad may offer to convert this legacy schematic to .kicad_sch when saving.\n\n${basename}.bom is a UTF-8 CSV bill of materials with quantities, schematic references, components, values, and custom model IDs.\nIt lists placed components and the Pico, excluding virtual instruments, probes, wiring, and the breadboard.\nCustom models describe simulated parts and do not specify purchasable replacements.\n\nComponents, physical pin numbers, wires and named nets preserve the circuit topology.\nGroup boxes and any enabled voltage readings are editable graphical annotations.\nVoltage notes are snapshots of the selected simulation time, not live measurements.\nVirtual instruments are represented by named nets and source-setting notes.\nPico firmware, behavioral simulation models, footprints, and PCB layout are not included.\n` },
   ] }
 }

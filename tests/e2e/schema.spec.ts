@@ -60,6 +60,8 @@ test('SCH downloads an editable KiCad schematic with its symbols, groups and vol
   expect(files.get(`${basename}-cache.lib`)).toMatch(/^EESchema-LIBRARY Version 2\.4\n/)
   expect(files.get(`${basename}-cache.lib`)).toContain('ALIAS PL_1')
   expect(files.get('sym-lib-table')).toContain(`\${KIPRJMOD}/${basename}-cache.lib`)
+  expect(files.get(`${basename}.bom`)).toContain('"1","R1","Resistor","10 kΩ",""')
+  expect(files.get(`${basename}.bom`)).toContain('"1","C1","Capacitor","100 nF",""')
   expect(files.get('README.txt')).toContain('Extract every file into the same folder')
   await expect(page.getByRole('region', { name: 'Schema', exact: true })).toContainText('Extract the ZIP')
 })

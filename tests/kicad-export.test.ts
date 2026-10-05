@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { examples } from '../src/lib/circuit.ts'
+import { createEmptyDocument, examples } from '../src/lib/circuit.ts'
 import { buildSchematic } from '../src/lib/schematic.ts'
 import { buildKicadExport } from '../src/lib/kicad-export.ts'
+import { createPico } from '../src/lib/pico/profile.ts'
 import { createZip } from '../src/lib/zip-export.ts'
 
 test('exported symbol pins land exactly on the schematic endpoints for every bundled circuit', () => {
@@ -137,4 +138,45 @@ test('serialized wires and labels preserve every connected and isolated pin pair
     assert.equal(pins.length, expected.size)
     for (const a of pins) for (const b of pins) assert.equal(find(`${a.x},${a.y}`) === find(`${b.x},${b.y}`), expected.get(a.id) === expected.get(b.id), `${example.id}: ${a.id} / ${b.id}`)
   }
+})
+
+const bomHeader = '"Quantity","References","Component","Value","Custom model"\r\n'
+
+test('BOM groups exact component values and ignores placement, groups and switch state', () => {
+  const document = createEmptyDocument()
+  document.parts = [
+    { id: 'R1', kind: 'resistor', value: 10000, pins: ['a1', 'a2'] },
+    { id: 'R2', kind: 'resistor', value: 10000, pins: ['a3', 'a4'], schemaGroup: 'Other' },
+    { id: 'R3', kind: 'resistor', value: 10001, pins: ['a5', 'a6'] },
+    { id: 'S1', kind: 'switch', value: 0, pins: ['a7', 'a8'] },
+    { id: 'S2', kind: 'switch', value: 1, pins: ['a9', 'a10'] },
+  ]
+  const before = structuredClone(document)
+  const output = buildKicadExport(document)
+  const bom = output.files.find(file => file.name === `${output.basename}.bom`)!.content
+  assert.ok(bom.startsWith(bomHeader))
+  assert.match(bom, /"2","R1, R2","Resistor","10 kΩ",""/)
+  assert.match(bom, /"1","R3","Resistor","10 kΩ",""/)
+  assert.match(bom, /"2","S1, S2","[^"]+","",""/)
+  assert.equal(bom.split('\r\n').length, 5)
+  assert.deepEqual(document, before)
+})
+
+test('BOM preserves custom model identities and CSV quotes, commas and newlines', () => {
+  const document = createEmptyDocument()
+  document.customComponents = ['model1', 'model2'].map(id => ({
+    id, name: 'Custom, "R"\nΩ', modelVersion: 1, baseKind: 'resistor',
+    characteristic: { type: 'resistance-current', axis: 'current-magnitude', interpolation: 'linear', extrapolation: 'constant', points: [{ x: 0, y: 1000 }, { x: 1, y: 1000 }] },
+  }))
+  document.parts = ['model1', 'model2'].map((customModelId, index) => ({ id: `R${index + 1}`, kind: 'resistor', value: 1000, pins: [`a${index * 2 + 1}`, `a${index * 2 + 2}`], customModelId }))
+  const bom = buildKicadExport(document).files.find(file => file.name.endsWith('.bom'))!.content
+  for (const index of [1, 2]) assert.ok(bom.includes(`"1","R${index}","Custom, ""R""\nΩ","1 kΩ","model${index}"\r\n`))
+})
+
+test('empty BOM has only headers; Pico is included once without virtual instruments', () => {
+  const document = createEmptyDocument()
+  const bom = () => buildKicadExport(document).files.find(file => file.name.endsWith('.bom'))!.content
+  assert.equal(bom(), bomHeader)
+  document.pico = createPico()
+  assert.equal(bom(), bomHeader + '"1","Pico","Raspberry Pi Pico","Connected pins · RP2040",""\r\n')
 })

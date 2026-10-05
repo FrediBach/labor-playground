@@ -74,6 +74,8 @@ This keeps saved projects portable and avoids silently losing or executing autom
 
 Evidence: [circuit.ts](../src/lib/circuit.ts), [automation-migration.ts](../src/lib/automation-migration.ts), [use-directory-sync.ts](../src/lib/use-directory-sync.ts), [automation migration design](automation-flows-plan.md#data-and-persistence-design), [project-tools.spec.ts](../tests/e2e/project-tools.spec.ts).
 
+The KiCad ZIP also includes a CSV `.bom` derived from the same schematic symbols, so references and custom component labels agree with the schematic. Grouping uses component kind, exact stored value (excluding switch state), and custom model identity. This additive export leaves saved schemas unchanged; unit coverage verifies quantities, Pico inclusion, escaping, and empty circuits.
+
 ### 2. Explicit topology and bounded educational models
 
 `resolveTopology` merges board strips and wire endpoints, not visual crossings or component leads. Rails are split every 15 columns and unpowered until wired; each added row has independent strips and rails. Growing the board never connects existing groups. Store probe attachments as physical terminal IDs; generated SPICE node names are derived. The compiler diagnoses floating nodes, ideal-source shorts, and missing required supply connections instead of adding invisible repair wiring. Schematic generation uses the same topology; it is a derived view, not a separate electrical document.
