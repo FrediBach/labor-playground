@@ -135,6 +135,8 @@ Evidence: [performance analysis](performance.md), [recording.ts](../src/lib/reco
 
 The Pico worker runs bundled MicroPython firmware in `rp2040js`, records GPIO/PWM and supported display/log/state events, and supplies a trace to the electrical compiler. Analog solver results do not feed back into firmware inputs or ADC reads. This is a sequential capture pipeline, not continuous bidirectional co-simulation. Firmware restarts for each capture.
 
+The Overview netlist is a read-only, lazily loaded Monaco view of compiler output. Shared editor worker setup lives in `src/lib/monaco.ts`; `spice-language.ts` supplies highlighting, hover help, and declaration navigation without starting the Python service. Viewer models are disposed on collapse/unmount, and Pico language restarts and editor navigation are restricted to Python models. No document or solver format changes are involved. Browser coverage lives in `tests/e2e/overview.spec.ts` and `tests/e2e/pico-workbench.spec.ts`.
+
 The editor and language tooling load separately from the ordinary workbench. Runtime assets are versioned and checksum-verified through `public/pico/manifest.json`; firmware, stubs, profile, checksums, and licensing notices must remain consistent.
 
 Web Serial transfer in `pico/serial.ts` and `PicoTransfer.tsx` is a separate explicit operation that uploads source to a physical Pico. It does not turn the simulator or automations into a physical hardware controller.

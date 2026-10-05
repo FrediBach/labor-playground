@@ -34,7 +34,7 @@ export default function PicoPanel(props: Props) {
     }), monaco.editor.onDidChangeMarkers(() => setProblems(monaco.editor.getModelMarkers({ resource: MAIN_URI }))))
     disposables.push(monaco.editor.registerEditorOpener({ openCodeEditor(_source, resource, selection) {
       const model = monaco.editor.getModel(resource)
-      if (!model) return false
+      if (!model || model.getLanguageId() !== 'python') return false
       instance.setModel(model)
       instance.updateOptions({ readOnly: resource.toString() !== MAIN_URI.toString() })
       if (selection) { const position = 'startLineNumber' in selection ? { lineNumber: selection.startLineNumber, column: selection.startColumn } : selection; instance.setPosition(position); instance.revealPositionInCenter(position) }

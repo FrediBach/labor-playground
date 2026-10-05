@@ -1,8 +1,11 @@
+import { lazy, Suspense, useState } from 'react'
 import { partDisplayName, partValueSummary } from '@/lib/custom-components'
 import { Activity, ArrowUpRight, CircleCheck, CircuitBoard, RotateCcw, TriangleAlert } from 'lucide-react'
 import { type CircuitDocument, type CircuitExample, type Diagnostic, type Part } from '@/lib/circuit'
 import type { SimulationStatus } from '@/lib/simulation-types'
 import './OverviewPanel.css'
+
+const NetlistEditor = lazy(() => import('./NetlistEditor'))
 
 interface OverviewPanelProps {
   document: CircuitDocument
@@ -31,6 +34,7 @@ function partValue(document: CircuitDocument, part: Part) {
 }
 
 export function OverviewPanel({ document, example, onRestore, status, diagnostics, netlist, onInspect, onOpenCircuit, onViewResults }: OverviewPanelProps) {
+  const [netlistOpen, setNetlistOpen] = useState(false)
   const probeCount = Object.values(document.probes).filter(Boolean).length
   const emptyCircuit = !document.parts.length && !document.wires.length && !document.pico
   const captureStatus = CAPTURE_STATUS[status]
@@ -120,9 +124,12 @@ export function OverviewPanel({ document, example, onRestore, status, diagnostic
       </div> : <p className="overview-empty-parts">{document.pico ? 'Pico is installed. No additional components on the breadboard.' : 'No components yet.'} Add parts from the library in the Circuit tab.</p>}
     </section>
 
-    <details className="overview-netlist">
+    <details className="overview-netlist" onToggle={event => setNetlistOpen(event.currentTarget.open)}>
       <summary>Generated netlist</summary>
-      {netlist.trim() ? <pre tabIndex={0} aria-label="Generated SPICE netlist">{netlist}</pre> : <p>No netlist generated for this circuit yet.</p>}
+      {netlistOpen && (netlist.trim() ? <>
+        <p>Read only · Hover for SPICE help. F12 opens model and subcircuit definitions. Press Tab to move focus out of the editor.</p>
+        <Suspense fallback={<p role="status">Loading netlist editor…</p>}><NetlistEditor netlist={netlist} /></Suspense>
+      </> : <p>No netlist generated for this circuit yet.</p>)}
     </details>
   </div>
 }

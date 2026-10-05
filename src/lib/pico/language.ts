@@ -1,11 +1,9 @@
 import { loadPicoAsset } from './assets'
 import { overlayMachineStub } from './stub-overlay'
 import { PICO_SCOPE_STUB } from './scope-log'
-import * as monaco from 'monaco-editor'
-import EditorWorker from 'monaco-editor/editor/editor.worker?worker'
+import { monaco } from '../monaco'
 import pyrightUrl from 'browser-basedpyright/dist/pyright.worker.js?url'
 
-self.MonacoEnvironment = { getWorker: () => new EditorWorker() }
 export const MAIN_URI = monaco.Uri.parse('file:///src/main.py')
 
 // The public native client has no dispose method. Keep one client for the page's
@@ -52,7 +50,7 @@ class LanguageWorker extends EventTarget {
         if (this.reconnecting) {
           this.reconnecting = false
           worker.postMessage({ jsonrpc: '2.0', method: 'initialized', params: {} })
-          for (const model of monaco.editor.getModels()) worker.postMessage({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri: model.uri.toString(true), version: model.getVersionId(), languageId: 'python', text: model.getValue() } } })
+          for (const model of monaco.editor.getModels().filter(model => model.getLanguageId() === 'python')) worker.postMessage({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri: model.uri.toString(true), version: model.getVersionId(), languageId: 'python', text: model.getValue() } } })
           return
         }
       }
