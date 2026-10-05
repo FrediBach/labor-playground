@@ -23,7 +23,7 @@ export type OperatingPointBranch = {
 )
 
 export interface OperatingPointPartDescriptor {
-  customModel?: import('./custom-components.ts').CustomComponent
+  customModel?: import('./custom-components.ts').CurveComponent
   partId: string
   /** Every component pin must exist in the solved plot. */
   nodes: string[]

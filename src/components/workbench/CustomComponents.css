@@ -21,7 +21,6 @@
 .custom-model label { display: grid; gap: 6px; }
 .custom-library-actions { display: flex; gap: 4px; padding: 3px 0 10px; flex-wrap: wrap; }
 .custom-library .part-item strong { overflow-wrap: anywhere; }
-.custom-create { margin: 8px 12px; text-align: left; }
 .custom-library-note { font-size: 11px; color: #afbda5; margin: 0 0 8px; }
 .custom-editor { margin: auto; overflow: auto; }
 .custom-editor input:focus-visible, .custom-editor textarea:focus-visible, .custom-editor select:focus-visible, .custom-editor button:focus-visible { outline: 2px solid #b9dce3; outline-offset: 2px; }

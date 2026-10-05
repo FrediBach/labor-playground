@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { PARTS, type CircuitDocument } from '@/lib/circuit'
-import { saveCustomComponent, validateCustomComponents, CUSTOM_LIMITS, type CustomComponent } from '@/lib/custom-components'
+import { saveCustomComponent, validateCustomComponents, CUSTOM_LIMITS, type CurveComponent } from '@/lib/custom-components'
 import type { CurvePoint } from '@/lib/characteristic-curves'
 import './CustomComponents.css'
 
@@ -22,7 +22,7 @@ export function CurvePreview({ points, xLabel, yLabel }: { points: CurvePoint[];
   </svg>
 }
 
-export function CustomComponentEditor({ initial, document, editing, onSave, onCancel }: { initial: CustomComponent; document: CircuitDocument; editing: boolean; onSave: (document: CircuitDocument, model: CustomComponent) => void; onCancel: () => void }) {
+export function CustomComponentEditor({ initial, document, editing, onSave, onCancel }: { initial: CurveComponent; document: CircuitDocument; editing: boolean; onSave: (document: CircuitDocument, model: CurveComponent) => void; onCancel: () => void }) {
   const dialog = useRef<HTMLDialogElement>(null)
   const nameInput = useRef<HTMLInputElement>(null)
   const [kind, setKind] = useState(initial.baseKind)
@@ -41,7 +41,7 @@ export function CustomComponentEditor({ initial, document, editing, onSave, onCa
   }, [])
   const resistor = kind === 'resistor'
   const points = rows.map(p => ({ x: p.x.trim() ? Number(p.x) * xFactor : NaN, y: p.y.trim() ? Number(p.y) * yFactor : NaN }))
-  const draft = { ...initial, name, description, baseKind: kind, characteristic: { type: resistor ? 'resistance-current' : 'capacitance-voltage', axis: resistor ? 'current-magnitude' : 'signed-voltage', interpolation: 'linear', extrapolation: 'constant', points } } as CustomComponent
+  const draft = { ...initial, name, description, baseKind: kind, characteristic: { type: resistor ? 'resistance-current' : 'capacitance-voltage', axis: resistor ? 'current-magnitude' : 'signed-voltage', interpolation: 'linear', extrapolation: 'constant', points } } as CurveComponent
   let error = ''
   try { validateCustomComponents([draft]) } catch (e) { error = (e as Error).message }
   const rowError = Number(/Row (\d+)/.exec(error)?.[1]) - 1

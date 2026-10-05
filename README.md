@@ -147,7 +147,7 @@ Browser tests require Chromium (`npx playwright install chromium` if needed). Se
 | `tests/` | Compiler, numerical, audio, worker, and browser checks |
 | `docs/` | Hardware/model specification and simulation integration notes |
 
-Use `@/` to import from `src/`. The document format only accepts supported component data and physical terminal references; imported scripts, external models, and arbitrary SPICE directives are not executed.
+Use `@/` to import from `src/`. The document format only accepts supported component data and physical terminal references; imported scripts and arbitrary SPICE directives are not executed. Supported SPICE `.MODEL` files are converted to validated numeric device parameters before compilation.
 
 ## Production deployment
 
@@ -164,6 +164,21 @@ Curves interpolate linearly and extend at constant endpoint values. Resistors ob
 Schema 3 embeds definitions in exports, browser recovery, folder sync and history, including Pico projects. Schemas 1 and 2 remain supported. Limits: 32 definitions, 2–64 points each, 128 placed parts, 200 kB formatted project JSON; current axis 0–1 A with ≥1 µA spacing, voltage axis −100–100 V with ≥1 mV spacing and an explicit zero point. R spans 10 Ω–10 MΩ, C spans 100 pF–10 mF. Slopes are bounded at 10⁹ Ω/A or 1 F/V, and differential resistance must stay positive. Models are instantaneous and lossless where applicable; thermal memory and hysteresis are outside this release.
 
 Try the **Current-sensitive resistor** and **Voltage-sensitive capacitor** examples. See [engine notes](docs/engine-notes.md) for numerical tests and resource measurements.
+
+### Import SPICE device models
+
+Choose **Parts library → Import SPICE model** and open a `.lib`, `.mod`, `.cir` or `.txt` file, or paste a `.MODEL` definition. This first release supports **diodes (`D`) and level-1 bipolar transistors (`NPN`, `PNP`)**. If the file has several definitions, select one entry point to import. You can add a display name and source/limitation notes before saving.
+
+The imported definition appears under Custom components and is selected for placement. To use it on an existing diode or matching transistor, choose **Component model** in the inspector. Edit, duplicate, make an independent copy and undo work as for custom curves. Definitions travel with project exports, recovery and folder sync. Virtual pin order is **1 anode / 2 cathode** or **1 collector / 2 base / 3 emitter**; check physical package pinouts separately.
+
+For example:
+
+```spice
+* Illustrative diode, not a calibrated manufacturer model
+.model EXAMPLE_D D(IS=1n N=1.5 RS=2 CJO=4p)
+```
+
+Import accepts numeric parameters, engineering suffixes (`M` means milli, `Meg` means mega), comments and `+` continuation lines. Unknown parameters are reported, not silently removed. `.SUBCKT`, MOSFET/JFET models, expressions, includes and encrypted models are outside this release. Maximum input size is 64 kB, with up to 32 definitions per file and 32 custom definitions per project. See [supported parameters and solver behavior](docs/engine-notes.md#imported-spice-device-models).
 
 ### Additional synth building blocks
 

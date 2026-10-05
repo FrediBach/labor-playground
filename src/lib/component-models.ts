@@ -1,12 +1,27 @@
 import { spiceDeviceId, type CircuitDocument, type Part } from './circuit.ts'
-import { resolvePartModel } from './custom-components.ts'
+import { isSpiceComponent, resolvePartModel } from './custom-components.ts'
 import { curveExpression } from './characteristic-curves.ts'
 import type { OperatingPointPartDescriptor } from './simulation-types.ts'
+import { spiceModelText } from './spice-models.ts'
 
 /** One adapter result owns the solver law, saved current and frozen measurement model. */
 export function compileCustomModel(document: CircuitDocument, part: Part, nodes: string[]) {
   const model = resolvePartModel(document, part)
   if (!model) return undefined
+  if (isSpiceComponent(model)) {
+    const id = spiceDeviceId(part), modelName = `IMPORTED_${id}`
+    const [a, b, c] = nodes
+    const diode = model.baseKind === 'diode'
+    const terminalCount = diode ? 1 : 2
+    const sensors = Array.from({ length: terminalCount }, (_, index) => `VIMPORTED_${id}_${index}`)
+    const internal = sensors.map((_, index) => `imported_${id}_${index}`)
+    const savedVectors = sensors.map(sensor => `i(${sensor.toLowerCase()})`)
+    // A three-terminal BJT ties its optional substrate to emitter explicitly.
+    // Leaving it implicit would connect substrate capacitance to global ground.
+    const lines = [spiceModelText(model.spice, modelName), ...sensors.map((sensor, index) => `${sensor} ${nodes[index]} ${internal[index]} 0`), `${diode ? 'D' : 'Q'}_${id} ${diode ? `${internal[0]} ${b}` : `${internal[0]} ${internal[1]} ${c} ${c}`} ${modelName}`]
+    const descriptor: OperatingPointPartDescriptor = { partId: part.id, nodes, branches: savedVectors.map((vector, index) => ({ kind: 'saved-current', label: diode ? 'Anode → Cathode' : index === 0 ? 'Collector → Emitter' : 'Base → Emitter', fromNode: index === 0 ? a : b, toNode: diode ? b : c, vector })) }
+    return { lines, savedVectors, descriptor, devices: terminalCount + 1, internalNodes: terminalCount }
+  }
   const id = spiceDeviceId(part), sensor = `VSENSE_${id}`, internal = `custom_${id}`
   const [a, b] = nodes
   const vector = `i(${sensor.toLowerCase()})`

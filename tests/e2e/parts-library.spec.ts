@@ -64,6 +64,7 @@ for (const viewport of [{ width: 1440, height: 900 }, { width: 900, height: 800 
     await expect(page.locator('.board-hint')).toContainText('attach CH2')
     await controls[1].click()
     await expect(controls[1]).toHaveAttribute('aria-pressed', 'true')
+    if (process.env.LABOR_CAPTURE_SCREENSHOTS) await tray.screenshot({ path: `/tmp/labor-library-${viewport.width}.png` })
   })
 }
 
@@ -117,6 +118,7 @@ test('the expanded catalog and its controls fit a phone without horizontal overf
   await tray.locator('.part-item').last().scrollIntoViewIfNeeded()
   await withinPage(tray.locator('.part-item').last(), 390)
   await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390)
+  if (process.env.LABOR_CAPTURE_SCREENSHOTS) await tray.screenshot({ path: '/tmp/labor-library-390.png' })
 })
 
 test('inductors and the added diodes can be placed, edited, and recovered', async ({ page }) => {

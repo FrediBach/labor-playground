@@ -333,7 +333,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
     const labelY = part.kind === 'ssd1306' ? Math.abs(angle) > 135 ? -138 : 118 : dipPackage ? 43
       : threeLeadPackage ? Math.abs(angle) > 135 ? 48 : Math.abs(angle) > 45 ? 34 : 13
         : Math.abs(angle) > 45 && Math.abs(angle) < 135 ? -11 : 22
-    const label = part.customModelId ? `${part.id} ◆ ${formatValue(part.value, part.kind)} nom.` : `${part.id} · ${partValueSummary(document, part)}`
+    const label = part.customModelId && (part.kind === 'resistor' || part.kind === 'capacitor') ? `${part.id} ◆ ${formatValue(part.value, part.kind)} nom.` : `${part.id} · ${partValueSummary(document, part)}`
     const labelWidth = part.customModelId ? Math.max(110, label.length * 5.8 + 12) : part.kind === 'ssd1306' ? 145 : dipPackage ? Math.max(110, label.length * 6 + 12) : threeLeadPackage ? 110 : 68
     const labelX = terminals.length === 2 && Math.abs(angle) > 45 && Math.abs(angle) < 135 ? 54 : 0
     return <g key={part.id}

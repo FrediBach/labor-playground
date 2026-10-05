@@ -1,12 +1,16 @@
 import { PARTS, formatValue, validateDocument, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
 import { curveValue, type CurvePoint } from './characteristic-curves.ts'
+import { validateSpiceModel, type SpiceModel } from './spice-models.ts'
 
 interface Characteristic { points: CurvePoint[]; interpolation: 'linear'; extrapolation: 'constant' }
 interface Definition { id: string; name: string; description?: string; modelVersion: 1 }
-export type CustomComponent = Definition & (
+export type CurveComponent = Definition & (
   | { baseKind: 'resistor'; characteristic: Characteristic & { type: 'resistance-current'; axis: 'current-magnitude' } }
   | { baseKind: 'capacitor'; characteristic: Characteristic & { type: 'capacitance-voltage'; axis: 'signed-voltage' } }
 )
+export type SpiceComponent = Definition & { baseKind: 'diode' | 'npn' | 'pnp'; spice: SpiceModel }
+export type CustomComponent = CurveComponent | SpiceComponent
+export const isSpiceComponent = (model: CustomComponent): model is SpiceComponent => 'spice' in model
 export interface PartPlacement { kind: ComponentKind; customModelId?: string }
 export const CUSTOM_LIMITS = { definitions: 32, points: 64, name: 80, description: 500, current: 1, voltage: 100, minCurrentSegment: 1e-6, minVoltageSegment: 1e-3, resistanceSlope: 1e9, capacitanceSlope: 1, netlistBytes: 1_000_000, devices: 1000, internalNodes: 300 } as const
 
@@ -20,7 +24,13 @@ export function validateCustomComponents(input: unknown): CustomComponent[] {
     ids.add(d.id.toLowerCase())
     if (typeof d.name !== 'string' || !d.name.trim() || d.name.length > 80) throw new Error('Name must contain 1–80 characters.')
     if (d.description !== undefined && (typeof d.description !== 'string' || d.description.length > 500)) throw new Error('Description must contain at most 500 characters.')
-    if (d.modelVersion !== 1 || !['resistor', 'capacitor'].includes(d.baseKind)) throw new Error('Unsupported custom component model version or base kind.')
+    if (d.modelVersion !== 1 || !['resistor', 'capacitor', 'diode', 'npn', 'pnp'].includes(d.baseKind)) throw new Error('Unsupported custom component model version or base kind.')
+    if (d.baseKind === 'diode' || d.baseKind === 'npn' || d.baseKind === 'pnp') {
+      const spice = validateSpiceModel(d.spice)
+      if ((spice.device === 'D' ? 'diode' : spice.device.toLowerCase()) !== d.baseKind) throw new Error('SPICE device and base kind must match.')
+      return { id: d.id, name: d.name, ...(d.description === undefined ? {} : { description: d.description }), modelVersion: 1, baseKind: d.baseKind, spice } as SpiceComponent
+    }
+    if (isSpiceComponent(d)) throw new Error('SPICE models require a diode or bipolar transistor.')
     const c = d.characteristic
     const resistor = d.baseKind === 'resistor'
     if (!c || c.type !== (resistor ? 'resistance-current' : 'capacitance-voltage') || c.axis !== (resistor ? 'current-magnitude' : 'signed-voltage') || c.interpolation !== 'linear' || c.extrapolation !== 'constant') throw new Error('Unsupported characteristic, axis, interpolation or extrapolation.')
@@ -47,14 +57,17 @@ export function resolvePartModel(document: Pick<CircuitDocument, 'customComponen
   if (!model || model.baseKind !== part.kind) throw new Error(`Missing or incompatible custom model: ${part.customModelId}.`)
   return model
 }
-export const nominalValue = (model: CustomComponent) => curveValue(model.characteristic.points, 0)
+export const nominalValue = (model: CustomComponent) => isSpiceComponent(model) ? PARTS[model.baseKind].defaultValue : curveValue(model.characteristic.points, 0)
 export const partDisplayName = (doc: CircuitDocument, part: Part) => resolvePartModel(doc, part)?.name ?? PARTS[part.kind].label
-export const partValueSummary = (doc: CircuitDocument, part: Part) => `${formatValue(part.value, part.kind)}${resolvePartModel(doc, part) ? ' nominal · custom' : ''}`
+export const partValueSummary = (doc: CircuitDocument, part: Part) => {
+  const model = resolvePartModel(doc, part)
+  return model && isSpiceComponent(model) ? `${model.spice.entryPoint} · SPICE ${model.spice.device}` : `${formatValue(part.value, part.kind)}${model ? ' nominal · custom' : ''}`
+}
 export const minimumModelValue = (doc: CircuitDocument, part: Part) => {
   const model = resolvePartModel(doc, part)
-  return model ? Math.min(...model.characteristic.points.map(p => p.y)) : part.value
+  return model && !isSpiceComponent(model) ? Math.min(...model.characteristic.points.map(p => p.y)) : part.value
 }
-export function customTemplate(kind: 'resistor' | 'capacitor', value = PARTS[kind].defaultValue): CustomComponent {
+export function customTemplate(kind: 'resistor' | 'capacitor', value = PARTS[kind].defaultValue): CurveComponent {
   const base = { id: `model_${crypto.randomUUID().slice(0, 20)}`, name: `Custom ${kind}`, modelVersion: 1 as const }
   return kind === 'resistor'
     ? { ...base, baseKind: kind, characteristic: { type: 'resistance-current', axis: 'current-magnitude', interpolation: 'linear', extrapolation: 'constant', points: [{ x: 0, y: value }, { x: 0.01, y: value }] } }
@@ -79,7 +92,7 @@ export function deleteCustomComponent(document: CircuitDocument, id: string): Ci
 export function duplicateCustomComponent(document: CircuitDocument, id: string, partId?: string): { document: CircuitDocument; model: CustomComponent } {
   const original = document.customComponents?.find(d => d.id === id)
   if (!original) throw new Error('This model no longer exists.')
-  const model = { ...structuredClone(original), id: customTemplate(original.baseKind).id, name: `${original.name.slice(0, 73)} (copy)` }
+  const model = { ...structuredClone(original), id: `model_${crypto.randomUUID().slice(0, 20)}`, name: `${original.name.slice(0, 73)} (copy)` }
   const saved = saveCustomComponent(document, model)
   return { document: partId ? assignCustomComponent(saved, partId, model.id) : saved, model }
 }

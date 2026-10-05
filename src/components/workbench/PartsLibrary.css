@@ -21,6 +21,12 @@
 .library-probes { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
 .library-probes .connection-item { border: 1px solid #49504b; gap: 5px; }
 .library-probes small { font-size: 10px; color: #b3bdb5; }
+.library-model-actions { display: flex; flex-direction: column; flex-shrink: 0; margin-top: 10px; border: 1px solid #46524a; border-radius: 5px; overflow: hidden; background: #29312b; }
+.library-model-actions button { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 34px; margin: 0; padding: 7px 8px; border: 0; background: transparent; color: #d0dbd1; font-size: 12px; line-height: 18px; text-align: left; cursor: pointer; }
+.library-model-actions button + button { border-top: 1px solid #46524a; }
+.library-model-actions button > svg { flex-shrink: 0; color: #a9bdae; }
+.library-model-actions button:hover { background: #354239; color: #eff5ed; }
+.library-model-actions button:active { background: #3c4c40; }
 .parts-library .parts-search { margin: 12px 0 6px; height: 38px; padding: 7px; gap: 6px; }
 .parts-library .parts-search > svg { flex-shrink: 0; }
 .parts-library .parts-search input { font-size: 12px; }
