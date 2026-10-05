@@ -1,0 +1,17 @@
+.kicad-import { margin: auto; width: min(760px, calc(100vw - 32px)); max-height: 90vh; overflow: auto; padding: 24px; color: #e7eadf; background: #222925; border: 1px solid #536155; border-radius: 12px; }
+.kicad-import::backdrop { background: #080e0bcc; }
+.kicad-import form, .kicad-import fieldset { display: grid; gap: 12px; }
+.kicad-import header, .kicad-import footer { display: flex; justify-content: space-between; gap: 12px; }
+.kicad-import h2 { font-size: 20px; margin: 0; }
+.kicad-import p, .kicad-import summary { margin: 0; font-size: 12px; line-height: 1.6; overflow-wrap: anywhere; }
+.kicad-import fieldset { border: 1px solid #536155; padding: 14px; min-width: 0; border-radius: 6px; }
+.kicad-import legend { font-size: 14px; padding: 0 6px; overflow-wrap: anywhere; }
+.kicad-import label { display: grid; gap: 5px; font-size: 12px; min-width: 0; }
+.kicad-import input, .kicad-import select { width: 100%; min-width: 0; color: inherit; background: #151c18; border: 1px solid #526254; border-radius: 5px; padding: 8px; }
+.kicad-import button { border: 1px solid #526254; border-radius: 5px; padding: 8px 12px; font-size: 12px; }
+.kicad-import button[type=submit] { background: #bdd391; color: #1d2817; }
+.kicad-import button:disabled { opacity: .4; }
+.kicad-import [role=alert] { color: #ffb9a8; }
+.kicad-import :focus-visible { outline: 2px solid #b9dce3; outline-offset: 2px; }
+.kicad-fields { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 600px) { .kicad-import { padding: 16px; } .kicad-fields { grid-template-columns: 1fr; } }

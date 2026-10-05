@@ -1,3 +1,5 @@
+import { KicadImportDialog } from '@/components/workbench/KicadImportDialog'
+import { KICAD_IMPORT_BYTES, readKicadSchematic, type KicadImport } from '@/lib/kicad-import'
 import { RecordingExpectationButton, SeekTestEvidence, type RecordingSeed } from '@/components/workbench/tests/RecordingExpectation'
 import { PROJECT_LIMITS } from '@/lib/project-limits'
 import { CustomComponentEditor } from '@/components/workbench/CustomComponentEditor'
@@ -98,6 +100,7 @@ export default function App() {
     observer.observe(toolbar)
     return () => observer.disconnect()
   }, [])
+  const [kicadImport, setKicadImport] = useState<KicadImport | null>(null)
   const fileInput = useRef<HTMLInputElement>(null)
   const viewport = useRef<BoardViewportHandle>(null)
   const [analogDuration, setAnalogDuration] = useState(0.1)
@@ -225,6 +228,10 @@ export default function App() {
   async function importDocument(file: File | undefined) {
     if (!file) return
     try {
+      if (/\.(kicad_sch|sch)$/i.test(file.name)) {
+        if (file.size > KICAD_IMPORT_BYTES) throw new Error('KiCad files must be smaller than 2 MB.')
+        setKicadImport(readKicadSchematic(await file.text(), file.name)); return
+      }
       if (file.size > PROJECT_LIMITS.bytes) throw new Error('Project files must be smaller than 200 kB.')
       const next = validateDocument(JSON.parse(await file.text()))
       replace(next); setSelectedId(null); setTool('select'); openTab(next.pico ? 'code' : 'circuit'); message(`Imported ${next.title}.`)
@@ -236,6 +243,7 @@ export default function App() {
   const toolHint = editingLead ? `${editingLead.partId}: choose a free hole for lead ${editingLead.pinIndex + 1}. Escape cancels.` : panEnabled ? 'Drag the board to pan. Press Escape to return to selecting parts.' : tool === 'wire' ? 'Click a terminal to start a wire, then click its destination.' : tool === 'probe1' || tool === 'probe2' ? `Click a terminal to attach ${tool === 'probe1' ? 'CH1' : 'CH2'}.` : tool === 'select' ? 'Select a part to inspect it. Drag a part to move it.' : tool === 'ssd1306' ? 'Place four pins in adjacent columns. Press R for a 180° turn.' : isDipTool(tool) ? 'Place pin 1 on row E at the trench. Press R for a 180° turn to row F.' : `Click a hole to place ${placement?.customModelId ? document.customComponents?.find(m => m.id === placement.customModelId)?.name : `a ${PARTS[tool].label.toLowerCase()}`}. Press R to rotate.`
 
   return <RecordingProvider capture={resultCapture}><div className="app-shell dark">
+    {kicadImport && <KicadImportDialog source={kicadImport} onCancel={() => setKicadImport(null)} onImport={next => { replace(next); setSelectedId(null); setTool('select'); openTab('circuit'); setKicadImport(null); message(`Imported ${next.title}. Your previous circuit is available with Undo.`) }} />}
     {modelEditor && <CustomComponentEditor key={modelEditor.initial.id} initial={modelEditor.initial} editing={modelEditor.editing} document={document} onCancel={() => setModelEditor(null)} onSave={(next, model) => { change(next); setModelEditor(null); if (!modelEditor.editing) placeModel({ kind: model.baseKind, customModelId: model.id }) }} />}
     <header className="app-header">
       <div className="header-branding"><div className="brand"><span className="brand-mark"><i /><i /><i /><i /></span><span>Pico<span className="brand-light"> Labor</span></span></div><span className="brand-slogan">Circuit simulation &amp; Pico programming, inspired by the Erica Synths EDU Labor</span></div>
@@ -252,7 +260,7 @@ export default function App() {
         <label className="example-select"><span>Examples</span><select aria-label="Load example" value={exampleId} onChange={e => loadExample(e.target.value)}>{!exampleId && <option value="">Custom circuit</option>}{(['Basic', 'Intermediate', 'Advanced'] as const).map(level => <optgroup key={level} label={level}>{examples.filter(example => example.level === level).map(example => <option key={example.id} value={example.id}>{example.name}</option>)}</optgroup>)}</select><ChevronDown size={14} /></label>
         <button className="subtle-button import-button" aria-label="Import circuit" title="Import circuit · ⌘O / Ctrl+O" onClick={() => fileInput.current?.click()}><ArrowUpFromLine size={16} /><span>Import</span></button>
         <Button variant="outline" className="export-button" aria-label="Export circuit" title="Export circuit" onClick={exportDocument}><ArrowDownToLine size={16} /><span>Export circuit</span></Button>
-        <input ref={fileInput} type="file" accept=".json,application/json" hidden onChange={e => void importDocument(e.target.files?.[0])} />
+        <input ref={fileInput} type="file" accept=".json,.kicad_sch,.sch,application/json" hidden onChange={e => void importDocument(e.target.files?.[0])} />
       </div>
       <div className="simulation-actions">
         <div className="simulation-feedback">
