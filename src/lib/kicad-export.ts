@@ -48,7 +48,7 @@ export function buildKicadExport(document: CircuitDocument, options: KicadExport
     const alias = `PL_${index + 1}`, name = `PicoLabor_${alias}`
     library.push(legacySymbolDefinition(symbol, name, alias))
     const vertical = Math.abs(symbol.rotation) === 90
-    const simple = symbol.pins.length <= 3 && symbol.kind !== 'pico' && symbol.kind !== 'lm4040' && symbol.kind !== 'spdt'
+    const simple = symbol.pins.length <= 3 && symbol.kind !== 'pico' && symbol.kind !== 'lm4040' && symbol.kind !== 'spdt' && symbol.kind !== 'subcircuit'
     const labelX = vertical ? symbol.x + 30 : symbol.x
     const labelY = vertical ? symbol.y - 8 : simple ? symbol.y - 50 : symbol.y - symbol.height / 2 - 35
     lines.push('$Comp', `L PicoLabor:${alias} ${symbol.id}`, `U 1 1 ${(0x60000000 + index).toString(16).toUpperCase()}`,

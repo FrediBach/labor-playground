@@ -3,11 +3,23 @@ import { isSpiceComponent, resolvePartModel } from './custom-components.ts'
 import { curveExpression } from './characteristic-curves.ts'
 import type { OperatingPointPartDescriptor } from './simulation-types.ts'
 import { spiceModelText } from './spice-models.ts'
+import { expandSubcircuit, subcircuitTerminals } from './spice-subcircuits.ts'
 
 /** One adapter result owns the solver law, saved current and frozen measurement model. */
 export function compileCustomModel(document: CircuitDocument, part: Part, nodes: string[]) {
   const model = resolvePartModel(document, part)
   if (!model) return undefined
+  if (model.baseKind === 'subcircuit') {
+    const id = spiceDeviceId(part), terminals = subcircuitTerminals(model.spice)
+    const activeNodes = model.pinMap.map(pin => nodes[pin])
+    const sensors = activeNodes.map((_, index) => `VSUBPIN_${id}_${index}`)
+    const internal = sensors.map((_, index) => `subpin_${id}_${index}`)
+    const savedVectors = sensors.map(sensor => `i(${sensor.toLowerCase()})`)
+    const expanded = expandSubcircuit(model.spice, internal, id)
+    const lines = [...sensors.map((sensor, index) => `${sensor} ${activeNodes[index]} ${internal[index]} 0`), ...expanded.lines]
+    const descriptor: OperatingPointPartDescriptor = { partId: part.id, nodes: activeNodes, branches: savedVectors.map((vector, index) => ({ kind: 'saved-current', label: `Into pin ${model.pinMap[index] + 1} (${terminals[index]})`, fromNode: activeNodes[index], toNode: '0', vector })) }
+    return { lines, savedVectors, descriptor, devices: sensors.length + expanded.elements.length, internalNodes: internal.length + expanded.internalNodes }
+  }
   if (isSpiceComponent(model)) {
     const id = spiceDeviceId(part), modelName = `IMPORTED_${id}`
     const [a, b, c] = nodes

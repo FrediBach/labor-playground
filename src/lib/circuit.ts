@@ -1,3 +1,4 @@
+import { expandSubcircuit, subcircuitTerminals, subcircuitPackagePins } from './spice-subcircuits.ts'
 import { validateAutomationProgram, type AutomationProgram } from './automation-graph.ts'
 import { exampleDocumentation, validateDocumentation, type CircuitDocumentation } from './documentation.ts'
 import { customExamples } from './custom-examples.ts'
@@ -30,7 +31,7 @@ import { lm13700Lines } from './lm13700.ts'
 import { SIMULATION_LIMITS } from './simulation-types.ts'
 import { automationIssue, automationPhase, automationPwl, automationWaveformTiming, automationTimelines, scheduledAutomationEvents, validateAutomations, type Automation, type AutomationEvent, type AutomationTimelines } from './automations.ts'
 
-export type ComponentKind = 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4069' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040' | 'spdt' | 'dpdt' | 'opa197' | 'opa4197' | 'ssi2162'
+export type ComponentKind = 'subcircuit' | 'resistor' | 'capacitor' | 'inductor' | 'diode' | 'schottky' | 'zener' | 'led' | 'npn' | 'pnp' | 'switch' | 'potentiometer' | 'electrolytic' | 'opamp' | 'quadopamp' | 'timer555' | 'lm13700' | 'ssd1306' | 'njfet' | 'nmos' | 'lm393' | 'cd4066' | 'pmos' | 'vactrol' | 'cd40106' | 'cd4069' | 'cd4053' | 'cd4013' | 'cd4070' | 'cd4081' | 'pc817' | 'cd4024' | 'cd4093' | 'cd4001' | 'lm4040' | 'spdt' | 'dpdt' | 'opa197' | 'opa4197' | 'ssi2162'
 
 export interface Part {
   id: string
@@ -123,7 +124,7 @@ export interface Terminal {
 }
 
 export interface PartDefinition {
-  package?: 'DIP-4' | 'DIP-6' | 'DIP-8' | 'DIP-10' | 'DIP-14' | 'DIP-16'
+  package?: 'DIP-4' | 'DIP-6' | 'DIP-8' | 'DIP-10' | 'DIP-12' | 'DIP-14' | 'DIP-16'
   supplyHint?: string
   label: string
   unit: string
@@ -136,6 +137,7 @@ export interface PartDefinition {
 }
 
 export const PARTS: Record<ComponentKind, PartDefinition> = {
+  subcircuit: { package: 'DIP-8', pinNames: ['1', '2', '3', '4', '5', '6', '7', '8'], label: 'SPICE subcircuit', unit: '', defaultValue: 1, min: 1, max: 1, description: 'Imported analog subcircuit with explicit terminal mapping.', model: 'Electrical behavior comes from the imported subcircuit. Verify its source and operating limits.' },
   ...utilityCellParts,
   cd4024: {
     package: 'DIP-14', pinNames: ['CLK', 'RESET', 'Q7', 'Q6', 'Q5', 'Q4', 'VSS', 'NC', 'Q3', 'NC', 'Q2', 'Q1', 'NC', 'VDD'],
@@ -367,6 +369,20 @@ export const PARTS: Record<ComponentKind, PartDefinition> = {
   },
 }
 
+/** The document owns imported pin names and physical package size. */
+export function partDefinition(document: Pick<CircuitDocument, 'customComponents'>, part: Pick<Part, 'kind' | 'customModelId'>): PartDefinition {
+  const base = PARTS[part.kind]
+  if (part.kind !== 'subcircuit' || !part.customModelId) return base
+  const model = resolvePartModel(document, part)
+  if (!model || model.baseKind !== 'subcircuit') return base
+  const count = subcircuitPackagePins(model.spice), terminals = subcircuitTerminals(model.spice)
+  const pinNames = Array.from({ length: count }, (_, pin) => {
+    const index = model.pinMap.indexOf(pin)
+    return index < 0 ? 'NC' : terminals[index]
+  })
+  return { ...base, package: count === 2 ? undefined : `DIP-${count}` as PartDefinition['package'], pinNames }
+}
+
 interface AmplifierPins {
   negative: number
   positive: number
@@ -460,17 +476,18 @@ export function createEmptyDocument(): CircuitDocument {
 }
 
 /** DIP packages straddle the trench only, with pin 1 at eN or fN. */
-export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0, document: Pick<CircuitDocument, 'board'> = {}): string[] | null {
+export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0, document: Pick<CircuitDocument, 'board' | 'customComponents'> = {}, customModelId?: string): string[] | null {
   const { terminalById } = boardGeometry(document)
   const { columns } = boardConfiguration(document)
   const match = /^(r[23]:)?([a-j])(\d{1,2})$/.exec(holeId)
   if (!match || !Object.hasOwn(terminalById, holeId) || !Object.hasOwn(PARTS, kind)) return null
+  const definition = kind === 'subcircuit' && customModelId ? partDefinition(document, { kind, customModelId }) : PARTS[kind]
   const prefix = match[1] ?? ''
   const column = Number(match[3])
   const row = rows.indexOf(match[2])
   const direction = ((Math.round(rotation / 90) % 4) + 4) % 4
-  if (PARTS[kind].package) {
-    const perSide = PARTS[kind].pinNames.length / 2
+  if (definition.package) {
+    const perSide = definition.pinNames.length / 2
     const offsets = Array.from({ length: perSide }, (_, index) => index)
     if (direction === 0 && match[2] === 'e' && column <= columns + 1 - perSide) {
       return offsets.map(offset => `${prefix}e${column + offset}`).concat([...offsets].reverse().map(offset => `${prefix}f${column + offset}`))
@@ -485,7 +502,7 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0, 
     const pins = Array.from({ length: 4 }, (_, index) => `${prefix}${match[2]}${column + (direction === 0 ? index : -index)}`)
     return pins.every(pin => Object.hasOwn(terminalById, pin)) ? pins : null
   }
-  const threeLead = PARTS[kind].pinNames.length === 3
+  const threeLead = definition.pinNames.length === 3
   const span = kind === 'capacitor' || kind === 'electrolytic' || threeLead ? 1 : 3
   const count = threeLead ? 3 : 2
   const pins = Array.from({ length: count }, (_, index) => {
@@ -498,12 +515,14 @@ export function getPlacement(kind: ComponentKind, holeId: string, rotation = 0, 
 }
 
 /** Legacy two-lead parts keep arbitrary lead spacing; rigid new packages do not. */
-export function isValidFootprint(kind: ComponentKind, pins: string[], document: Pick<CircuitDocument, 'board'> = {}): boolean {
+export function isValidFootprint(kind: ComponentKind, pins: string[], document: Pick<CircuitDocument, 'board' | 'customComponents'> = {}, customModelId?: string): boolean {
   const { terminalById } = boardGeometry(document)
-  if (!Object.hasOwn(PARTS, kind) || pins.length !== PARTS[kind].pinNames.length || new Set(pins).size !== pins.length) return false
+  if (!Object.hasOwn(PARTS, kind)) return false
+  const definition = kind === 'subcircuit' && customModelId ? partDefinition(document, { kind, customModelId }) : PARTS[kind]
+  if (pins.length !== definition.pinNames.length || new Set(pins).size !== pins.length) return false
   if (pins.some((pin) => !Object.hasOwn(terminalById, pin) || !/^(?:r[23]:)?(?:[a-j]|tp|tn|bp|bn)\d+$/.test(pin))) return false
-  if (PARTS[kind].pinNames.length === 2) return true
-  return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation, document)?.every((pin, index) => pin === pins[index]))
+  if (definition.pinNames.length === 2) return true
+  return [0, 90, 180, 270].some((rotation) => getPlacement(kind, pins[0], rotation, document, customModelId)?.every((pin, index) => pin === pins[index]))
 }
 
 /** Leads and jumpers occupy holes; probes are measurement attachments and do not. */
@@ -571,7 +590,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     const id = readId(part.id)
     if (typeof part.kind !== 'string' || !Object.hasOwn(PARTS, part.kind)) throw new Error(`Unknown component type on ${id}.`)
     const kind = part.kind as ComponentKind
-    const definition = PARTS[kind]
+    const definition = partDefinition({ customComponents }, { kind, customModelId: part.customModelId as string | undefined })
     let value = finiteNumber(part.value, `${id} value`, definition.min, definition.max)
     const model = resolvePartModel({ customComponents }, { kind, customModelId: part.customModelId as string | undefined })
     if (model) value = nominalValue(model)
@@ -579,7 +598,7 @@ export function validateDocument(input: unknown): CircuitDocument {
     if (!Array.isArray(part.pins) || part.pins.length !== definition.pinNames.length) throw new Error(`${id} requires exactly ${definition.pinNames.length} pins.`)
     const pins = part.pins.map(readTerminal)
     if (kind === 'lm4040' && value !== 2.5 && value !== 5) throw new Error('Choose a 2.5 V or 5 V LM4040 reference.')
-    if (!isValidFootprint(kind, pins, { board })) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
+    if (!isValidFootprint(kind, pins, { board, customComponents }, model?.id)) throw new Error(`${id} has an invalid ${definition.label.toLowerCase()} footprint. ${definition.package ? `Place all ${definition.pinNames.length} pins across the center trench at 0° or 180°.` : 'Use the supported breadboard pin positions.'}`)
     occupy(pins)
     const position = kind === 'potentiometer' && part.position !== undefined ? finiteNumber(part.position, `${id} wiper position`, 0, 1) : undefined
     const schemaGroup = readSchemaGroup(part.schemaGroup)
@@ -734,6 +753,19 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   for (const part of doc.parts) {
     const nodes = part.pins.map((pin) => nodeByTerminal[pin])
     const [a, b, c] = nodes
+    if (part.kind === 'subcircuit') {
+      const model = resolvePartModel(doc, part)!
+      if (model.baseKind === 'subcircuit') {
+        const bindings = model.pinMap.map(pin => nodes[pin])
+        if (model.spice.ground && bindings.at(-1) !== '0') diagnostics.push({ severity: 'error', partId: part.id, message: `${part.id}: wire the SPICE reference pin (0) to workbench GND.` })
+        const expanded = expandSubcircuit(model.spice, bindings, spiceDeviceId(part))
+        for (const e of expanded.elements) {
+          if (['R', 'L', 'V', 'E', 'H', 'D'].includes(e.kind)) addEdge(e.nodes[0], e.nodes[1])
+          if (e.kind === 'Q') { addEdge(e.nodes[0], e.nodes[2]); addEdge(e.nodes[1], e.nodes[2]) }
+        }
+      }
+      continue
+    }
     if (part.kind === 'ssd1306') { addEdge(nodes[2], b); addEdge(nodes[3], b); continue }
     if (part.kind === 'njfet' || part.kind === 'nmos' || part.kind === 'pmos') {
       addEdge(a, c) // Insulated/reverse-biased gates still require an external return.
@@ -972,16 +1004,25 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
     }
   }
   traceReferences()
+  for (const part of doc.parts.filter(p => p.kind === 'subcircuit')) {
+    const model = resolvePartModel(doc, part)!
+    if (model.baseKind !== 'subcircuit') continue
+    const expanded = expandSubcircuit(model.spice, model.pinMap.map(pin => nodeByTerminal[part.pins[pin]]), spiceDeviceId(part))
+    const internal = expanded.elements.flatMap(e => e.nodes).find(node => node.startsWith(`sub_${spiceDeviceId(part)}_`) && !referenced.has(node))
+    if (internal) diagnostics.push({ severity: 'error', partId: part.id, message: `${part.id}: an internal subcircuit node has no DC return. Check the model and its external wiring.` })
+  }
   const warnedFloating = new Set<string>()
   for (const part of doc.parts) {
     for (const [index, pin] of part.pins.entries()) {
+      const imported = part.kind === 'subcircuit' ? resolvePartModel(doc, part) : undefined
+      if (imported?.baseKind === 'subcircuit' && !imported.pinMap.includes(index)) continue
       if (omittedUtilityPin(part.kind, index) || part.kind === 'cd4024' && (COUNTER_NC as readonly number[]).includes(index) || part.kind === 'lm4040' && index === 0) continue
       const node = nodeByTerminal[pin]
       if (!referenced.has(node) && !warnedFloating.has(node)) {
         const input = amplifierPinouts[part.kind]?.sections.some(([, minus, plus]) => index === minus || index === plus)
         diagnostics.push({ severity: 'error', message: input
           ? `${part.id} ${PARTS[part.kind].pinNames[index]} (pin ${index + 1}) at ${pin} is floating. Connect an external DC return; wire unused amplifiers as grounded followers.`
-          : `${part.id}${PARTS[part.kind].package ? ` ${PARTS[part.kind].pinNames[index]} (pin ${index + 1})` : ''} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
+          : `${part.id}${PARTS[part.kind].package ? ` ${partDefinition(doc, part).pinNames[index]} (pin ${index + 1})` : ''} at ${pin} has no DC path to GND. Connect a return path; capacitors do not provide a DC connection.`, partId: part.id })
         warnedFloating.add(node)
       }
     }
@@ -1197,15 +1238,16 @@ export function compileCircuit(document: CircuitDocument, analysis: 'transient' 
   lines.push(`.options reltol=0.001 abstol=1e-12 vntol=1e-6 trtol=${timers.length && !hasRippleCounter ? 7 : 0.01}`, ['.save', ...savedVectors].join(' '), analysis === 'operating-point' ? '.op' : `.tran ${step} ${durationSeconds} 0 ${step}`, '.end')
   const netlist = lines.join('\n') + '\n'
   const externalNodes = new Set(Object.values(nodeByTerminal))
-  const internalNodes = new Set(lines.slice(1).filter(line => /^[RCLVIBDQ]/i.test(line)).flatMap(line => {
+  const internalNodes = new Set(lines.slice(1).filter(line => /^[RCLVIBDQEGFH]/i.test(line)).flatMap(line => {
     const fields = line.split(/\s+/)
-    return fields.slice(1, fields[0].startsWith('Q') ? 4 : 3).filter(node => !externalNodes.has(node))
+    return fields.slice(1, /^[EG]/.test(fields[0]) ? 5 : fields[0].startsWith('Q') ? (fields.length === 6 ? 5 : 4) : 3).filter(node => !externalNodes.has(node))
   }))
   if (new TextEncoder().encode(netlist).length > CUSTOM_LIMITS.netlistBytes || lines.filter(line => /^[a-z]/i.test(line)).length > CUSTOM_LIMITS.devices || internalNodes.size > CUSTOM_LIMITS.internalNodes) diagnostics.push({ severity: 'error', message: 'Expanded circuit exceeds the netlist resource limit. Reduce curve points or components.' })
   return { netlist, diagnostics, nodeByTerminal, nets }
 }
 
 export function formatValue(value: number, kind: ComponentKind): string {
+  if (kind === 'subcircuit') return 'SPICE'
   if (kind === 'ssd1306') return '128×64 · I²C'
   if (kind === 'diode') return 'Silicon'
   if (kind === 'schottky') return 'Low Vf'

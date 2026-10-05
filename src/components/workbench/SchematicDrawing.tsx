@@ -91,7 +91,7 @@ function BlockSymbol({ symbol }: { symbol: SchematicSymbol }) {
 }
 
 function SymbolDrawing({ symbol }: { symbol: SchematicSymbol }) {
-  const passive = symbol.pins.length === 2 && symbol.kind !== 'pico'
+  const passive = symbol.pins.length === 2 && symbol.kind !== 'pico' && symbol.kind !== 'subcircuit'
   const transistor = ['npn', 'pnp', 'nmos', 'pmos', 'njfet'].includes(symbol.kind)
   const simple = passive || transistor || symbol.kind === 'potentiometer'
   const vertical = Math.abs(symbol.rotation) === 90

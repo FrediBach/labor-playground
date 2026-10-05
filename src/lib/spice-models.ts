@@ -35,6 +35,14 @@ export function validateSpiceModel(input: unknown): SpiceModel {
 }
 
 const scales: Record<string, number> = { '': 1, T: 1e12, G: 1e9, MEG: 1e6, K: 1e3, MIL: 25.4e-6, M: 1e-3, U: 1e-6, N: 1e-9, P: 1e-12, F: 1e-15 }
+export function parseSpiceNumber(value: string): number {
+  const match = /^([+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)(meg|mil|[tgkmunpf])?$/i.exec(value)
+  if (!match) throw new Error(`Expected a numeric value, received “${value}”. Expressions and parameters are not supported.`)
+  const number = Number(match[1]) * scales[(match[2] ?? '').toUpperCase()]
+  if (!Number.isFinite(number) || Math.abs(number) > 1e15) throw new Error('Device values must be finite with magnitude at most 1e15.')
+  return number
+}
+
 export function parseSpiceModels(source: string): SpiceModel[] {
   if (new TextEncoder().encode(source).length > SPICE_IMPORT_BYTES) throw new Error('SPICE files must be at most 64 kB.')
   const statements: string[] = []
@@ -65,7 +73,7 @@ export function parseSpiceModels(source: string): SpiceModel[] {
       if (!parameter) throw new Error(`${entryPoint}: expected a numeric PARAM=value near “${body.slice(0, 40)}”. Expressions and unsupported suffixes are not accepted.`)
       const key = parameter[1].toUpperCase()
       if (Object.hasOwn(parameters, key)) throw new Error(`${entryPoint}: duplicate parameter ${key}.`)
-      parameters[key] = Number(parameter[2]) * scales[(parameter[3] ?? '').toUpperCase()]
+      parameters[key] = parseSpiceNumber(parameter[2] + (parameter[3] ?? ''))
       body = body.slice(parameter[0].length).replace(/^[\s,]+/, '')
     }
     return validateSpiceModel({ device: rawDevice.toUpperCase(), entryPoint, parameters })

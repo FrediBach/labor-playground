@@ -17,7 +17,7 @@ function token(value: string): string {
  */
 export function legacySymbolDefinition(symbol: SchematicSymbol, symbolName: string, alias?: string): string {
   const name = token(symbolName)
-  const passive = symbol.pins.length === 2 && symbol.kind !== 'pico'
+  const passive = symbol.pins.length === 2 && symbol.kind !== 'pico' && symbol.kind !== 'subcircuit'
   const transistor = ['npn', 'pnp', 'nmos', 'pmos', 'njfet'].includes(symbol.kind)
   const potentiometer = symbol.kind === 'potentiometer'
   const block = !passive && !transistor && !potentiometer

@@ -1,6 +1,6 @@
 import { curveIntegral, curveValue } from '@/lib/characteristic-curves'
 import { useMemo } from 'react'
-import { PARTS, formatValue, type CircuitDocument, type Part, type Wire } from '@/lib/circuit'
+import { PARTS, partDefinition, formatValue, type CircuitDocument, type Part, type Wire } from '@/lib/circuit'
 import { useRecording } from '@/lib/recording-context'
 import { formatElectrical } from '@/lib/format-electrical'
 import { InspectorSignals, type InspectorSignal } from './InspectorSignals'
@@ -14,7 +14,7 @@ export function RecordedMeasurements({ document, part, nodeByTerminal }: { docum
   const model = playback.capture?.recording?.parts.find(p => p.partId === part.id)?.customModel
   const signals = useMemo(() => {
     const pins: InspectorSignal[] = part.pins.map((pin, index) => ({
-      id: `pin-${index}`, label: `Pin ${index + 1}`, detail: PARTS[part.kind].pinNames[index] === String(index + 1) ? pin.toUpperCase() : `${PARTS[part.kind].pinNames[index]} · ${pin.toUpperCase()}`,
+      id: `pin-${index}`, label: `Pin ${index + 1}`, detail: partDefinition(document, part).pinNames[index] === String(index + 1) ? pin.toUpperCase() : `${partDefinition(document, part).pinNames[index]} · ${pin.toUpperCase()}`,
       node: nodeByTerminal[pin], color: PIN_COLORS[index % PIN_COLORS.length],
       ariaLabel: `Recorded pin ${index + 1} voltage`, toggleLabel: `Toggle pin ${index + 1} trace`,
     }))
@@ -23,7 +23,7 @@ export function RecordedMeasurements({ document, part, nodeByTerminal }: { docum
       color: '#aebcff', ariaLabel: 'Recorded component voltage', toggleLabel: 'Toggle voltage difference trace', differential: true,
     })
     return pins
-  }, [part, nodeByTerminal])
+  }, [document, part, nodeByTerminal])
   const measured = point?.parts[part.id]
   const voltage = (index: number) => point?.nodeVoltages[nodeByTerminal[part.pins[index]]]
   const a = voltage(0), b = voltage(1)
@@ -47,7 +47,7 @@ export function RecordedMeasurements({ document, part, nodeByTerminal }: { docum
         {measured?.power != null && <div><span>Power absorbed</span><output aria-label="Recorded component power">{formatElectrical(measured.power, 'W')}</output></div>}
         {storedEnergy !== undefined && <div><span>Stored energy</span><output aria-label="Recorded stored energy">{formatElectrical(storedEnergy, 'J')}</output></div>}
       </div> : null}
-      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
+      <details className="signal-notes"><summary>About these readings</summary><p>Pin voltages are relative to GND.{part.pins.length === 2 && ' The dashed trace measures pin 1 minus pin 2.'} {PARTS[part.kind].package && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' && part.kind !== 'subcircuit' ? 'Current and power are unavailable for this behavioral IC model.' : 'Positive current follows the labeled direction. Negative power returns energy to the circuit.'}</p></details>
     </>}
   </InspectorSignals>
 }

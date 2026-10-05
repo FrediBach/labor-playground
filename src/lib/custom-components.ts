@@ -1,5 +1,6 @@
 import { PARTS, formatValue, validateDocument, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
 import { curveValue, type CurvePoint } from './characteristic-curves.ts'
+import { validateSubcircuit, subcircuitTerminals, subcircuitPackagePins, type SpiceSubcircuit } from './spice-subcircuits.ts'
 import { validateSpiceModel, type SpiceModel } from './spice-models.ts'
 
 interface Characteristic { points: CurvePoint[]; interpolation: 'linear'; extrapolation: 'constant' }
@@ -8,7 +9,8 @@ export type CurveComponent = Definition & (
   | { baseKind: 'resistor'; characteristic: Characteristic & { type: 'resistance-current'; axis: 'current-magnitude' } }
   | { baseKind: 'capacitor'; characteristic: Characteristic & { type: 'capacitance-voltage'; axis: 'signed-voltage' } }
 )
-export type SpiceComponent = Definition & { baseKind: 'diode' | 'npn' | 'pnp'; spice: SpiceModel }
+export type SubcircuitComponent = Definition & { baseKind: 'subcircuit'; spice: SpiceSubcircuit; pinMap: number[] }
+export type SpiceComponent = (Definition & { baseKind: 'diode' | 'npn' | 'pnp'; spice: SpiceModel }) | SubcircuitComponent
 export type CustomComponent = CurveComponent | SpiceComponent
 export const isSpiceComponent = (model: CustomComponent): model is SpiceComponent => 'spice' in model
 export interface PartPlacement { kind: ComponentKind; customModelId?: string }
@@ -24,7 +26,12 @@ export function validateCustomComponents(input: unknown): CustomComponent[] {
     ids.add(d.id.toLowerCase())
     if (typeof d.name !== 'string' || !d.name.trim() || d.name.length > 80) throw new Error('Name must contain 1–80 characters.')
     if (d.description !== undefined && (typeof d.description !== 'string' || d.description.length > 500)) throw new Error('Description must contain at most 500 characters.')
-    if (d.modelVersion !== 1 || !['resistor', 'capacitor', 'diode', 'npn', 'pnp'].includes(d.baseKind)) throw new Error('Unsupported custom component model version or base kind.')
+    if (d.modelVersion !== 1 || !['resistor', 'capacitor', 'diode', 'npn', 'pnp', 'subcircuit'].includes(d.baseKind)) throw new Error('Unsupported custom component model version or base kind.')
+    if (d.baseKind === 'subcircuit') {
+      const spice = validateSubcircuit(d.spice), count = subcircuitPackagePins(spice)
+      if (!Array.isArray(d.pinMap) || d.pinMap.length !== subcircuitTerminals(spice).length || new Set(d.pinMap).size !== d.pinMap.length || d.pinMap.some(pin => !Number.isInteger(pin) || pin < 0 || pin >= count)) throw new Error('Map every subcircuit terminal to a unique package pin.')
+      return { id: d.id, name: d.name, ...(d.description === undefined ? {} : { description: d.description }), modelVersion: 1, baseKind: 'subcircuit', spice, pinMap: [...d.pinMap] } as SubcircuitComponent
+    }
     if (d.baseKind === 'diode' || d.baseKind === 'npn' || d.baseKind === 'pnp') {
       const spice = validateSpiceModel(d.spice)
       if ((spice.device === 'D' ? 'diode' : spice.device.toLowerCase()) !== d.baseKind) throw new Error('SPICE device and base kind must match.')
@@ -52,7 +59,10 @@ export function validateCustomComponents(input: unknown): CustomComponent[] {
   })
 }
 export function resolvePartModel(document: Pick<CircuitDocument, 'customComponents'>, part: Pick<Part, 'kind' | 'customModelId'>): CustomComponent | undefined {
-  if (part.customModelId === undefined) return undefined
+  if (part.customModelId === undefined) {
+    if (part.kind === 'subcircuit') throw new Error('A subcircuit component requires an imported model.')
+    return undefined
+  }
   const model = document.customComponents?.find(d => d.id === part.customModelId)
   if (!model || model.baseKind !== part.kind) throw new Error(`Missing or incompatible custom model: ${part.customModelId}.`)
   return model
@@ -80,6 +90,7 @@ export function saveCustomComponent(document: CircuitDocument, model: CustomComp
 export function assignCustomComponent(document: CircuitDocument, partId: string, modelId?: string): CircuitDocument {
   return validateDocument({ ...document, parts: document.parts.map(part => {
     if (part.id !== partId) return part
+    if (part.kind === 'subcircuit' && !modelId) throw new Error('A subcircuit has no built-in model. Assign another compatible model or remove the component.')
     const { customModelId: _old, ...linear } = part
     return modelId ? { ...linear, customModelId: modelId } : linear
   }) })

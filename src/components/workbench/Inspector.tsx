@@ -3,7 +3,7 @@ import { useId, useRef, useState } from 'react'
 import { isSpiceComponent, resolvePartModel, partDisplayName, partValueSummary, assignCustomComponent, duplicateCustomComponent, type CustomComponent } from '@/lib/custom-components'
 import { CurvePreview } from './CustomComponentEditor'
 import { Cable, Check, Info, MousePointer2, RotateCcw, Trash2 } from 'lucide-react'
-import { assignSchemaGroup, PARTS, SCHEMA_GROUP_NAME_LIMIT, type CircuitDocument } from '@/lib/circuit'
+import { assignSchemaGroup, partDefinition, SCHEMA_GROUP_NAME_LIMIT, type CircuitDocument } from '@/lib/circuit'
 import { CommitSlider, NumberField } from './ParameterControls'
 import { PartIcon } from './PartIcon'
 import type { OperatingPoint } from '@/lib/simulation-types'
@@ -70,7 +70,7 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
   const modelAction = (action: () => CircuitDocument) => { try { onChange(action()); setModelError('') } catch (e) { setModelError((e as Error).message) } }
   const part = document.parts.find(item => item.id === selectedId)
   const wire = document.wires.find(item => item.id === selectedId)
-  const definition = part ? PARTS[part.kind] : null
+  const definition = part ? partDefinition(document, part) : null
   const model = part ? resolvePartModel(document, part) : undefined
   const integratedCircuit = !!definition?.package
   const resistive = part?.kind === 'resistor' || part?.kind === 'potentiometer'
@@ -93,8 +93,8 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
       <div className="panel-heading"><h2>Inspector</h2><span className="tiny-tag">{part?.id ?? wire?.id ?? '—'}</span></div>
       {part && definition ? <>
         <div className="selected-part-summary">
-          <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} large /></div>
-          <span className="eyebrow">{part.id} · {part.kind === 'lm4040' ? 'SHUNT REFERENCE · TO-92' : integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : model && isSpiceComponent(model) ? `SPICE ${model.spice.device}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · ${fet ? 'D / G / S' : 'C / B / E'}` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
+          <div className="selected-part-art"><PartIcon kind={part.kind} value={part.value} position={part.position} pinNames={definition.pinNames} large /></div>
+          <span className="eyebrow">{part.id} · {part.kind === 'lm4040' ? 'SHUNT REFERENCE · TO-92' : part.kind === 'subcircuit' ? 'IMPORTED SUBCIRCUIT' : integratedCircuit ? `EDUCATIONAL MODEL · ${definition.package}` : model && isSpiceComponent(model) ? `SPICE ${model.spice.device}` : transistor ? `GENERIC ${part.kind.toUpperCase()} · ${fet ? 'D / G / S' : 'C / B / E'}` : polarized ? 'POLARIZED' : part.kind === 'capacitor' ? 'NON-POLARIZED' : 'COMPONENT'}</span>
           <h2>{partDisplayName(document, part)}</h2><p>{model ? model.description || (isSpiceComponent(model) ? `Imported SPICE ${model.spice.device} model` : `Custom ${model.baseKind} characteristic`) : definition.description}</p>
         </div>
         <div className="inspector-section">
@@ -123,8 +123,8 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
             <p className="muted-copy">{definition.supplyHint}</p>
           ) : <p className="muted-copy">Fixed generic {transistor ? `${part.kind.toUpperCase()} transistor` : definition.label.toLowerCase()} model.</p>}
         </div>
-        {(['resistor', 'capacitor', 'diode', 'npn', 'pnp'].includes(part.kind)) && <div className="inspector-section custom-model">
-          <label>Component model<select aria-label="Component model" value={part.customModelId ?? ''} onChange={e => modelAction(() => assignCustomComponent(document, part.id, e.target.value || undefined))}><option value="">{part.kind === 'resistor' || part.kind === 'capacitor' ? 'Linear built-in at nominal value' : 'Built-in generic model'}</option>{document.customComponents?.filter(m => m.baseKind === part.kind).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
+        {(['resistor', 'capacitor', 'diode', 'npn', 'pnp', 'subcircuit'].includes(part.kind)) && <div className="inspector-section custom-model">
+          <label>Component model<select aria-label="Component model" value={part.customModelId ?? ''} onChange={e => modelAction(() => assignCustomComponent(document, part.id, e.target.value || undefined))}>{part.kind !== 'subcircuit' && <option value="">{part.kind === 'resistor' || part.kind === 'capacitor' ? 'Linear built-in at nominal value' : 'Built-in generic model'}</option>}{document.customComponents?.filter(m => m.baseKind === part.kind).map(m => <option key={m.id} value={m.id}>{m.name}</option>)}</select></label>
           {model ? <>{!isSpiceComponent(model) && <CurvePreview points={model.characteristic.points} xLabel={model.baseKind === 'resistor' ? '|Current| (A)' : 'Voltage (V)'} yLabel={model.baseKind === 'resistor' ? 'Resistance (Ω)' : 'Capacitance (F)'} />}<button onClick={() => onEditModel(model)}>Edit model</button><button onClick={() => modelAction(() => duplicateCustomComponent(document, model.id, part.id).document)}>Make independent copy</button></> : (part.kind === 'resistor' || part.kind === 'capacitor') ? <button onClick={() => onCreateModel(part)}>Create custom model from this value</button> : <p>Import a compatible SPICE model from the parts library to assign it here.</p>}
           {modelError && <p role="alert">{modelError}</p>}
         </div>}
@@ -155,14 +155,14 @@ export function Inspector({ onEditModel, onCreateModel, document, selectedId, on
         </div>
         <div className="inspector-section component-dc" aria-label="Component DC measurements">
           <div className="section-overline">DC OPERATING POINT</div>
-          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013' || part.kind === 'cd4024' || part.kind === 'cd4093') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
+          {integratedCircuit && part.kind !== 'vactrol' && part.kind !== 'pc817' && part.kind !== 'dpdt' && part.kind !== 'subcircuit' ? <p className="micro-copy">Current and power are unavailable for this behavioral IC model.{(part.kind === 'timer555' || part.kind === 'cd40106' || part.kind === 'cd4013' || part.kind === 'cd4024' || part.kind === 'cd4093') && ' DC voltages show the initial 1 µs startup state; use the scope to inspect timing.'}</p> : dc ? <>
             {dc.currents.map(current => <div className="dc-part-row" key={current.label}><span>{current.label}</span><output aria-label={`DC current ${current.label}`}>{formatElectrical(current.value, 'A')}</output></div>)}
             <div className="dc-part-row"><span>Power absorbed</span><output aria-label="DC component power">{formatElectrical(dc.power, 'W')}</output></div>
             <p className="micro-copy">{capacitive ? 'An ideal capacitor carries no steady DC current.' : 'Positive current flows in the labeled direction. Readings use the initial DC solution.'}</p>
           </> : <p className="micro-copy">Capture the current circuit to read DC current and power.</p>}
         </div>
         <div className="inspector-section">
-          <details className="model-details"><summary>Model details <Info size={13} /></summary><p>{model && isSpiceComponent(model) ? `Imported ngspice ${model.spice.device} model (${model.spice.entryPoint}). DC and transient behavior comes from its numeric parameters. Physical pinouts and model limitations must be checked against its source. ${model.description ?? ''}` : model ? `${model.baseKind === 'resistor' ? 'V = I × R(|I|), an instantaneous law without thermal memory.' : 'C(V) = dQ/dV. Charge and energy are integrated from zero voltage; each capture starts at its DC operating point.'} Linear interpolation and constant endpoint extension. Shared by ${document.parts.filter(p => p.customModelId === model.id).length} placed instances.` : definition.model}</p></details>
+          <details className="model-details"><summary>Model details <Info size={13} /></summary><p>{model && isSpiceComponent(model) ? `Imported ngspice ${model.spice.device} model (${model.spice.entryPoint}). DC and transient behavior comes from its imported electrical definition. Physical pinouts and model limitations must be checked against its source. ${model.description ?? ''}` : model ? `${model.baseKind === 'resistor' ? 'V = I × R(|I|), an instantaneous law without thermal memory.' : 'C(V) = dQ/dV. Charge and energy are integrated from zero voltage; each capture starts at its DC operating point.'} Linear interpolation and constant endpoint extension. Shared by ${document.parts.filter(p => p.customModelId === model.id).length} placed instances.` : definition.model}</p></details>
         </div>
         <button className="delete-part" onClick={onDelete}><Trash2 size={14} />Remove component<kbd>⌫</kbd></button>
       </> : wire ? <>

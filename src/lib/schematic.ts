@@ -1,4 +1,4 @@
-import { PARTS, formatValue, resolveTopology, boardGeometry, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
+import { PARTS, partDefinition, formatValue, resolveTopology, boardGeometry, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
 import { PICO_PINS } from './pico/profile.ts'
 import { routeSchematicSection } from './schematic-routing.ts'
 
@@ -65,8 +65,8 @@ function partLabel(part: Part, document: CircuitDocument): string {
 }
 
 function createSymbol(part: Part, document: CircuitDocument, nodes: Record<string, string>): SchematicSymbol {
-  const names = PARTS[part.kind].pinNames
-  const simple = names.length === 2 || isTransistor(part.kind) || part.kind === 'potentiometer'
+  const names = partDefinition(document, part).pinNames
+  const simple = names.length === 2 && part.kind !== 'subcircuit' || isTransistor(part.kind) || part.kind === 'potentiometer'
   const height = simple ? 80 : Math.ceil(names.length / 2) * 40 + 30
   return {
     id: part.id, kind: part.kind, label: partLabel(part, document), value: formatValue(part.value, part.kind),
@@ -83,7 +83,7 @@ function createSymbol(part: Part, document: CircuitDocument, nodes: Record<strin
 function placeSymbol(symbol: SchematicSymbol, x: number, y: number) {
   symbol.x = x
   symbol.y = y
-  if (symbol.pins.length === 2 && symbol.kind !== 'pico') {
+  if (symbol.pins.length === 2 && symbol.kind !== 'pico' && symbol.kind !== 'subcircuit') {
     for (const [index, pin] of symbol.pins.entries()) Object.assign(pin, { x: x + (index === 0 ? -60 : 60), y, side: index === 0 ? 'left' : 'right' })
     return
   }
@@ -107,7 +107,7 @@ function placeSymbol(symbol: SchematicSymbol, x: number, y: number) {
 
 /** A chain of signal nets with parallel branches and grounded shunts can be wired without crossings. */
 function layoutSmallCircuit(layout: SchematicLayout): boolean {
-  if (!layout.symbols.length || layout.symbols.length > 8 || layout.symbols.some(symbol => symbol.kind === 'pico' || symbol.pins.length !== 2)) return false
+  if (!layout.symbols.length || layout.symbols.length > 8 || layout.symbols.some(symbol => symbol.kind === 'pico' || symbol.kind === 'subcircuit' || symbol.pins.length !== 2)) return false
   const groupNames = new Set(layout.symbols.map(symbol => symbol.part?.schemaGroup ?? ''))
   if (groupNames.size > 1) return false
   if (layout.symbols.some(symbol => symbol.pins[0].node === symbol.pins[1].node || symbol.pins.some(pin => pin.node.startsWith('unconnected:')))) return false
@@ -231,14 +231,14 @@ function layoutLabeledCircuit(layout: SchematicLayout) {
       const height = Math.max(220, ...rowSymbols.map(symbol => symbol.height + 145))
       rowSymbols.forEach((symbol, column) => {
         // Align the first block pin with neighboring passives, leaving room for references above.
-        const block = symbol.kind === 'pico' || (symbol.pins.length !== 2 && !isTransistor(symbol.kind) && symbol.kind !== 'potentiometer')
+        const block = symbol.kind === 'pico' || symbol.kind === 'subcircuit' || (symbol.pins.length !== 2 && !isTransistor(symbol.kind) && symbol.kind !== 'potentiometer')
         placeSymbol(symbol, 68 + columnWidths.slice(0, column).reduce((sum, width) => sum + width, 0) + columnWidths[column] / 2, y + 106 + (block ? symbol.height / 2 - 35 : 0))
       })
       y += height
     }
     for (const symbol of symbols) {
       // Logical symbol orientation follows its neighbors; physical pin numbers stay unchanged.
-      if (symbol.pins.length === 2 || symbol.kind === 'pico') {
+      if (symbol.pins.length === 2 && symbol.kind !== 'subcircuit' || symbol.kind === 'pico') {
         let normal = 0, mirrored = 0
         for (const pin of symbol.pins) {
           const net = layout.nets.find(net => net.id === pin.node)!

@@ -5,7 +5,7 @@ import './KicadImportDialog.css'
 
 function ComponentMatch({ component, selection, onChange }: { component: KicadImport['components'][number]; selection: KicadSelection; onChange: (selection: KicadSelection) => void }) {
   const [query, setQuery] = useState('')
-  const options = Object.entries(PARTS).filter(([kind, definition]) => kind === selection.kind || `${kind} ${definition.label} ${definition.description}`.toLowerCase().includes(query.toLowerCase()))
+  const options = Object.entries(PARTS).filter(([kind, definition]) => kind !== 'subcircuit' && (kind === selection.kind || `${kind} ${definition.label} ${definition.description}`.toLowerCase().includes(query.toLowerCase())))
   const definition = selection.kind ? PARTS[selection.kind] : null
   return <fieldset className="kicad-component"><legend>{component.reference} · {component.value}</legend>
     <p>{component.library} · {component.suggested ? 'Suggested match — verify below' : 'No automatic match — find a component below'}</p>

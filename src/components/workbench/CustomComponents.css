@@ -28,3 +28,6 @@
 .custom-model, .selected-part-summary h2 { overflow-wrap: anywhere; }
 .custom-library-actions button:disabled { opacity: .5; cursor: not-allowed; }
 @media (max-width: 600px) { .custom-editor { padding: 16px; } .custom-table table { table-layout: fixed; } .custom-table td:last-child, .custom-table th:last-child { width: 70px; } }
+.subcircuit-pin-map { display: grid; gap: 8px; border: 1px solid #526254; border-radius: 6px; padding: 12px; }
+.subcircuit-pin-map legend { font-size: 12px; padding: 0 5px; }
+.subcircuit-pin-map label { display: grid; grid-template-columns: minmax(0, 1fr) minmax(90px, 1fr); align-items: center; overflow-wrap: anywhere; }

@@ -1,3 +1,4 @@
+import { partDefinition } from '@/lib/circuit'
 import { PROJECT_LIMITS } from '@/lib/project-limits'
 import { parsePlacement, resolvePartModel, nominalValue, partDisplayName, partValueSummary, type PartPlacement } from '@/lib/custom-components'
 import { PICO_PINS } from '@/lib/pico/profile'
@@ -79,7 +80,7 @@ function translatedPins(part: Part, target: Terminal, document: CircuitDocument)
     if (!destination) return null
     pins.push(destination.id)
   }
-  return isValidFootprint(part.kind, pins, document) ? pins : null
+  return isValidFootprint(part.kind, pins, document, part.customModelId) ? pins : null
 }
 
 function makeId(prefix: string, document: CircuitDocument) {
@@ -89,7 +90,7 @@ function makeId(prefix: string, document: CircuitDocument) {
   return `${prefix}${value}`
 }
 
-const PREFIXES: Record<ComponentKind, string> = { spdt: 'S', dpdt: 'S', opa197: 'U', opa4197: 'U', ssi2162: 'U', resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', njfet: 'J', nmos: 'M', pmos: 'M', vactrol: 'O', pc817: 'O', cd4024: 'U', cd4093: 'U', cd4001: 'U', lm4040: 'U', cd4013: 'U', cd4070: 'U', cd4081: 'U', cd40106: 'U', cd4069: 'U', cd4053: 'U', lm393: 'U', cd4066: 'U', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
+const PREFIXES: Record<ComponentKind, string> = { subcircuit: 'X', spdt: 'S', dpdt: 'S', opa197: 'U', opa4197: 'U', ssi2162: 'U', resistor: 'R', capacitor: 'C', electrolytic: 'C', inductor: 'L', diode: 'D', schottky: 'D', zener: 'D', led: 'LED', npn: 'Q', pnp: 'Q', njfet: 'J', nmos: 'M', pmos: 'M', vactrol: 'O', pc817: 'O', cd4024: 'U', cd4093: 'U', cd4001: 'U', lm4040: 'U', cd4013: 'U', cd4070: 'U', cd4081: 'U', cd40106: 'U', cd4069: 'U', cd4053: 'U', lm393: 'U', cd4066: 'U', potentiometer: 'P', switch: 'S', opamp: 'U', timer555: 'U', quadopamp: 'U', lm13700: 'U', ssd1306: 'OLED' }
 
 export function Breadboard({ document, selectedId, onSelect, onChange, tool, placement, rotation, wireColor, showConnections, zoom, onMessage, highlightTerminal, editingLead, onStartLeadEdit, onFinishLeadEdit }: BreadboardProps) {
   const geometry = useMemo(() => boardGeometry({ board: document.board }), [document.board])
@@ -135,11 +136,11 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
   const highlightedNet = highlightSource ? graph.nodeByTerminal[highlightSource] : undefined
   const highlighted = new Set(highlightedNet ? graph.nets[highlightedNet] ?? [] : [])
   const previewPins = leadPart && editingLead && hover ? previewLeadPins(leadPart, editingLead.pinIndex, hover.id, document)
-    : move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation, document) : null
+    : move?.dragging ? move.pins : isPart(tool) && hover ? getPlacement(tool, hover.id, rotation, document, placement?.customModelId) : null
   const previewKind = leadPart?.kind ?? (move?.dragging ? move.part.kind : isPart(tool) ? tool : null)
   const placementValid = leadPart && editingLead && hover
     ? leadPlacementError(document, leadPart, editingLead.pinIndex, hover.id) === null
-    : !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins, document) && canPlace(document, previewPins, move?.part.id)
+    : !!previewPins && !!previewKind && isValidFootprint(previewKind, previewPins, document, move?.part.customModelId ?? placement?.customModelId) && canPlace(document, previewPins, move?.part.id)
 
   useEffect(() => {
     if (!leadPart || !editingLead) return
@@ -182,17 +183,17 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
       onMessage(`This workbench supports up to ${PROJECT_LIMITS.parts} components. Remove a component before adding another.`)
       return
     }
-    const pins = getPlacement(kind, terminal.id, rotation, document)
+    const pins = getPlacement(kind, terminal.id, rotation, document, customModelId)
     if (!pins || !canPlace(document, pins)) {
-      onMessage(PARTS[kind].package
-        ? `Place all ${PARTS[kind].pinNames.length} IC pins across the center trench. Start on row E, or rotate to start on row F.`
-        : `Choose ${PARTS[kind].pinNames.length} free holes for the component. Press R to rotate.`)
+      onMessage(partDefinition(document, selection).package
+        ? `Place all ${partDefinition(document, selection).pinNames.length} IC pins across the center trench. Start on row E, or rotate to start on row F.`
+        : `Choose ${partDefinition(document, selection).pinNames.length} free holes for the component. Press R to rotate.`)
       return
     }
     const part: Part = { id: makeId(PREFIXES[kind], document), kind, value: model ? nominalValue(model) : PARTS[kind].defaultValue, pins, ...(customModelId ? { customModelId } : {}), ...(kind === 'potentiometer' ? { position: 0.5 } : {}) }
     onChange({ ...document, parts: [...document.parts, part] })
     onSelect(part.id)
-    onMessage(`${part.id}${model ? ` (${model.name})` : ''} placed. Select it to ${PARTS[kind].package ? 'inspect its pins and model' : 'change its value'}.`)
+    onMessage(`${part.id}${model ? ` (${model.name})` : ''} placed. Select it to ${partDefinition(document, selection).package ? 'inspect its pins and model' : 'change its value'}.`)
   }
 
   function clickTerminal(terminal: Terminal) {
@@ -309,7 +310,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
   function renderPart(part: Part, preview = false) {
     const terminals = part.pins.map(id => terminalById[id])
     if (terminals.some(terminal => !terminal)) return null
-    const dipPackage = !!PARTS[part.kind].package
+    const dipPackage = !!partDefinition(document, part).package
     const a = terminals[0]
     const b = terminals[dipPackage ? terminals.length / 2 - 1 : terminals.length - 1]
     if (!a || !b) return null
@@ -324,7 +325,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
       y: -(terminal.x - center.x) * Math.sin(radians) + (terminal.y - center.y) * Math.cos(radians),
     }))
     const span = Math.hypot(b.x - a.x, b.y - a.y)
-    const threeLeadPackage = PARTS[part.kind].pinNames.length === 3
+    const threeLeadPackage = partDefinition(document, part).pinNames.length === 3
     const bounds = part.kind === 'ssd1306' ? { x: -77, y: -5, width: 154, height: 119 } : dipPackage
       ? { x: -span / 2 - 15, y: -35, width: span + 30, height: 74 }
       : threeLeadPackage
@@ -376,10 +377,10 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
           onChange({ ...document, parts: document.parts.map(item => item.id === part.id ? { ...item, pins } : item) })
         } else onMessage('No free placement in that direction.')
       }}>
-      <title>{partDisplayName(document, part)} · {label} · {part.pins.map((pin, index) => `${index + 1}: ${PARTS[part.kind].pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
+      <title>{partDisplayName(document, part)} · {label} · {part.pins.map((pin, index) => `${index + 1}: ${partDefinition(document, part).pinNames[index]} at ${pin.toUpperCase()}`).join(' · ')}</title>
       <g transform={`rotate(${angle})`}>
         <rect {...bounds} fill="transparent" />
-        {part.kind === 'ssd1306' && !preview ? <RecordedOled partId={part.id} kind={part.kind} pins={pins} selected={selectedId === part.id} /> : part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={PARTS[part.kind].pinNames} selected={preview || selectedId === part.id} />}
+        {part.kind === 'ssd1306' && !preview ? <RecordedOled partId={part.id} kind={part.kind} pins={pins} selected={selectedId === part.id} /> : part.kind === 'led' && !preview ? <RecordedLed partId={part.id} kind={part.kind} value={part.value} span={span} pins={pins} selected={selectedId === part.id} /> : <PartGlyph kind={part.kind} value={part.value} position={part.position} span={span} pins={pins} pinNames={partDefinition(document, part).pinNames} selected={preview || selectedId === part.id} />}
       </g>
       {!preview && <g pointerEvents="none">
         <rect x={labelX - labelWidth / 2} y={labelY} width={labelWidth} height={17} rx={4} fill="#eeeee3" fillOpacity={0.95} />
@@ -505,7 +506,7 @@ export function Breadboard({ document, selectedId, onSelect, onChange, tool, pla
 
     {!leadPart && tool === 'select' && onStartLeadEdit && document.parts.filter(part => part.id === selectedId && hasEditableLeads(part)).flatMap(part => part.pins.map((pin, pinIndex) => {
       const terminal = terminalById[pin]
-      const name = `Move ${part.id} lead ${PARTS[part.kind].pinNames[pinIndex]}`
+      const name = `Move ${part.id} lead ${partDefinition(document, part).pinNames[pinIndex]}`
       const start = () => onStartLeadEdit({ partId: part.id, pinIndex })
       return <circle key={`${part.id}-${pinIndex}`} data-lead-handle={`${part.id}-${pinIndex}`} cx={terminal.x} cy={terminal.y} r={7}
         fill="transparent" stroke="#d3e7a6" strokeWidth={1.8} strokeDasharray="2 2" role="button" tabIndex={0} aria-label={name}

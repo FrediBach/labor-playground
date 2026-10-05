@@ -3,7 +3,7 @@ import { canPlace, boardGeometry, type CircuitDocument, type Part } from './circ
 export interface LeadEdit { partId: string; pinIndex: number }
 export const MIN_LEAD_SPACING = 24
 export const MAX_LEAD_SPACING = 192
-const flexibleKinds = new Set(['resistor', 'capacitor', 'electrolytic', 'inductor', 'diode', 'schottky', 'zener', 'led', 'switch'])
+const flexibleKinds = new Set(['subcircuit', 'resistor', 'capacitor', 'electrolytic', 'inductor', 'diode', 'schottky', 'zener', 'led', 'switch'])
 
 export function hasEditableLeads(part: Part): boolean {
   return part.pins.length === 2 && flexibleKinds.has(part.kind)

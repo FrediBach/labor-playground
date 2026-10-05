@@ -147,7 +147,7 @@ Browser tests require Chromium (`npx playwright install chromium` if needed). Se
 | `tests/` | Compiler, numerical, audio, worker, and browser checks |
 | `docs/` | Hardware/model specification and simulation integration notes |
 
-Use `@/` to import from `src/`. The document format only accepts supported component data and physical terminal references; imported scripts and arbitrary SPICE directives are not executed. Supported SPICE `.MODEL` files are converted to validated numeric device parameters before compilation.
+Use `@/` to import from `src/`. The document format only accepts supported component data and physical terminal references; imported scripts and arbitrary SPICE directives are not executed. Supported SPICE `.MODEL` and `.SUBCKT` files are converted to validated device data before compilation.
 
 ## Production deployment
 
@@ -167,7 +167,7 @@ Try the **Current-sensitive resistor** and **Voltage-sensitive capacitor** examp
 
 ### Import SPICE device models
 
-Choose **Parts library → Import SPICE model** and open a `.lib`, `.mod`, `.cir` or `.txt` file, or paste a `.MODEL` definition. This first release supports **diodes (`D`) and level-1 bipolar transistors (`NPN`, `PNP`)**. If the file has several definitions, select one entry point to import. You can add a display name and source/limitation notes before saving.
+Choose **Parts library → Import SPICE model** and open a `.lib`, `.mod`, `.cir` or `.txt` file, or paste a `.MODEL` definition. Supported imports include **diodes (`D`), level-1 bipolar transistors (`NPN`, `PNP`), and self-contained analog `.SUBCKT` definitions**. If the file has several definitions, select one entry point to import. You can add a display name and source/limitation notes before saving.
 
 The imported definition appears under Custom components and is selected for placement. To use it on an existing diode or matching transistor, choose **Component model** in the inspector. Edit, duplicate, make an independent copy and undo work as for custom curves. Definitions travel with project exports, recovery and folder sync. Virtual pin order is **1 anode / 2 cathode** or **1 collector / 2 base / 3 emitter**; check physical package pinouts separately.
 
@@ -178,7 +178,27 @@ For example:
 .model EXAMPLE_D D(IS=1n N=1.5 RS=2 CJO=4p)
 ```
 
-Import accepts numeric parameters, engineering suffixes (`M` means milli, `Meg` means mega), comments and `+` continuation lines. Unknown parameters are reported, not silently removed. `.SUBCKT`, MOSFET/JFET models, expressions, includes and encrypted models are outside this release. Maximum input size is 64 kB, with up to 32 definitions per file and 32 custom definitions per project. See [supported parameters and solver behavior](docs/engine-notes.md#imported-spice-device-models).
+Import accepts numeric parameters, engineering suffixes (`M` means milli, `Meg` means mega), comments and `+` continuation lines. Unknown parameters are reported, not silently removed. MOSFET/JFET models, behavioral expressions, parameterized values, includes and encrypted models remain unsupported. Maximum input size is 64 kB, with up to 32 file-level device models and 32 subcircuits per file, and 32 custom definitions per project. See [supported parameters and solver behavior](docs/engine-notes.md#imported-spice-device-models).
+
+### Import SPICE subcircuits
+
+Use the same **Import SPICE model** action for `.SUBCKT` libraries. Select an entry point and review **Workbench pin mapping**. Two-terminal models use a leaded block; larger models use a virtual DIP package with 4–16 pins. Map each declared terminal to a distinct pin; unused package pins are marked NC. These are virtual carriers, not inferred manufacturer pinouts.
+
+Subcircuits can contain numeric R/C/L components, D/NPN/PNP devices with supported `.MODEL` parameters, DC voltage/current sources, linear E/G/F/H controlled sources, and X calls to other subcircuits in the same file. Dependencies are embedded automatically; recursive calls and unsupported syntax are reported before import. Model files with `.PARAM`, expressions, `POLY`, behavioral sources or external includes need adaptation before they can be imported.
+
+For example, this capacitor includes series resistance and leakage:
+
+```spice
+.SUBCKT EXAMPLE_CAP P N
+R_ESR P internal 0.1
+C_MAIN internal N 10u
+R_LEAK internal N 100Meg
+.ENDS EXAMPLE_CAP
+```
+
+If a model uses global SPICE node `0`, import adds a visible **0 (reference)** terminal that must be wired to workbench GND. A BJT with an omitted substrate terminal also uses SPICE’s default node `0`. Nothing is silently grounded. Imported subcircuits expose signed current into each terminal and total absorbed power, including their supply/reference ports. NC package pins do not require wiring.
+
+Shared model edits and pin remapping are undoable and invalidate electrical results. A placed component’s package size cannot change through a model edit; import a new definition to use a different package size. Definitions and pin assignments survive JSON export/import, recovery and folder sync. The schematic uses a labeled block and preserves mapped pin names in KiCad export; KiCad export still does not include simulation models. See [subcircuit compatibility and limits](docs/engine-notes.md#imported-spice-subcircuits).
 
 ### Additional synth building blocks
 
