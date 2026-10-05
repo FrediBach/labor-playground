@@ -1,5 +1,6 @@
 import { PARTS, formatValue, resolveTopology, boardGeometry, type CircuitDocument, type ComponentKind, type Part } from './circuit.ts'
 import { PICO_PINS } from './pico/profile.ts'
+import { routeSchematicSection } from './schematic-routing.ts'
 
 export interface SchematicPoint { x: number; y: number }
 export interface SchematicPin extends SchematicPoint {
@@ -189,6 +190,23 @@ function layoutSmallCircuit(layout: SchematicLayout): boolean {
   return true
 }
 
+/** Follow signal connections, keeping supplies from turning every stage into neighbors. */
+function orderSection(symbols: SchematicSymbol[], nets: SchematicNet[]): SchematicSymbol[] {
+  const supplyNodes = new Set(nets.filter(net => net.sources.some(source => /GND|^[+−]/.test(source))).map(net => net.id))
+  const signalNodes = (symbol: SchematicSymbol) => symbol.pins.map(pin => pin.node).filter(node => !supplyNodes.has(node))
+  const neighbors = new Map(symbols.map(symbol => [symbol, symbols.filter(other => other !== symbol && other.pins.some(pin => signalNodes(symbol).includes(pin.node)))]))
+  const rank = (symbol: SchematicSymbol) => symbol.kind === 'pico' ? 0 : symbol.pins.length > 2 ? 1 : 2
+  const roots = symbols.toSorted((a, b) => rank(a) - rank(b) || neighbors.get(a)!.length - neighbors.get(b)!.length || naturalOrder(a.id, b.id))
+  const ordered: SchematicSymbol[] = []
+  const visit = (symbol: SchematicSymbol) => {
+    if (ordered.includes(symbol)) return
+    ordered.push(symbol)
+    for (const neighbor of neighbors.get(symbol)!) visit(neighbor)
+  }
+  roots.forEach(visit)
+  return ordered
+}
+
 function layoutLabeledCircuit(layout: SchematicLayout) {
   const sections = new Map<string, SchematicSymbol[]>()
   for (const symbol of layout.symbols) {
@@ -198,24 +216,50 @@ function layoutLabeledCircuit(layout: SchematicLayout) {
   }
   const sortedSections = [...sections.entries()].sort(([a], [b]) => a === '' ? 1 : b === '' ? -1 : naturalOrder(a, b))
   const maxColumns = Math.min(3, Math.max(1, ...[...sections.values()].map(symbols => symbols.length)))
-  layout.width = Math.max(900, maxColumns * 430 + 136)
+  layout.width = 900
   let y = 120
-  for (const [name, symbols] of sortedSections) {
+  for (const [name, members] of sortedSections) {
+    const symbols = orderSection(members, layout.nets)
+    const columnWidths = Array.from({ length: Math.min(maxColumns, symbols.length) }, (_, column) =>
+      Math.max(...symbols.filter((_, index) => index % maxColumns === column).map(symbol => symbol.width === 200 ? 540 : 430)))
+    const sectionWidth = columnWidths.reduce((sum, width) => sum + width, 0)
+    layout.width = Math.max(layout.width, sectionWidth + 136)
     const top = y
     if (name) y += 28
     for (let row = 0; row < symbols.length; row += maxColumns) {
       const rowSymbols = symbols.slice(row, row + maxColumns)
       const height = Math.max(220, ...rowSymbols.map(symbol => symbol.height + 145))
       rowSymbols.forEach((symbol, column) => {
-        placeSymbol(symbol, 68 + column * 430 + 215, y + 66 + symbol.height / 2)
-        for (const pin of symbol.pins) {
-          if (!pin.connected && !pin.node.startsWith('unconnected:')) continue
-          layout.labels.push({ node: pin.node, x: pin.x + (pin.side === 'left' ? -8 : pin.side === 'right' ? 8 : 0), y: pin.y - (pin.side === 'bottom' ? -20 : 5), anchor: pin.side === 'left' ? 'end' : pin.side === 'right' ? 'start' : 'middle' })
-        }
+        // Align the first block pin with neighboring passives, leaving room for references above.
+        const block = symbol.kind === 'pico' || (symbol.pins.length !== 2 && !isTransistor(symbol.kind) && symbol.kind !== 'potentiometer')
+        placeSymbol(symbol, 68 + columnWidths.slice(0, column).reduce((sum, width) => sum + width, 0) + columnWidths[column] / 2, y + 106 + (block ? symbol.height / 2 - 35 : 0))
       })
       y += height
     }
-    if (name) layout.groups.push({ name, x: 48, y: top, width: Math.min(maxColumns, symbols.length) * 430 + 40, height: y - top + 10 })
+    for (const symbol of symbols) {
+      // Logical symbol orientation follows its neighbors; physical pin numbers stay unchanged.
+      if (symbol.pins.length === 2 || symbol.kind === 'pico') {
+        let normal = 0, mirrored = 0
+        for (const pin of symbol.pins) {
+          const net = layout.nets.find(net => net.id === pin.node)!
+          if (net.sources.some(source => /GND|^[+−]/.test(source))) continue
+          for (const other of symbols) if (other !== symbol && other.pins.some(otherPin => otherPin.node === pin.node)) {
+            normal += Math.abs(pin.x - other.x)
+            mirrored += Math.abs(2 * symbol.x - pin.x - other.x)
+          }
+        }
+        if (mirrored < normal) {
+          if (symbol.kind !== 'pico') symbol.rotation = 180
+          for (const pin of symbol.pins) { pin.x = 2 * symbol.x - pin.x; pin.side = pin.side === 'left' ? 'right' : 'left' }
+        }
+      }
+      for (const pin of symbol.pins) {
+        if (!pin.connected && !pin.node.startsWith('unconnected:')) continue
+        layout.labels.push({ node: pin.node, x: pin.x + (pin.side === 'left' ? -8 : pin.side === 'bottom' ? 12 : 8), y: pin.y + (pin.side === 'bottom' ? 20 : -5), anchor: pin.side === 'left' ? 'end' : 'start' })
+      }
+    }
+    if (name) layout.groups.push({ name, x: 48, y: top, width: sectionWidth + 40, height: y - top + 10 })
+    routeSchematicSection(layout, symbols, { left: 60, right: sectionWidth + 76, top: top + (name ? 28 : 10), bottom: y })
     y += 35
   }
   layout.height = Math.max(560, y + 125)

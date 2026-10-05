@@ -2,7 +2,25 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createEmptyDocument, examples, PARTS, resolveTopology, type ComponentKind } from '../src/lib/circuit.ts'
 import { createPico } from '../src/lib/pico/profile.ts'
-import { buildSchematic, type SchematicWire } from '../src/lib/schematic.ts'
+import { buildSchematic, type SchematicLayout, type SchematicPoint, type SchematicWire } from '../src/lib/schematic.ts'
+
+const wireSegments = (layout: SchematicLayout) => layout.wires.flatMap(wire => wire.points.slice(1).map((b, index) => {
+  const a = wire.points[index]
+  return { node: wire.node, a, b, left: Math.min(a.x, b.x), right: Math.max(a.x, b.x), top: Math.min(a.y, b.y), bottom: Math.max(a.y, b.y) }
+}))
+const intersects = (a: { left: number; right: number; top: number; bottom: number }, b: typeof a) => a.left <= b.right && b.left <= a.right && a.top <= b.bottom && b.top <= a.bottom
+const contains = (line: ReturnType<typeof wireSegments>[number], point: SchematicPoint) => intersects(line, { left: point.x, right: point.x, top: point.y, bottom: point.y })
+
+/** Check a continuous geometric path without relying on matching labels. */
+function assertWired(layout: SchematicLayout, from: string, fromPin: number, to: string, toPin: number) {
+  const a = layout.symbols.find(symbol => symbol.id === from)!.pins.find(pin => pin.number === fromPin)!
+  const b = layout.symbols.find(symbol => symbol.id === to)!.pins.find(pin => pin.number === toPin)!
+  assert.equal(a.node, b.node)
+  const lines = wireSegments(layout).filter(line => line.node === a.node)
+  const reached = new Set(lines.filter(line => contains(line, a)))
+  for (const line of reached) for (const other of lines) if (intersects(line, other)) reached.add(other)
+  assert.ok([...reached].some(line => contains(line, b)), `${from}:${fromPin} to ${to}:${toPin} has a continuous wire`)
+}
 
 test('schematic resolves shared breadboard strips and split rails with the simulation topology', () => {
   const document = createEmptyDocument()
@@ -118,6 +136,76 @@ test('Pico exposes connected pins with actual physical numbers and shared ground
   assert.equal(layout.nets.find(net => net.id === ground.node)?.label, 'PICO GND')
   assert.notEqual(ground.node, '0', 'Pico ground is not implicitly LABOR ground')
   assert.equal(ground.node, layout.symbols.find(symbol => symbol.id === 'R1')!.pins[1].node)
+})
+
+test('small Pico circuits wire the signal chain and shared ground instead of falling back to labels only', () => {
+  for (const id of ['pico-led', 'pico-pwm', 'pico-pulse']) {
+    const layout = buildSchematic(examples.find(example => example.id === id)!.document)
+    const load = id === 'pico-led' ? 'D1' : id === 'pico-pwm' ? 'C1' : 'R2'
+    assertWired(layout, 'Pico', 1, 'R1', 1)
+    assertWired(layout, 'R1', 2, load, 1)
+    assertWired(layout, 'Pico', 3, 'Pico', 8)
+    assertWired(layout, 'Pico', 8, load, 2)
+    assert.ok(layout.junctions.some(point => point.node === '0'), 'shared ground branch has a junction dot')
+  }
+})
+
+test('multi-pin devices, cycles and disconnected islands retain routable connections', () => {
+  for (const id of ['opamp-amplifier', '555-astable', 'jfet-buffer', 'pico-oled']) {
+    const layout = buildSchematic(examples.find(example => example.id === id)!.document)
+    assert.ok(layout.wires.length > 0, `${id} has direct wires`)
+  }
+  const document = createEmptyDocument()
+  document.parts = [
+    { id: 'R1', kind: 'resistor', value: 1000, pins: ['a1', 'a2'] },
+    { id: 'R2', kind: 'resistor', value: 1000, pins: ['b2', 'a3'] },
+    { id: 'R3', kind: 'resistor', value: 1000, pins: ['b3', 'b1'] },
+  ]
+  const cycle = buildSchematic(document)
+  assert.ok(cycle.wires.length > 0)
+  document.parts[2].pins = ['a5', 'a6']
+  document.parts.push({ id: 'R4', kind: 'resistor', value: 1000, pins: ['b6', 'a7'] })
+  const islands = buildSchematic(document)
+  assertWired(islands, 'R1', 2, 'R2', 1)
+  assertWired(islands, 'R3', 2, 'R4', 1)
+})
+
+test('groups keep internal wiring and retain labels for connections to other groups', () => {
+  const document = structuredClone(examples.find(example => example.id === 'pico-led')!.document)
+  document.parts.forEach(part => { part.schemaGroup = 'LED output' })
+  const layout = buildSchematic(document)
+  assertWired(layout, 'R1', 2, 'D1', 1)
+  const group = layout.groups[0]
+  const inside = (point: SchematicPoint) => point.x > group.x && point.x < group.x + group.width && point.y > group.y && point.y < group.y + group.height
+  for (const wire of layout.wires) {
+    if (wire.points.some(inside)) assert.ok(wire.points.every(inside), 'a wire stays within its section')
+  }
+  const gpio = layout.symbols.find(symbol => symbol.id === 'Pico')!.pins[0]
+  assert.equal(layout.labels.filter(label => label.node === gpio.node).length, 2)
+})
+
+test('routed examples avoid unrelated nets, component bodies, text and sheet margins', () => {
+  for (const example of examples) {
+    const layout = buildSchematic(example.document)
+    if (layout.mode !== 'labeled') continue
+    const lines = wireSegments(layout)
+    for (const line of lines) {
+      assert.ok(line.a.x === line.b.x || line.a.y === line.b.y, `${example.id}: orthogonal wires`)
+      assert.ok(line.left > 24 && line.right < layout.width - 24 && line.top > 110 && line.bottom < layout.height - 82, `${example.id}: wires stay on sheet`)
+      for (const other of lines) if (line.node !== other.node) assert.ok(!intersects(line, other), `${example.id}: unrelated wires cannot cross`)
+      for (const symbol of layout.symbols) {
+        const block = symbol.width === 200
+        const body = { left: symbol.x - (block ? 99 : 28), right: symbol.x + (block ? 99 : 28), top: symbol.y - (block ? symbol.height / 2 - 1 : 25), bottom: symbol.y + (block ? symbol.height / 2 - 1 : 25) }
+        assert.ok(!intersects(line, body), `${example.id}: wire avoids ${symbol.id} body`)
+      }
+      for (const label of layout.labels) {
+        const net = layout.nets.find(net => net.id === label.node)!
+        const width = (net.label + (net.probes.length ? ` · ${net.probes.join(' / ')}` : '')).length * 6.7
+        const left = label.x - (label.anchor === 'end' ? width : label.anchor === 'middle' ? width / 2 : 0)
+        assert.ok(!intersects(line, { left, right: left + width, top: label.y - 11, bottom: label.y }), `${example.id}: wire avoids net text`)
+      }
+    }
+  }
 })
 
 test('every bundled example yields a bounded, deterministic electrical drawing', () => {

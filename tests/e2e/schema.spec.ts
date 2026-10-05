@@ -2,6 +2,7 @@ import { expect, test } from '@playwright/test'
 import type { Download, Page } from '@playwright/test'
 import { createEmptyDocument, examples, PARTS } from '../../src/lib/circuit'
 import { PICO_PINS } from '../../src/lib/pico/profile'
+import { buildSchematic } from '../../src/lib/schematic'
 
 const openTab = (page: Page, name: string) => page.getByRole('tab', { name, exact: true }).click()
 const ready = (page: Page) => expect(page.getByRole('status', { name: 'Simulation status', exact: true })).toHaveAttribute('data-state', 'ready', { timeout: 45_000 })
@@ -230,6 +231,50 @@ test('voltage overlays follow the shared recording cursor and disappear when ele
   await openTab(page, 'Schema')
   await expect(page.getByLabel('Schema time milliseconds', { exact: true })).toBeEnabled()
   expect(await voltages.count()).toBeGreaterThan(0)
+})
+
+test('Pico external LED renders and exports wires attached to its physical pins', async ({ page }, testInfo) => {
+  const circuit = examples.find(example => example.id === 'pico-led')!.document
+  await page.goto('/')
+  await page.getByLabel('Load example', { exact: true }).selectOption('pico-led')
+  await openTab(page, 'Schema')
+  const sheet = drawing(page)
+  await expect(sheet.locator('[data-schema-part]')).toHaveCount(3)
+  const pico = sheet.locator('[data-schema-part="Pico"]')
+  await expect(pico.getByText('GP0', { exact: true })).toBeVisible()
+  await expect(pico.locator('[data-schema-pin]')).toHaveText(['1', '3', '8'])
+  await expect(pico.locator('[data-schema-pin="1"]')).toHaveAttribute('data-schema-terminal', 'pico:1')
+
+  const renderedWires = await sheet.locator('polyline.sch-wire[data-schema-net]').evaluateAll(elements => elements.map(element => ({
+    node: element.getAttribute('data-schema-net'),
+    points: element.getAttribute('points')!.trim().split(/\s+/).map(point => point.split(',').map(Number)),
+  })))
+  const layout = buildSchematic(circuit)
+  for (const symbol of layout.symbols) {
+    for (const pin of symbol.pins) {
+      expect(renderedWires.some(wire => wire.node === pin.node && wire.points.some(([x, y]) => x === pin.x && y === pin.y)), `${symbol.id} pin ${pin.number} has a visible wire`).toBe(true)
+    }
+  }
+  expect(new Set(renderedWires.map(wire => wire.node)).size).toBe(3)
+
+  await sheet.locator('[data-schema-part="R1"]').focus()
+  await page.keyboard.press('Enter')
+  await expect(page.getByRole('complementary', { name: 'Inspector', exact: true }).getByRole('heading', { name: 'Resistor', exact: true })).toBeVisible()
+  await expect(sheet.locator('[data-schema-part="R1"]')).toHaveAttribute('aria-pressed', 'true')
+  await page.getByRole('button', { name: 'Fit schema', exact: true }).click()
+  await page.getByTestId('schema-viewport').screenshot({ path: testInfo.outputPath('schema-pico-led.png') })
+
+  const svgEvent = page.waitForEvent('download')
+  await page.getByRole('button', { name: 'Export schema SVG', exact: true }).click()
+  const svg = (await downloadBytes(await svgEvent)).toString('utf8')
+  const exportedWires = await page.evaluate(source => {
+    const document = new DOMParser().parseFromString(source, 'image/svg+xml')
+    return Array.from(document.querySelectorAll('polyline.sch-wire[data-schema-net]'), element => ({
+      node: element.getAttribute('data-schema-net'),
+      points: element.getAttribute('points')!.trim().split(/\s+/).map(point => point.split(',').map(Number)),
+    }))
+  }, svg)
+  expect(exportedWires).toEqual(renderedWires)
 })
 
 test('IC and Pico schemas preserve physical pin numbers and allow component inspection', async ({ page }, testInfo) => {
